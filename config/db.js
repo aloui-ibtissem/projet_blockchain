@@ -9,6 +9,7 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT 
 });
 
+//cnx bdd
 
 db.connect((err) => {
   if (err) {
