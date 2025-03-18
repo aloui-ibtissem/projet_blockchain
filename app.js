@@ -7,22 +7,18 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Routes spécifiques aux différentes entités
 app.use('/universites', require('./routes/universiteRoutes'));
 app.use('/entreprises', require('./routes/entrepriseRoutes'));
 app.use('/etudiants', require('./routes/etudiantRoutes'));
 app.use('/encadrants-academiques', require('./routes/encadrantAcademiqueRoutes'));
 app.use('/encadrants-professionnels', require('./routes/encadrantProfessionnelRoutes'));
-///
-const stageRoutes = require('./routes/stageRoutes');
-const sujetStageRoutes = require('./routes/sujetStageRoutes');
-const rapportStageRoutes = require('./routes/rapportStageRoutes');
-const evaluationRoutes = require('./routes/evaluationRoutes');
 
-app.use('/api', stageRoutes);
-app.use('/api', sujetStageRoutes);
-app.use('/api', rapportStageRoutes);
-app.use('/api', evaluationRoutes);
+// Routes pour le stage, sujet de stage, rapport, et évaluation
+app.use('/api/stages', require('./routes/stageRoutes'));
+app.use('/api/sujets-stage', require('./routes/sujetStageRoutes'));
+app.use('/api/rapports-stage', require('./routes/rapportStageRoutes'));
+app.use('/api/evaluations', require('./routes/evaluationRoutes'));
 
-///
-
-app.listen(process.env.PORT || 3000, () => console.log(' Serveur démarré'));
+// Démarrage du serveur
+app.listen(process.env.PORT || 3000, () => console.log('Serveur démarré'));
