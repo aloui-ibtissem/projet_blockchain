@@ -1,0 +1,182 @@
+/* Styles globaux */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Roboto', sans-serif;
+  transition: all 0.3s ease-in-out;
+}
+
+body {
+  background-color: #f7f9fc;
+  font-size: 16px;
+  color: #333;
+}
+
+/* Container principal pour les pages d'authentification */
+.auth-container {
+  max-width: 450px;
+  margin: 80px auto;
+  padding: 40px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+/* Titre principal */
+.auth-container h2 {
+  color: #0046d5; /* Bleu professionnel plus sombre */
+  font-size: 32px;
+  margin-bottom: 20px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+/* Champs de saisie */
+.auth-container input, .auth-container select {
+  width: 100%;
+  padding: 15px;
+  margin: 15px 0;
+  border: 1px solid #d1d8e0;
+  border-radius: 10px;
+  font-size: 16px;
+  color: #444;
+  background: #f5f7fa;
+  transition: border 0.3s ease;
+}
+
+.auth-container input:focus, .auth-container select:focus {
+  border: 1px solid #0046d5;
+  outline: none;
+  background: #ffffff;
+}
+
+/* Boutons */
+.auth-container button {
+  width: 100%;
+  padding: 15px;
+  background-color: #0046d5;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.auth-container button:hover {
+  background-color: #0036b3;
+  transform: translateY(-3px);
+}
+
+/* Liens */
+.auth-container a {
+  color: #0046d5;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.auth-container a:hover {
+  text-decoration: underline;
+}
+
+/* Message d'erreur ou de succès */
+.auth-container p.message {
+  color: #e74c3c; /* Rouge pour les erreurs */
+  font-size: 14px;
+  text-align: center;
+}
+
+.auth-container p.success {
+  color: #2ecc71; /* Vert pour le succès */
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Home Page */
+.home-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100vh;
+  background: #0046d5;
+  color: white;
+  text-align: center;
+}
+
+.home-container h1 {
+  font-size: 48px;
+  margin-bottom: 20px;
+  font-weight: 700;
+  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); /* Ombre légère sur le texte */
+}
+
+.home-container p {
+  font-size: 18px;
+  margin-bottom: 40px;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.home-container button {
+  background-color: #2ecc71; /* Vert pour le bouton principal */
+  color: white;
+  padding: 15px 40px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  font-weight: 500;
+}
+
+.home-container button:hover {
+  background-color: #27ae60; /* Vert foncé au survol */
+  transform: translateY(-3px);
+}
+
+.home-container button:active {
+  transform: translateY(2px); /* Effet de pression lors du clic */
+}
+
+/* Footer */
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: #0046d5;
+  color: white;
+  padding: 20px 0;
+  text-align: center;
+}
+
+.footer p {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .auth-container {
+    padding: 25px;
+  }
+
+  .auth-container h2 {
+    font-size: 28px;
+  }
+
+  .auth-container input, .auth-container select, .auth-container button {
+    font-size: 14px;
+  }
+
+  .home-container h1 {
+    font-size: 36px;
+  }
+
+  .home-container button {
+    font-size: 18px;
+  }
+}
