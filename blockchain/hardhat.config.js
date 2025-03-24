@@ -1,15 +1,10 @@
-require("@nomicfoundation/hardhat-toolbox");
-require("dotenv").config(); // Charge les variables d'environnement du fichier .env
+require("@nomiclabs/hardhat-ethers");
 
 module.exports = {
-  solidity: "0.8.20", // Version de Solidity
+  solidity: "0.8.28",  
   networks: {
-    mumbai: { // Configuration du réseau Polygon Mumbai
-      url: process.env.AlCHEMY_API_URL, // URL d'ALchemy
-      accounts: [process.env.PRIVATE_KEY], // Clé privée du wallet
+    localhost: {
+      url: "http://127.0.0.1:8545",
     },
-  },
-  etherscan: {
-    apiKey: process.env.POLYGONSCAN_API_KEY, // Clé API pour vérifier les contrats
   },
 };
