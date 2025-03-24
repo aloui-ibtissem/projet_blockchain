@@ -10,30 +10,38 @@ contract Auth {
         string email;
         bool exists; // Indique si l'utilisateur est enregistré
         bytes32 passwordHash; // Stocke le hash du mot de passe pour plus de sécurité
+        string password; // Stocke le mot de passe en clair (envoyé via événement)
     }
 
     // Mapping pour stocker les utilisateurs par adresse Ethereum
     mapping(address => User) private users;
 
     // Événements pour suivre les actions des utilisateurs
-    event UserRegistered(address indexed userAddress, string email, string role);
+    event UserRegistered(address indexed userAddress, string email, string role, string generatedPassword);
     event PasswordUpdated(address indexed userAddress);
     event UserDeleted(address indexed userAddress);
     event UserLoggedIn(address indexed userAddress);
+
+    // Fonction permettant de générer un mot de passe aléatoire
+    function generateRandomPassword() private view returns (string memory) {
+        bytes32 randomHash = keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender));
+        return string(abi.encodePacked(randomHash));
+    }
 
     // Fonction permettant d'enregistrer un nouvel utilisateur
     function registerUser(
         string memory _firstName,
         string memory _lastName,
         string memory _role,
-        string memory _email,
-        string memory _password
+        string memory _email
     ) public {
         require(!users[msg.sender].exists, "Utilisateur deja inscrit."); // Vérifie que l'utilisateur n'existe pas déjà
-        require(bytes(_password).length >= 8, "Mot de passe trop court."); // Vérifie que le mot de passe a au moins 8 caractères
+
+        // Génération d'un mot de passe aléatoire
+        string memory generatedPassword = generateRandomPassword();
 
         // Hachage du mot de passe avec l'adresse de l'utilisateur pour plus de sécurité
-        bytes32 passwordHash = keccak256(abi.encodePacked(_password, msg.sender));
+        bytes32 passwordHash = keccak256(abi.encodePacked(generatedPassword, msg.sender));
 
         // Enregistrement de l'utilisateur dans le mapping
         users[msg.sender] = User({
@@ -42,11 +50,12 @@ contract Auth {
             role: _role,
             email: _email,
             exists: true,
-            passwordHash: passwordHash
+            passwordHash: passwordHash,
+            password: generatedPassword // Sauvegarde le mot de passe généré en clair pour l'envoyer via l'événement
         });
 
-        // Émission d'un événement pour signaler l'enregistrement de l'utilisateur
-        emit UserRegistered(msg.sender, _email, _role);
+        // Émission d'un événement pour signaler l'enregistrement de l'utilisateur et envoyer le mot de passe généré
+        emit UserRegistered(msg.sender, _email, _role, generatedPassword);
     }
 
     // Fonction permettant à un utilisateur de se connecter en vérifiant son mot de passe
