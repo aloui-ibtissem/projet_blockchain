@@ -1,3 +1,4 @@
+// hardhat.config.js
 require("@nomiclabs/hardhat-ethers");
 
 module.exports = {
@@ -8,4 +9,3 @@ module.exports = {
     },
   },
 };
-

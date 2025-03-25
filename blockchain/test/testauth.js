@@ -1,46 +1,78 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
+import { expect } from "chai";
+import { ethers } from "hardhat";
 
-describe("Contrat Auth", function () {
-    let Auth;
-    let auth;
-    let owner;
-    let user;
+describe("Auth Contract", function () {
+  let auth;
+  let owner;
+  let user1;
+  let user2;
 
-    beforeEach(async function () {
-        // Récupérer les signers
-        [owner, user] = await ethers.getSigners();
+  beforeEach(async function () {
+    [owner, user1, user2] = await ethers.getSigners();
 
-        // Déployer le contrat Auth
-        Auth = await ethers.getContractFactory("Auth");
-        auth = await Auth.deploy();
+    const Auth = await ethers.getContractFactory("Auth");
+    auth = await Auth.deploy();
+    await auth.deployed();
+  });
+
+  describe("User Registration", function () {
+    it("should register a new user", async function () {
+      await expect(auth.registerUser("Ahmed", "Ben Ali", "Admin", "ahmed@tunis.com"))
+        .to.emit(auth, "UserRegistered")
+        .withArgs(owner.address, "ahmed@tunis.com", "Admin", "generatedPassword");
     });
 
-    it("Devrait enregistrer un utilisateur", async function () {
-        const firstName = "John";
-        const lastName = "Doe";
-        const role = "Admin";
-        const email = "john.doe@example.com";
+    it("should not register the same user twice", async function () {
+      await auth.registerUser("Ahmed", "Ben Ali", "Admin", "ahmed@tunis.com");
+      await expect(auth.registerUser("Ahmed", "Ben Ali", "Admin", "ahmed@tunis.com"))
+        .to.be.revertedWith("Utilisateur deja inscrit.");
+    });
+  });
 
-        // Appeler la fonction registerUser
-        await auth.registerUser(firstName, lastName, role, email);
+  describe("User Login", function () {
+    it("should login with correct password", async function () {
+      await auth.registerUser("Ahmed", "Ben Ali", "Admin", "ahmed@tunis.com");
 
-        // Vérifier que l'utilisateur a été ajouté
-        const userDetails = await auth.getUser(user.address);
-        expect(userDetails[0]).to.equal(firstName);
-        expect(userDetails[1]).to.equal(lastName);
-        expect(userDetails[2]).to.equal(role);
-        expect(userDetails[3]).to.equal(email);
+      // Retrieve generated password from event logs
+      const events = await auth.queryFilter("UserRegistered");
+      const generatedPassword = events[0].args.generatedPassword;
+
+      await expect(auth.loginUser(generatedPassword)).to.emit(auth, "UserLoggedIn").withArgs(owner.address);
     });
 
-    it("Devrait permettre la mise à jour du mot de passe", async function () {
-        const newPassword = "newSecurePassword123";
-
-        // Mettre à jour le mot de passe
-        await auth.updatePassword(newPassword);
-
-        // Vérifier que le mot de passe a été mis à jour
-        const userDetails = await auth.getUser(user.address);
-        expect(userDetails[4]).to.equal(newPassword);
+    it("should fail login with incorrect password", async function () {
+      await auth.registerUser("Ahmed", "Ben Ali", "Admin", "ahmed@tunis.com");
+      await expect(auth.loginUser("wrongPassword")).to.be.revertedWith("Utilisateur non inscrit.");
     });
+  });
+
+  describe("Password Update", function () {
+    it("should update the user's password", async function () {
+      await auth.registerUser("Ahmed", "Ben Ali", "Admin", "ahmed@tunis.com");
+
+      await auth.updatePassword("newpassword123");
+
+      await expect(auth.loginUser("newpassword123")).to.emit(auth, "UserLoggedIn").withArgs(owner.address);
+    });
+
+    it("should fail if the new password is too short", async function () {
+      await auth.registerUser("Ahmed", "Ben Ali", "Admin", "ahmed@tunis.com");
+
+      await expect(auth.updatePassword("short")).to.be.revertedWith("Mot de passe trop court.");
+    });
+  });
+
+  describe("User Deletion", function () {
+    it("should delete the user", async function () {
+      await auth.registerUser("Ahmed", "Ben Ali", "Admin", "ahmed@tunis.com");
+
+      await expect(auth.deleteUser()).to.emit(auth, "UserDeleted").withArgs(owner.address);
+    });
+
+    it("should not allow login after deletion", async function () {
+      await auth.registerUser("Ahmed", "Ben Ali", "Admin", "ahmed@tunis.com");
+      await auth.deleteUser();
+      await expect(auth.loginUser("wrongPassword")).to.be.revertedWith("Utilisateur non inscrit.");
+    });
+  });
 });
