@@ -32,3 +32,4 @@ exports.update = (req, res) => {
 // Fonction pour supprimer un encadrant académique
 exports.delete = (req, res) => {
     // Appel de la méthode 'delete' du modèle pour supprimer un encadrant 
+}
