@@ -1,47 +1,59 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const { Web3 } = require('web3');
-const web3 = new Web3("http://localhost:8545");
+const Web3 = require('web3');
+const { User } = require('/models/user'); // Sequelize User Model
+const web3 = new Web3('http://localhost:8545'); // Connecter à la blockchain locale ou à un RPC
+
+// Importation de l'ABI (Application Binary Interface) du contrat intelligent à partir d'un fichier JSON
+const contractABI = require("../abis/abis.json");
+// Définition de l'adresse du contrat  déployé
 const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
-const contractABI = require('../abis/abi.json');
+
 const contract = new web3.eth.Contract(contractABI, contractAddress);
-const db = require('../config/db');
 
-const registerUser = async (req, res) => {
-  const { email, firstName, lastName, role } = req.body;
-  try {
+// Fonction d'inscription de l'utilisateur
+async function registerUser(req, res) {
+    const { firstName, lastName, email, role, password } = req.body;
+
+    // Vérification si l'utilisateur existe déjà dans MySQL
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+        return res.status(400).send('Utilisateur déjà inscrit');
+    }
+
+    // Générer un hash du mot de passe
+    const passwordHash = web3.utils.keccak256(password);
+
+    // Enregistrer l'utilisateur dans MySQL
+    const user = await User.create({ firstName, lastName, email, role, password: passwordHash });
+
+    // Enregistrer l'utilisateur sur la blockchain
     const accounts = await web3.eth.getAccounts();
-    const userAddress = accounts[0];
+    await contract.methods.registerUser(accounts[0], firstName, lastName, email, role, passwordHash).send({ from: accounts[0] });
 
-    await contract.methods.registerUser(firstName, lastName, role, email).send({ from: userAddress });
-    const user = await contract.methods.getUser(userAddress).call();
+    res.status(200).send('Utilisateur inscrit');
+}
 
-    // Logique pour enregistrer l'utilisateur dans la base de données et envoyer un email
-    db.query('INSERT INTO users (email, first_name, last_name, role) VALUES (?, ?, ?, ?)', [email, firstName, lastName, role], (err, result) => {
-      if (err) throw err;
-      res.status(200).send({ message: "Utilisateur enregistré avec succès." });
-    });
-  } catch (error) {
-    res.status(500).send({ message: "Erreur lors de l'enregistrement." });
-  }
-};
+// Fonction de connexion de l'utilisateur
+async function loginUser(req, res) {
+    const { email, password } = req.body;
 
-const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-  // Assurez-vous de vérifier l'email et le mot de passe ici
-  db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
-    if (results.length === 0) return res.status(400).send({ message: "Utilisateur non trouvé." });
+    // Vérification de l'utilisateur dans MySQL
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+        return res.status(400).send('Utilisateur non trouvé');
+    }
 
-    const user = results[0];
-    // Comparer le mot de passe hashé
-    const isMatch = bcrypt.compareSync(password, user.password);
-    if (!isMatch) return res.status(400).send({ message: "Mot de passe incorrect." });
+    // Comparer le mot de passe soumis avec le hash stocké dans la base de données
+    const passwordHash = web3.utils.keccak256(password);
+    if (passwordHash !== user.password) {
+        return res.status(400).send('Mot de passe incorrect');
+    }
 
-    // Générer un token JWT
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Vérifier le rôle sur la blockchain
+    const role = await contract.methods.getUserRole(user.id).call();
+    if (role !== user.role) {
+        return res.status(400).send('Rôle incorrect');
+    }
 
-    res.status(200).send({ token });
-  });
-};
-
-module.exports = { registerUser, loginUser };
+    // Authentification réussie
+    res.status(200).send('Connexion réussie');
+}
