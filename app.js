@@ -17,7 +17,7 @@ app.use(express.json());
 app.use(cors());
 
 // Routes d'authentification
-app.use('/api/auth', authRoutes);
+app.use('./routes/authRoutes.js', authRoutes);
   
 // Importation des routes
 app.use('/universites', require('./routes/universiteRoutes'));
@@ -31,8 +31,8 @@ const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
 const contractABI = require('./abis/abi.json');n
 const contract = new web3.eth.Contract(contractABI, contractAddress);
 
-// Exemple de route d'inscription d'un utilisateur (ajusté)
-app.post('/api/register', async (req, res) => {
+//  route d'inscription d'un utilisateur
+app.post('/client/src/api.js', async (req, res) => {
   const { email, firstName, lastName, role } = req.body;
 
   db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
@@ -65,7 +65,7 @@ app.post('/api/register', async (req, res) => {
       });
 
       // Enregistrement dans la base de données locale
-      db.query('INSERT INTO users (email, first_name, last_name, role) VALUES (?, ?, ?, ?)', [email, firstName, lastName, role], (err, result) => {
+      db.query('INSERT INTO user (email, nom, prenom, role,password) VALUES (?, ?, ?, ?,?)', [email, nom, prenom, role,generatedPassword], (err, result) => {
         if (err) throw err;
         return res.status(200).send({ message: "Utilisateur enregistré avec succès." });
       });
