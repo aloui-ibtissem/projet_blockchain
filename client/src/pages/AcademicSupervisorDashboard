@@ -1,0 +1,236 @@
+import React, { useState } from 'react';
+import { Container, Row, Col, Card, Button, Table, Badge, Alert } from 'react-bootstrap';
+import './DashboardPage.css';
+
+const AcademicSupervisorDashboard = () => {
+  const [supervisorData, setSupervisorData] = useState({
+    nom: '',
+    prenom: '',
+    email: '',
+    departement: '',
+    etudiants: [],
+    rapportsAEvaluer: [],
+    reunions: [],
+    notifications: []
+  });
+
+  const markAsRead = (id) => {
+    setSupervisorData(prev => ({
+      ...prev,
+      notifications: prev.notifications.map(n => 
+        n.id === id ? { ...n, lue: true } : n
+      )
+    }));
+  };
+
+  const unreadCount = supervisorData.notifications.filter(n => !n.lue).length;
+
+  return (
+    <div className="dashboard-page academic-supervisor-dashboard">
+      <Container fluid>
+        {/* Header */}
+        <Row className="dashboard-header">
+          <Col>
+            <h1>Academic Supervisor Dashboard</h1>
+            <p>Welcome, {supervisorData.prenom || 'Firstname'} {supervisorData.nom || 'Lastname'}</p>
+          </Col>
+        </Row>
+
+        {/* Students Overview */}
+        <Row className="mb-4">
+          <Col>
+            <Card className="dashboard-card">
+              <Card.Header as="h5">
+                <i className="bi bi-people me-2"></i>
+                Supervised Students
+                <Badge bg="primary" pill className="ms-2">
+                  {supervisorData.etudiants.length}
+                </Badge>
+              </Card.Header>
+              <Card.Body>
+                {supervisorData.etudiants.length > 0 ? (
+                  <Table responsive hover>
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Company</th>
+                        <th>Project Topic</th>
+                        <th>Progress</th>
+                        <th>Last Report</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supervisorData.etudiants.map(student => (
+                        <tr key={student.id}>
+                          <td>{student.prenom} {student.nom}</td>
+                          <td>{student.entreprise}</td>
+                          <td>{student.sujet}</td>
+                          <td>
+                            <div className="progress">
+                              <div 
+                                className="progress-bar bg-success" 
+                                role="progressbar" 
+                                style={{ width: `${student.progression}%` }}
+                                aria-valuenow={student.progression} 
+                                aria-valuemin="0" 
+                                aria-valuemax="100"
+                              >
+                                {student.progression}%
+                              </div>
+                            </div>
+                          </td>
+                          <td>{student.dernierRapport}</td>
+                          <td>
+                            <Badge bg={
+                              student.statut === 'En cours' ? 'primary' : 
+                              student.statut === 'Terminé' ? 'success' : 'secondary'
+                            }>
+                              {student.statut}
+                            </Badge>
+                          </td>
+                          <td>
+                            <Button variant="outline-primary" size="sm" className="me-1">
+                              <i className="bi bi-eye"></i>
+                            </Button>
+                            <Button variant="outline-success" size="sm">
+                              <i className="bi bi-chat-dots"></i>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                ) : (
+                  <Alert variant="info">No students assigned yet.</Alert>
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Reports + Meetings */}
+        <Row className="mb-4">
+          <Col lg={7}>
+            <Card className="dashboard-card">
+              <Card.Header as="h5">
+                <i className="bi bi-file-earmark-text me-2"></i>
+                Reports to Review
+                <Badge bg="danger" pill className="ms-2">
+                  {supervisorData.rapportsAEvaluer.length}
+                </Badge>
+              </Card.Header>
+              <Card.Body>
+                {supervisorData.rapportsAEvaluer.length > 0 ? (
+                  <Table responsive hover>
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Title</th>
+                        <th>Submission Date</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supervisorData.rapportsAEvaluer.map(report => (
+                        <tr key={report.id}>
+                          <td>{report.etudiant}</td>
+                          <td>{report.titre}</td>
+                          <td>{report.dateRemise}</td>
+                          <td>
+                            <Badge bg={
+                              report.type === 'Initial' ? 'info' : 
+                              report.type === 'Intermédiaire' ? 'warning' : 'danger'
+                            }>
+                              {report.type}
+                            </Badge>
+                          </td>
+                          <td>
+                            <Button variant="outline-primary" size="sm" className="me-1">
+                              <i className="bi bi-eye"></i>
+                            </Button>
+                            <Button variant="outline-success" size="sm">
+                              <i className="bi bi-check-lg"></i>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                ) : (
+                  <Alert variant="info">No pending reports to evaluate.</Alert>
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col lg={5}>
+            <Card className="dashboard-card">
+              <Card.Header as="h5">
+                <i className="bi bi-calendar-event me-2"></i>
+                Scheduled Meetings
+              </Card.Header>
+              <Card.Body>
+                {supervisorData.reunions.length > 0 ? (
+                  supervisorData.reunions.map(meeting => (
+                    <div key={meeting.id} className="meeting-item mb-3">
+                      <h5>{meeting.titre}</h5>
+                      <p><i className="bi bi-clock me-2"></i>{meeting.heure}</p>
+                      <p><i className="bi bi-geo-alt me-2"></i>{meeting.lieu}</p>
+                      <p><i className="bi bi-people me-2"></i>{meeting.participants.join(', ')}</p>
+                      <Button variant="outline-primary" size="sm">
+                        <i className="bi bi-pencil me-1"></i> Edit
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <Alert variant="info">No scheduled meetings.</Alert>
+                )}
+              </Card.Body>
+              <Card.Footer className="text-end">
+                <Button variant="primary" size="sm">
+                  <i className="bi bi-plus-circle me-2"></i>
+                  Schedule Meeting
+                </Button>
+              </Card.Footer>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Notifications */}
+        <Row>
+          <Col>
+            <Card className="dashboard-card">
+              <Card.Header as="h5">
+                <i className="bi bi-bell me-2"></i>
+                Notifications
+                <Badge bg="warning" pill className="ms-2">
+                  {unreadCount}
+                </Badge>
+              </Card.Header>
+              <Card.Body>
+                {supervisorData.notifications.length > 0 ? (
+                  supervisorData.notifications.map(n => (
+                    <Alert 
+                      key={n.id} 
+                      variant={n.lue ? 'secondary' : 'primary'} 
+                      onClose={() => markAsRead(n.id)} 
+                      dismissible
+                    >
+                      {n.message} — <em>{n.date}</em>
+                    </Alert>
+                  ))
+                ) : (
+                  <Alert variant="info">No notifications available.</Alert>
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
+    </div>
+  );
+};
+
+export default AcademicSupervisorDashboard;

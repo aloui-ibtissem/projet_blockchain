@@ -1,0 +1,68 @@
+/**
+ * Routes utilisateur
+ * Définit les endpoints pour la gestion des informations utilisateur
+ */
+
+const express = require('express');
+const router = express.Router();
+const UserModel = require('../models/user.js');
+const authMiddleware = require('../middleware/authMiddleware.js');
+
+/**
+ * Récupère le profil de l'utilisateur connecté
+ */
+router.get('/profil', authMiddleware.verifyToken, async (req, res) => {
+  try {
+    // Récupérer les détails spécifiques au rôle
+    const utilisateurDetails = await UserModel.getUserDetailsByRole(
+      req.user.id,  // Accessing the correct user object here
+      req.user.role
+    );
+    
+    res.status(200).json({
+      success: true,
+      utilisateur: {
+        id: req.user.id,  // Accessing the correct user object here
+        nom: req.user.nom,
+        prenom: req.user.prenom,
+        email: req.user.email,
+        role: req.user.role,
+        details: utilisateurDetails ? utilisateurDetails.details : null
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération du profil:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Une erreur est survenue lors de la récupération du profil',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Récupère les logs d'authentification de l'utilisateur
+ */
+router.get('/logs', authMiddleware.verifyToken, async (req, res) => {
+  try {
+    // Récupérer les logs depuis la base de données
+    const [logs] = await UserModel.pool.execute(
+      'SELECT * FROM auth_logs WHERE utilisateur_id = ? ORDER BY created_at DESC LIMIT 10',
+      [req.user.id]  // Accessing the correct user object here
+    );
+    
+    res.status(200).json({
+      success: true,
+      logs
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des logs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Une erreur est survenue lors de la récupération des logs',
+      error: error.message
+    });
+  }
+});
+
+module.exports = router;

@@ -1,0 +1,306 @@
+/* HomePage.css */
+
+/* Variables globales */
+:root {
+    --primary-color: #4361ee;
+    --secondary-color: #3f37c9;
+    --accent-color: #4cc9f0;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --danger-color: #f44336;
+    --gray-100: #f8f9fa;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-400: #ced4da;
+    --gray-500: #adb5bd;
+    --gray-600: #6c757d;
+    --gray-700: #495057;
+    --gray-800: #343a40;
+    --gray-900: #212529;
+    --border-radius: 0.5rem;
+    --box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    --transition: all 0.3s ease-in-out;
+  }
+  
+  /* Styles généraux */
+  .home-page {
+    font-family: 'Poppins', sans-serif;
+    color: var(--gray-800);
+  }
+  
+  .section-title {
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: var(--gray-800);
+  }
+  
+  /* Section Hero */
+  .hero-section {
+    padding: 6rem 0;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    line-height: 1.2;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--gray-700);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+  
+  .hero-buttons {
+    margin-bottom: 2rem;
+  }
+  
+  .hero-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .hero-image img {
+    max-width: 100%;
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
+  }
+  
+  /* Section Fonctionnalités */
+  .features-section {
+    padding: 5rem 0;
+    background-color: var(--light-color);
+  }
+  
+  .feature-card {
+    height: 100%;
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    transition: var(--transition);
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  .feature-card:hover {
+    transform: translateY(-10px);
+  }
+  
+  .feature-icon {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+  }
+  
+  .feature-card .card-title {
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--gray-800);
+  }
+  
+  .feature-card .card-text {
+    color: var(--gray-600);
+  }
+  
+  /* Section Acteurs */
+  .roles-section {
+    padding: 5rem 0;
+    background-color: var(--gray-100);
+  }
+  
+  .role-card {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    transition: var(--transition);
+    overflow: hidden;
+    height: 100%;
+  }
+  
+  .role-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .role-icon-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--gray-200);
+  }
+  
+  .role-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    color: white;
+    margin: 1.5rem;
+  }
+  
+  .student-icon {
+    background-color: #4361ee;
+  }
+  
+  .academic-icon {
+    background-color: #3a0ca3;
+  }
+  
+  .professional-icon {
+    background-color: #4cc9f0;
+  }
+  
+  .admin-icon {
+    background-color: #f72585;
+  }
+  
+  .role-card .card-title {
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--gray-800);
+  }
+  
+  .role-card .card-text {
+    color: var(--gray-600);
+  }
+  
+  /* Section Blockchain */
+  .blockchain-section {
+    padding: 5rem 0;
+    background-color: var(--light-color);
+  }
+  
+  .blockchain-content {
+    padding: 2rem;
+  }
+  
+  .blockchain-features {
+    list-style: none;
+    padding: 0;
+    margin-top: 2rem;
+  }
+  
+  .blockchain-features li {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    font-size: 1.1rem;
+  }
+  
+  .blockchain-features i {
+    color: var(--success-color);
+    font-size: 1.5rem;
+    margin-right: 1rem;
+  }
+  
+  /* Section CTA */
+  .cta-section {
+    padding: 5rem 0;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+  }
+  
+  .cta-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+  }
+  
+  .cta-description {
+    font-size: 1.25rem;
+    margin-bottom: 2.5rem;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .cta-buttons {
+    margin-bottom: 1rem;
+  }
+  
+  /* Responsive */
+  @media (max-width: 992px) {
+    .hero-title {
+      font-size: 2.5rem;
+    }
+    
+    .hero-content {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    
+    .blockchain-content {
+      text-align: center;
+    }
+    
+    .blockchain-features li {
+      justify-content: center;
+    }
+    
+    .blockchain-image {
+      margin-bottom: 2rem;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 2rem;
+    }
+    
+    .hero-section {
+      padding: 4rem 0;
+    }
+    
+    .features-section,
+    .roles-section,
+    .blockchain-section,
+    .cta-section {
+      padding: 3rem 0;
+    }
+    
+    .role-icon {
+      width: 60px;
+      height: 60px;
+      font-size: 1.5rem;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .hero-buttons .btn {
+      display: block;
+      width: 100%;
+      margin-right: 0 !important;
+      margin-bottom: 1rem;
+    }
+    
+    .cta-buttons .btn {
+      display: block;
+      width: 100%;
+      margin-right: 0 !important;
+      margin-bottom: 1rem;
+    }
+  }
+  
