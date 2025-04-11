@@ -1,16 +1,18 @@
+// scripts/deploy.js
+const hre = require("hardhat");
+
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const [deployer] = await hre.ethers.getSigners();
   console.log("Deploying contracts with the account:", deployer.address);
 
-  // Get contract factory and deploy the contract
-  const Auth = await ethers.getContractFactory("Auth");
+  const Auth = await hre.ethers.getContractFactory("Auth");
   const auth = await Auth.deploy();
+  
+
   console.log("Auth contract deployed to:", auth.address);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
