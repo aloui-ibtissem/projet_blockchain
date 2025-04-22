@@ -20,6 +20,10 @@ app.use('/etudiants', require('./routes/etudiantRoutes'));
 app.use('/encadrants-academiques', require('./routes/encadrantAcademiqueRoutes'));
 app.use('/encadrants-professionnels', require('./routes/encadrantProfessionnelRoutes'));
 
+//stage routes
+const stageRoutes = require("./routes/stageRoutes");
+app.use("/api/stage", stageRoutes);
+
 // === Lancement serveur
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(` Serveur lancé sur http://localhost:${PORT}`));

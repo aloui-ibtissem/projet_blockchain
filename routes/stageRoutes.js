@@ -5,9 +5,12 @@ const auth = require("../middlewares/checkToken");
 const upload = require("../middlewares/upload");
 
 router.post("/propose", auth, stageController.proposeStage);
-router.get("/propositions", auth, stageController.getPropositionsAca);
 router.post("/validate-sujet", auth, stageController.validateSujet);
 router.post("/submitReport", auth, upload.single("rapport"), stageController.submitReport);
 router.post("/validateReport", auth, stageController.validateReport);
+router.get("/encadrements", auth, stageController.getEncadrementsAca); 
+router.get("/encadrementsPro", auth, stageController.getEncadrementsPro); 
+router.get("/notifications", auth, stageController.getNotifications); 
+
 
 module.exports = router;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import axios from "axios";
 import "./DashboardEncadrantAca.css";
 
 function DashboardEncadrantAca() {
@@ -11,26 +11,21 @@ function DashboardEncadrantAca() {
 
   const [propositions, setPropositions] = useState([]);
   const [encadrements, setEncadrements] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    try {
-      if (!token || role !== "EncadrantAcademique") {
-        navigate("/login");
-        return;
-      }
-      const decoded = jwtDecode(token);
-      const now = Date.now() / 1000;
-      if (decoded.exp < now) {
-        localStorage.clear();
-        navigate("/login");
-      }
-      fetchPropositions();
-      fetchEncadrements();
-    } catch (err) {
+    if (!token || role !== "EncadrantAcademique") return navigate("/login");
+
+    const decoded = jwtDecode(token);
+    if (decoded.exp < Date.now() / 1000) {
       localStorage.clear();
-      navigate("/login");
+      return navigate("/login");
     }
+
+    fetchPropositions();
+    fetchEncadrements();
+    fetchNotifications();
   }, []);
 
   const fetchPropositions = async () => {
@@ -55,9 +50,20 @@ function DashboardEncadrantAca() {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get("http://localhost:3000/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(res.data);
+    } catch (err) {
+      console.error("Erreur notifications", err);
+    }
+  };
+
   const acceptStage = async (id) => {
     try {
-      await axios.post("http://localhost:3000/api/stage/validate-sujet", { id }, {
+      await axios.post("http://localhost:3000/api/stage/validate-sujet", { sujetId: id }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMessage("Stage accepté.");
@@ -81,42 +87,43 @@ function DashboardEncadrantAca() {
 
   return (
     <div className="dashboard-aca">
-      <h2>Espace Encadrant Académique</h2>
-      {message && <div className="message-box">{message}</div>}
+      <h2>Encadrant Académique</h2>
+      {message && <div className="alert">{message}</div>}
 
       <section>
-        <h3>Propositions de Stage</h3>
-        {propositions.length === 0 ? (
-          <p>Aucune proposition en attente.</p>
-        ) : (
-          <ul className="list">
-            {propositions.map((p) => (
-              <li key={p.id}>
-                <strong>{p.titre}</strong> - {p.etudiant}
-                <button onClick={() => acceptStage(p.id)}>Accepter</button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <h3> Notifications</h3>
+        <ul>
+          {notifications.map(n => (
+            <li key={n.id}>{n.message} - <small>{new Date(n.date_envoi).toLocaleDateString()}</small></li>
+          ))}
+        </ul>
       </section>
 
       <section>
-        <h3>Encadrements en cours</h3>
-        {encadrements.length === 0 ? (
-          <p>Vous n'encadrez aucun stage.</p>
-        ) : (
-          <ul className="list">
-            {encadrements.map((s) => (
-              <li key={s.id}>
-                {s.titre} - Étudiant : {s.etudiant}
-                <span>Status : {s.status}</span>
-                {s.status === "rapport_soumis" && (
-                  <button onClick={() => validerRapport(s.id)}>Valider le rapport</button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+        <h3>Propositions à valider</h3>
+        <ul>
+          {propositions.map(p => (
+            <li key={p.id}>
+              <strong>{p.titre}</strong> – Étudiant : {p.etudiantEmail}
+              <button onClick={() => acceptStage(p.id)}> Accepter</button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <h3> Stages Encadrés</h3>
+        <ul>
+          {encadrements.map(e => (
+            <li key={e.id}>
+              <strong>{e.titre}</strong> – Étudiant : {e.etudiant}
+              <span>Status : {e.status}</span>
+              {e.status === "rapport_soumis" && (
+                <button onClick={() => validerRapport(e.id)}> Valider le Rapport</button>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

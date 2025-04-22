@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import axios from "axios";
 import "./DashboardEncadrantPro.css";
 
 function DashboardEncadrantPro() {
@@ -11,32 +11,26 @@ function DashboardEncadrantPro() {
 
   const [propositions, setPropositions] = useState([]);
   const [encadrements, setEncadrements] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    try {
-      if (!token || role !== "EncadrantProfessionnel") {
-        navigate("/login");
-        return;
-      }
-      const decoded = jwtDecode(token);
-      const now = Date.now() / 1000;
-      if (decoded.exp < now) {
-        localStorage.clear();
-        navigate("/login");
-      }
+    if (!token || role !== "EncadrantProfessionnel") return navigate("/login");
 
-      fetchPropositions();
-      fetchEncadrements();
-    } catch {
+    const decoded = jwtDecode(token);
+    if (decoded.exp < Date.now() / 1000) {
       localStorage.clear();
-      navigate("/login");
+      return navigate("/login");
     }
+
+    fetchPropositions();
+    fetchEncadrements();
+    fetchNotifications();
   }, []);
 
   const fetchPropositions = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/stage/propositions", {
+      const res = await axios.get("http://localhost:3000/api/stage/propositionsPro", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPropositions(res.data);
@@ -56,9 +50,20 @@ function DashboardEncadrantPro() {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get("http://localhost:3000/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(res.data);
+    } catch (err) {
+      console.error("Erreur notifications", err);
+    }
+  };
+
   const acceptStage = async (id) => {
     try {
-      await axios.post("http://localhost:3000/api/stage/validate-sujet", { id }, {
+      await axios.post("http://localhost:3000/api/stage/validate-sujet", { sujetId: id }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMessage("Stage accepté.");
@@ -82,42 +87,43 @@ function DashboardEncadrantPro() {
 
   return (
     <div className="dashboard-pro">
-      <h2>Espace Encadrant Professionnel</h2>
-      {message && <div className="message-box">{message}</div>}
+      <h2>Encadrant Professionnel</h2>
+      {message && <div className="alert">{message}</div>}
 
       <section>
-        <h3>Propositions de Stage</h3>
-        {propositions.length === 0 ? (
-          <p>Aucune proposition en attente.</p>
-        ) : (
-          <ul className="list">
-            {propositions.map((p) => (
-              <li key={p.id}>
-                <strong>{p.titre}</strong> - Étudiant : {p.etudiant}
-                <button onClick={() => acceptStage(p.id)}>Accepter</button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <h3> Notifications</h3>
+        <ul>
+          {notifications.map(n => (
+            <li key={n.id}>{n.message} - <small>{new Date(n.date_envoi).toLocaleDateString()}</small></li>
+          ))}
+        </ul>
       </section>
 
       <section>
-        <h3>Encadrements en cours</h3>
-        {encadrements.length === 0 ? (
-          <p>Vous n'encadrez aucun stage.</p>
-        ) : (
-          <ul className="list">
-            {encadrements.map((s) => (
-              <li key={s.id}>
-                Stage : <strong>{s.titre}</strong> - Étudiant : {s.etudiant}
-                <span>Status : {s.status}</span>
-                {s.status === "rapport_soumis" && (
-                  <button onClick={() => validerRapport(s.id)}>Valider le rapport</button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+        <h3> Propositions à valider</h3>
+        <ul>
+          {propositions.map(p => (
+            <li key={p.id}>
+              <strong>{p.titre}</strong> – Étudiant : {p.etudiantEmail}
+              <button onClick={() => acceptStage(p.id)}> Accepter</button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <h3> Stages suivis</h3>
+        <ul>
+          {encadrements.map(e => (
+            <li key={e.id}>
+              <strong>{e.titre}</strong> – Étudiant : {e.etudiant}
+              <span>Status : {e.status}</span>
+              {e.status === "rapport_soumis" && (
+                <button onClick={() => validerRapport(e.id)}> Valider le Rapport</button>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

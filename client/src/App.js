@@ -19,6 +19,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import './App.css';
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import Notifications from "./pages/Notifications";
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
@@ -52,6 +53,7 @@ function App() {
 
               <Route path="*" element={<Navigate to="/" replace />} />
               <Route path="/verify/:token" element={<VerifyEmailPage />} />
+              <Route path="/notifications" element={<Notifications token={token} />} />
 
             </Routes>
           </Container>
