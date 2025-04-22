@@ -1,107 +1,96 @@
-const { ethers } = require("ethers");
-const StageAbi = require("./abis/StageManager.json");
 const db = require("../config/db");
-require("dotenv").config();
-
-const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
-const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-
-const stageAddress = "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512";
-const stageContract = new ethers.Contract(stageAddress, StageAbi.abi, signer);
+const sendEmail = require("../utils/sendEmail");
 
 exports.proposeStage = async (req, res) => {
   try {
-    const { email, role, ethAddress } = req.user; // Du token JWT
-    const { encAca, encPro, fallbackEnc, dateDebut, dateFin, entrepriseId } = req.body;
+    const { sujet, objectifs, dateDebut, dateFin, encadrantAcademique, encadrantProfessionnel, entrepriseId } = req.body;
+    const etudiantEmail = req.user.email;
 
-    // Sur la blockchain
-    const tx = await stageContract.proposeStage(encAca, encPro, fallbackEnc);
-    const receipt = await tx.wait();
-    let stageId;
-    for (const ev of receipt.events) {
-      if (ev.event === "StageProposed") {
-        stageId = ev.args.stageId.toNumber();
-        break;
-      }
-    }
+    const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email=?", [etudiantEmail]);
+    const [[aca]] = await db.execute("SELECT id FROM EncadrantAcademique WHERE ethAddress=?", [encadrantAcademique]);
+    const [[pro]] = await db.execute("SELECT id FROM EncadrantProfessionnel WHERE ethAddress=?", [encadrantProfessionnel]);
 
-    // En DB => Stage
-    const [etu] = await db.execute(`SELECT id FROM Etudiant WHERE email=?`, [email]);
-    if (!etu.length) return res.status(400).json({ error: "Etudiant not found" });
-    const etudiantId = etu[0].id;
-
-    const [aca] = await db.execute(`SELECT id FROM EncadrantAcademique WHERE ethAddress=?`, [encAca]);
-    const [pro] = await db.execute(`SELECT id FROM EncadrantProfessionnel WHERE ethAddress=?`, [encPro]);
-    if (!aca.length || !pro.length) {
-      return res.status(400).json({ error: "Encadrants not found" });
-    }
-
-    // Insert Stage
     await db.execute(
-      `INSERT INTO Stage (etudiantId, encadrantAcademiqueId, encadrantProfessionnelId, entrepriseId, dateDebut, dateFin, intervalleValidation, etat)
-       VALUES (?, ?, ?, ?, ?, ?, 7, 'en attente')`,
-      [etudiantId, aca[0].id, pro[0].id, entrepriseId, dateDebut, dateFin]
+      `INSERT INTO SujetStage (titre, description, encadrantAcademiqueId, encadrantProfessionnelId, etudiantId)
+       VALUES (?, ?, ?, ?, ?)`,
+      [sujet, objectifs, aca.id, pro.id, etudiant.id]
     );
 
-    return res.json({ success: true, stageIdOnChain: stageId });
+    // Simulation email
+    await sendEmail({
+      to: req.user.email,
+      subject: "Proposition de stage envoyée",
+      html: `<p>Votre sujet de stage a bien été proposé.</p>`
+    });
+
+    res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error("proposeStage error:", err);
+    res.status(500).json({ error: "Erreur serveur." });
   }
 };
 
-exports.acceptStage = async (req, res) => {
+exports.getPropositionsAca = async (req, res) => {
   try {
-    const { stageIdOnChain } = req.body;
-    const tx = await stageContract.acceptStage(stageIdOnChain);
-    await tx.wait();
-    return res.json({ success: true, message: "Stage accepted" });
+    const [[encadrant]] = await db.execute("SELECT id FROM EncadrantAcademique WHERE email=?", [req.user.email]);
+
+    const [propositions] = await db.execute(
+      `SELECT ss.id, ss.titre, e.email as etudiantEmail
+       FROM SujetStage ss
+       JOIN Etudiant e ON ss.etudiantId = e.id
+       WHERE ss.encadrantAcademiqueId=? AND ss.status='en attente'`,
+      [encadrant.id]
+    );
+
+    res.json(propositions);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+};
+
+exports.validateSujet = async (req, res) => {
+  try {
+    const { sujetId } = req.body;
+    await db.execute("UPDATE SujetStage SET status='validé' WHERE id=?", [sujetId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Erreur validation sujet" });
   }
 };
 
 exports.submitReport = async (req, res) => {
   try {
-    const { stageIdOnChain } = req.body;
-    const tx = await stageContract.submitReport(stageIdOnChain);
-    await tx.wait();
-    return res.json({ success: true, message: "Report submitted" });
+    const etudiantEmail = req.user.email;
+    const file = req.file;
+
+    if (!file) return res.status(400).json({ error: "Aucun fichier envoyé." });
+
+    const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email=?", [etudiantEmail]);
+    const date = new Date().toISOString().slice(0, 10);
+
+    const [[{ id: stageId }]] = await db.execute("SELECT id FROM Stage WHERE etudiantId=?", [etudiant.id]);
+
+    await db.execute(
+      "INSERT INTO RapportStage (stageId, etudiantId, dateSoumission) VALUES (?, ?, ?)",
+      [stageId, etudiant.id, date]
+    );
+
+    res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Erreur lors de la soumission." });
   }
 };
 
 exports.validateReport = async (req, res) => {
   try {
-    const { stageIdOnChain } = req.body;
-    const tx = await stageContract.validateReport(stageIdOnChain);
-    await tx.wait();
-    return res.json({ success: true, message: "Report validated" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-};
+    const { stageId } = req.body;
+    const user = req.user;
 
-exports.issueAttestation = async (req, res) => {
-  try {
-    const { stageIdOnChain, metadataURI } = req.body;
-    const tx = await stageContract.issueAttestation(stageIdOnChain, metadataURI);
-    const receipt = await tx.wait();
+    const type = user.role === "EncadrantAcademique" ? "statutAcademique" : "statutProfessionnel";
 
-    let tokenId;
-    for (const ev of receipt.events) {
-      if (ev.event === "AttestationIssued") {
-        tokenId = ev.args[0].toNumber();
-        break;
-      }
-    }
-    return res.json({ success: true, tokenId });
+    await db.execute(`UPDATE RapportStage SET ${type}=TRUE WHERE stageId=?`, [stageId]);
+    res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Erreur validation rapport" });
   }
 };
