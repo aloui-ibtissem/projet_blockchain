@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import "./DashboardEncadrantAca.css";
+import "./DashboardEncadrantPro.css";
 
-function DashboardEncadrantAca() {
+function DashboardEncadrantPro() {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ function DashboardEncadrantAca() {
 
   useEffect(() => {
     try {
-      if (!token || role !== "EncadrantAcademique") {
+      if (!token || role !== "EncadrantProfessionnel") {
         navigate("/login");
         return;
       }
@@ -25,9 +25,10 @@ function DashboardEncadrantAca() {
         localStorage.clear();
         navigate("/login");
       }
+
       fetchPropositions();
       fetchEncadrements();
-    } catch (err) {
+    } catch {
       localStorage.clear();
       navigate("/login");
     }
@@ -40,18 +41,18 @@ function DashboardEncadrantAca() {
       });
       setPropositions(res.data);
     } catch {
-      setMessage("Erreur lors du chargement des propositions.");
+      setMessage("Erreur chargement des propositions.");
     }
   };
 
   const fetchEncadrements = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/stage/encadrements", {
+      const res = await axios.get("http://localhost:3000/api/stage/encadrementsPro", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setEncadrements(res.data);
     } catch {
-      setMessage("Erreur lors du chargement des encadrements.");
+      setMessage("Erreur chargement des stages.");
     }
   };
 
@@ -80,8 +81,8 @@ function DashboardEncadrantAca() {
   };
 
   return (
-    <div className="dashboard-aca">
-      <h2>Espace Encadrant Académique</h2>
+    <div className="dashboard-pro">
+      <h2>Espace Encadrant Professionnel</h2>
       {message && <div className="message-box">{message}</div>}
 
       <section>
@@ -92,7 +93,7 @@ function DashboardEncadrantAca() {
           <ul className="list">
             {propositions.map((p) => (
               <li key={p.id}>
-                <strong>{p.titre}</strong> - {p.etudiant}
+                <strong>{p.titre}</strong> - Étudiant : {p.etudiant}
                 <button onClick={() => acceptStage(p.id)}>Accepter</button>
               </li>
             ))}
@@ -108,7 +109,7 @@ function DashboardEncadrantAca() {
           <ul className="list">
             {encadrements.map((s) => (
               <li key={s.id}>
-                {s.titre} - Étudiant : {s.etudiant}
+                Stage : <strong>{s.titre}</strong> - Étudiant : {s.etudiant}
                 <span>Status : {s.status}</span>
                 {s.status === "rapport_soumis" && (
                   <button onClick={() => validerRapport(s.id)}>Valider le rapport</button>
@@ -122,4 +123,4 @@ function DashboardEncadrantAca() {
   );
 }
 
-export default DashboardEncadrantAca;
+export default DashboardEncadrantPro;
