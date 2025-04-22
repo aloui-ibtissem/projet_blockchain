@@ -17,31 +17,34 @@ const HomePage = () => {
         <Container>
           <Row className="align-items-center">
             <Col lg={6} className="hero-content">
-              <h1 className="hero-title">Plateforme de Gestion des Stages </h1>
+              <h1 className="hero-title">Plateforme de Gestion des Stages</h1>
               <p className="hero-subtitle">
-                Une solution sécurisée par blockchain pour  vous connecter dans un environnement académique fiable.
+                Une solution sécurisée par blockchain pour vous connecter dans 
+                un environnement fiable.
               </p>
               <div className="hero-buttons">
                 <Button 
                   variant="primary" 
                   size="lg" 
                   className="me-3"
-                  onClick={() => navigate('/connexion')}
+                  onClick={() => navigate('/login')} // <-- route '/connexion'
                 >
                   Se connecter
                 </Button>
                 <Button 
                   variant="outline-primary" 
                   size="lg"
-                  onClick={() => navigate('/inscription')}
+                  onClick={() => navigate('/register')} // <-- route '/inscription'
                 >
                   S'inscrire
                 </Button>
               </div>
             </Col>
+
             <Col lg={6} className="hero-image">
+              {/* Image dans public/assets/images/blockchain.png */}
               <Image 
-                src="/assets/images/education-hero.svg" 
+                src="/assets/images/blockchain.png" 
                 alt="Plateforme éducative" 
                 fluid 
               />
@@ -53,7 +56,9 @@ const HomePage = () => {
       {/* Section Fonctionnalités */}
       <div className="features-section">
         <Container>
-          <h2 className="section-title text-center mb-5">Fonctionnalités Principales</h2>
+          <h2 className="section-title text-center mb-5">
+            Fonctionnalités Principales
+          </h2>
           <Row>
             <Col md={4}>
               <Card className="feature-card">
@@ -63,8 +68,8 @@ const HomePage = () => {
                 <Card.Body>
                   <Card.Title>Authentification Sécurisée</Card.Title>
                   <Card.Text>
-                    Système d'authentification renforcé par la technologie blockchain 
-                    pour une sécurité et une traçabilité optimales.
+                    Système d'authentification renforcé par la technologie 
+                    blockchain pour une sécurité et une traçabilité optimales.
                   </Card.Text>
                 </Card.Body>
               </Card>
@@ -91,8 +96,8 @@ const HomePage = () => {
                 <Card.Body>
                   <Card.Title>Suivi des Documents</Card.Title>
                   <Card.Text>
-                    Gestion et suivi des rapports de stage, évaluations et documents 
-                    administratifs en toute simplicité.
+                    Gestion et suivi des rapports de stage, évaluations et 
+                    documents administratifs en toute simplicité.
                   </Card.Text>
                 </Card.Body>
               </Card>
@@ -104,7 +109,9 @@ const HomePage = () => {
       {/* Section Acteurs */}
       <div className="roles-section">
         <Container>
-          <h2 className="section-title text-center mb-5">Espace Dédié pour Chaque Acteur</h2>
+          <h2 className="section-title text-center mb-5">
+            Espace Dédié pour Chaque Acteur
+          </h2>
           <Row>
             <Col lg={6} className="mb-4">
               <Card className="role-card">
@@ -118,14 +125,15 @@ const HomePage = () => {
                     <Card.Body>
                       <Card.Title>Étudiants</Card.Title>
                       <Card.Text>
-                        Soumettez vos rapports, suivez vos évaluations et communiquez 
-                        avec vos encadrants en toute simplicité.
+                        Soumettez vos rapports, suivez vos évaluations 
+                        et communiquez avec vos encadrants en toute simplicité.
                       </Card.Text>
                     </Card.Body>
                   </Col>
                 </Row>
               </Card>
             </Col>
+
             <Col lg={6} className="mb-4">
               <Card className="role-card">
                 <Row className="g-0">
@@ -146,6 +154,7 @@ const HomePage = () => {
                 </Row>
               </Card>
             </Col>
+
             <Col lg={6} className="mb-4">
               <Card className="role-card">
                 <Row className="g-0">
@@ -158,14 +167,15 @@ const HomePage = () => {
                     <Card.Body>
                       <Card.Title>Encadrants Professionnels</Card.Title>
                       <Card.Text>
-                        Évaluez les performances des stagiaires et partagez vos retours 
-                        avec l'équipe académique de manière sécurisée.
+                        Évaluez les performances des stagiaires et partagez vos 
+                        retours avec l'équipe académique de manière sécurisée.
                       </Card.Text>
                     </Card.Body>
                   </Col>
                 </Row>
               </Card>
             </Col>
+
             <Col lg={6} className="mb-4">
               <Card className="role-card">
                 <Row className="g-0">
@@ -197,9 +207,9 @@ const HomePage = () => {
             <Col lg={5}>
               <div className="blockchain-image">
                 <Image 
-                  src="/assets/images/blockchain.svg" 
-                  alt="Technologie Blockchain" 
-                  fluid 
+                  src="/assets/images/blockchain.png"  // <-- chemin absolu depuis public/
+                  alt="Technologie Blockchain"
+                  fluid
                 />
               </div>
             </Col>
@@ -238,21 +248,22 @@ const HomePage = () => {
         <Container className="text-center">
           <h2 className="cta-title">Prêt à commencer?</h2>
           <p className="cta-description">
-            Rejoignez notre plateforme et profitez d'une gestion de stage simplifiée et sécurisée.
+            Rejoignez notre plateforme et profitez d'une gestion de stage 
+            simplifiée et sécurisée.
           </p>
           <div className="cta-buttons">
             <Button 
               variant="primary" 
               size="lg" 
               className="me-3"
-              onClick={() => navigate('/inscription')}
+              onClick={() => navigate('/register')} // route '/inscription'
             >
               Créer un compte
             </Button>
             <Button 
               variant="outline-light" 
               size="lg"
-              onClick={() => navigate('/connexion')}
+              onClick={() => navigate('/login')} // route '/connexion'
             >
               Se connecter
             </Button>

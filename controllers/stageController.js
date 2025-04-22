@@ -1,45 +1,107 @@
-const Stage = require('../models/Stage');
-const SujetStage = require('../models/SujetStage');
-const { envoyerNotification } = require('../utils/notifications');
+const { ethers } = require("ethers");
+const StageAbi = require("./abis/StageManager.json");
+const db = require("../config/db");
+require("dotenv").config();
 
-// Créer un stage après acceptation du sujet
-exports.creerStage = (req, res) => {
-    const { sujetId, etudiantId, encadrantAcademiqueId, encadrantProfessionnelId, entrepriseId, dateDebut, dateFin, intervalleValidation } = req.body;
+const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
+const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
-    // Vérifier que le sujet de stage existe et a été accepté
-    SujetStage.getById(sujetId, (err, sujetResult) => {
-        if (err) return res.status(500).send({ message: 'Erreur lors de la vérification du sujet de stage' });
-        if (!sujetResult || sujetResult.length === 0) {
-            return res.status(404).send({ message: 'Sujet de stage non trouvé' });
-        }
+const stageAddress = "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512";
+const stageContract = new ethers.Contract(stageAddress, StageAbi.abi, signer);
 
-        // Préparer les données à insérer dans la table Stage en fonction des champs disponibles dans la base
-        const stageData = {
-            etudiantId, 
-            encadrantAcademiqueId, 
-            encadrantProfessionnelId, 
-            entrepriseId, 
-            dateDebut, 
-            dateFin, 
-            intervalleValidation,
-            etat: 'en attente' // Le stage commence en attente
-        };
+exports.proposeStage = async (req, res) => {
+  try {
+    const { email, role, ethAddress } = req.user; // Du token JWT
+    const { encAca, encPro, fallbackEnc, dateDebut, dateFin, entrepriseId } = req.body;
 
-        // Créer le stage dans la base de données
-        Stage.create(stageData, (err, stageResult) => {
-            if (err) return res.status(500).send({ message: 'Erreur lors de la création du stage', error: err });
+    // Sur la blockchain
+    const tx = await stageContract.proposeStage(encAca, encPro, fallbackEnc);
+    const receipt = await tx.wait();
+    let stageId;
+    for (const ev of receipt.events) {
+      if (ev.event === "StageProposed") {
+        stageId = ev.args.stageId.toNumber();
+        break;
+      }
+    }
 
-            // Envoi de notifications après la création du stage
-            // Notification à l'étudiant
-            envoyerNotification('Etudiant', `Votre stage avec le sujet "${sujetResult[0].titre}" a été créé avec succès et est en attente de validation.`);
+    // En DB => Stage
+    const [etu] = await db.execute(`SELECT id FROM Etudiant WHERE email=?`, [email]);
+    if (!etu.length) return res.status(400).json({ error: "Etudiant not found" });
+    const etudiantId = etu[0].id;
 
-            // Notification aux encadrants académiques
-            envoyerNotification('Encadrants', `Le stage de l'étudiant ${etudiantId} a été créé et attend votre validation.`);
+    const [aca] = await db.execute(`SELECT id FROM EncadrantAcademique WHERE ethAddress=?`, [encAca]);
+    const [pro] = await db.execute(`SELECT id FROM EncadrantProfessionnel WHERE ethAddress=?`, [encPro]);
+    if (!aca.length || !pro.length) {
+      return res.status(400).json({ error: "Encadrants not found" });
+    }
 
-            // Notification à l'encadrant professionnel
-            envoyerNotification('Encadrant Professionnel', `Le stage de l'étudiant ${etudiantId} a été créé et attend votre validation.`);
+    // Insert Stage
+    await db.execute(
+      `INSERT INTO Stage (etudiantId, encadrantAcademiqueId, encadrantProfessionnelId, entrepriseId, dateDebut, dateFin, intervalleValidation, etat)
+       VALUES (?, ?, ?, ?, ?, ?, 7, 'en attente')`,
+      [etudiantId, aca[0].id, pro[0].id, entrepriseId, dateDebut, dateFin]
+    );
 
-            res.status(201).send({ message: 'Stage créé avec succès', stageId: stageResult.insertId });
-        });
-    });
+    return res.json({ success: true, stageIdOnChain: stageId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.acceptStage = async (req, res) => {
+  try {
+    const { stageIdOnChain } = req.body;
+    const tx = await stageContract.acceptStage(stageIdOnChain);
+    await tx.wait();
+    return res.json({ success: true, message: "Stage accepted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.submitReport = async (req, res) => {
+  try {
+    const { stageIdOnChain } = req.body;
+    const tx = await stageContract.submitReport(stageIdOnChain);
+    await tx.wait();
+    return res.json({ success: true, message: "Report submitted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.validateReport = async (req, res) => {
+  try {
+    const { stageIdOnChain } = req.body;
+    const tx = await stageContract.validateReport(stageIdOnChain);
+    await tx.wait();
+    return res.json({ success: true, message: "Report validated" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.issueAttestation = async (req, res) => {
+  try {
+    const { stageIdOnChain, metadataURI } = req.body;
+    const tx = await stageContract.issueAttestation(stageIdOnChain, metadataURI);
+    const receipt = await tx.wait();
+
+    let tokenId;
+    for (const ev of receipt.events) {
+      if (ev.event === "AttestationIssued") {
+        tokenId = ev.args[0].toNumber();
+        break;
+      }
+    }
+    return res.json({ success: true, tokenId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 };

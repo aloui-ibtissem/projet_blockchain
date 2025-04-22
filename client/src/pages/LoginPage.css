@@ -1,0 +1,64 @@
+/* src/pages/LoginPage.css */
+
+body {
+  background-color: #f5f7fa;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: #f0f2f5;
+}
+
+.card {
+  border: none;
+  border-radius: 8px;
+}
+
+h2 {
+  color: #1c1e21;
+  font-weight: bold;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #333;
+}
+
+.form-control {
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+}
+
+.btn-success {
+  background-color: #00b87d;
+  border-color: #00b87d;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.btn-success:hover {
+  background-color: #009e6b;
+  border-color: #009e6b;
+}
+
+.alert {
+  font-size: 14px;
+  padding: 10px 15px;
+  margin-top: 10px;
+}
+
+a {
+  color: #0061f2;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}

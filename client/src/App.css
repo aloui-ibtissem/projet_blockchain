@@ -180,3 +180,87 @@ body {
     font-size: 18px;
   }
 }
+
+/* General Styles */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f9;
+  margin: 0;
+  padding: 0;
+}
+
+/* Auth Container for Register and Login */
+.auth-container {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  background-color: white;
+}
+
+.auth-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+/* Form Inputs */
+.auth-container input,
+.auth-container select,
+.auth-container textarea {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.auth-container select {
+  height: 40px;
+}
+
+.auth-container button {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.auth-container button:disabled {
+  background-color: #ccc;
+}
+
+.auth-container .error-message {
+  color: red;
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Success Message */
+.auth-container .success-message {
+  color: green;
+  margin-top: 10px;
+  text-align: center;
+  font-size: 16px;
+}
+
+/* MetaMask connection button */
+.auth-container button.connect-metamask {
+  background-color: #ff8000;
+}
+
+/* Placeholder Text */
+.auth-container input::placeholder {
+  color: #aaa;
+}

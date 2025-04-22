@@ -1,0 +1,61 @@
+.encadrant-dashboard {
+    padding: 2rem;
+    font-family: 'Segoe UI', sans-serif;
+    background: #f7f9fc;
+  }
+  
+  h2 {
+    color: #283e4a;
+    margin-bottom: 2rem;
+  }
+  
+  .dashboard-section {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  }
+  
+  .dashboard-section h3 {
+    color: #345;
+    margin-bottom: 1rem;
+  }
+  
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+  
+  ul li {
+    background: #f1f5f9;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  ul li button {
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  ul li button:hover {
+    background: #388e3c;
+  }
+  
+  .alert-box {
+    background: #e0f7fa;
+    color: #006064;
+    padding: 1rem;
+    border-left: 5px solid #00acc1;
+    margin-bottom: 1rem;
+    border-radius: 5px;
+  }
+  

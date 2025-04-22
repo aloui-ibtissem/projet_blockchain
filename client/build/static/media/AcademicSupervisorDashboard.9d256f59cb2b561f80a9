@@ -1,0 +1,34 @@
+// pages/AcademicSupervisorDashboard.jsx
+
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, Button } from 'react-bootstrap';
+
+const AcademicSupervisorDashboard = () => {
+  const navigate = useNavigate();
+  const firstName = localStorage.getItem("firstName") || "Encadrant";
+  const email = localStorage.getItem("email");
+
+  const logout = () => {
+    localStorage.clear();
+    navigate("/");
+  };
+
+  return (
+    <Card className="p-4 m-5">
+      <h2>👨‍🏫 Bienvenue {firstName}</h2>
+      <p>Email : {email}</p>
+
+      <div className="mt-4">
+        <h5>Tableau de bord Encadrant Académique</h5>
+        <p>Vous pouvez gérer les étudiants et suivre leurs projets ici.</p>
+      </div>
+
+      <Button variant="outline-danger" onClick={logout} className="mt-3">
+        Se déconnecter
+      </Button>
+    </Card>
+  );
+};
+
+export default AcademicSupervisorDashboard;

@@ -1,0 +1,61 @@
+o
+await auth.getRole(owner.address);    
+const [owner] = await etherawait auth.getUserInfo(owner.address); 
+const auth = await Auth.attach("0x5f5678afecb367f032d93f642f641"); 
+const Auth = await ethers.getContractFactory("Auth");
+await auth.getRole("0xAdresse");
+await auth.getUserInfo("0xAdresse");
+const auth = await Auth.attach("0x...");
+const Auth = await ethers.getContractFactory("Auth");
+console.log(user);
+const user = await auth.getUser(owner.address);
+await auth.registerUser(owner.address, 1, "John", "Doe", "john@gmail.com", "Hello", "0xSignatureHere"); // ⚠️ Replace the last argument with a valid signature or dummy string if it's not validated
+// ✅ use the address you got above
+const auth = await ethers.getContractAt("Auth", " 0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0"); 
+const [o
+// Don't reuse old variables from before
+exit
+console.log(user);
+const user = await auth.getUser(owner.address);
+await auth.registerUser(owner.address, 1, "John", "dm", "john@gmail.com", "Hello", "0xSignatureHere");
+const auth = await ethers.getContractAt("Auth", " 0x5fbdb2315678afecb367f032d93f642f64180aa3");
+const [owner, addr1] = await ethers.getSigners();
+console.log(user);
+r(owner.address);
+const user = await auth.getUse
+// 4. Read user data
+await auth.registerUser(owner.address, 1, "John", "dm",
+// 3. Call contract methods
+ontractAt("Auth", " 0x5fbdb2315678afecb367f032d93f642f64180aa3");
+const auth = await ethers.getC
+// 2. Connect to your deployed contract
+const [owner, addr1] 
+// 1. Get available accounts
+const auth = await ethers.getC
+await auth.registerUser(owner.address, 1, "John", "dm", "john@gmail.com", "Hello", "0xSignatureHere");
+const [owner, addr1] = await ethers.getSigners();
+console.log(user);
+r(owner.address);
+const user = await auth.getUse
+// 4. Read user data
+await auth.registerUser(owner.address, 1, "John", "dm", "john@gmail.com", "Hello", "0xSignatureHere");
+// 3. Call contract methods
+const auth = await ethers.getC
+// 2. Connect to your deployed contract
+const [owner, addr1] = await ethers.getSigners();
+// 1. Get available accounts
+console.log(user);
+const user = await auth.getUser(owner.address);
+// 4. Read user data
+await auth.registerUser(owner.address, 1, "John", "Doe", "john@gmail.com", "Hello", "0xSignatureHere");
+// 3. Call contract methods
+const auth = await ethers.getContractAt("Auth", "0xYourDeployedContractAddress");
+// 2. Connect to your deployed contract
+const [owner, addr1] = await ethers.getSigners();
+// 1. Get available accounts
+await auth.getUser(owner.address); // check if user is registered
+const auth = await ethers.getContractAt("Auth", "0xYourCo
+const [owner] = await ethers.getSigners();
+await auth.getUser(owner.address); // check if user is registered
+const a
+const [owner] = await ethers.getSigners();
