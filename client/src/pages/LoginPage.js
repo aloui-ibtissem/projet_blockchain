@@ -1,19 +1,9 @@
-// src/pages/LoginPage.js
 import React, { useState } from "react";
 import { ethers } from "ethers";
 import axios from "axios";
-
-import "./LoginPage.css";
-import {
-  Form,
-  Button,
-  Alert,
-  Container,
-  Row,
-  Col,
-  Card,
-} from "react-bootstrap";
+import { Form, Button, Alert, Container, Row, Col, Card } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import "./LoginPage.css";
 
 function LoginPage({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -75,6 +65,9 @@ function LoginPage({ onLogin }) {
             case "ResponsableEntreprise":
               navigate("/respEnt");
               break;
+            case "TierDebloqueur":
+              navigate("/tier");
+              break;
             default:
               navigate("/");
           }
@@ -84,7 +77,7 @@ function LoginPage({ onLogin }) {
       }
     } catch (err) {
       const msg = err.response?.data?.error || err.message;
-      setErrorMessage("erreur: " + msg);
+      setErrorMessage("Erreur : " + msg);
     } finally {
       setLoading(false);
     }
@@ -103,33 +96,22 @@ function LoginPage({ onLogin }) {
             <Form>
               <Form.Group className="mb-3">
                 <Form.Label>Email</Form.Label>
-                <Form.Control
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <Form.Control type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </Form.Group>
 
               <Form.Group className="mb-3">
                 <Form.Label>Rôle</Form.Label>
-                <Form.Select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                >
+                <Form.Select value={role} onChange={(e) => setRole(e.target.value)}>
                   <option>Etudiant</option>
                   <option>EncadrantAcademique</option>
                   <option>EncadrantProfessionnel</option>
                   <option>ResponsableUniversite</option>
                   <option>ResponsableEntreprise</option>
+                  <option>TierDebloqueur</option>
                 </Form.Select>
               </Form.Group>
 
-              <Button
-                variant="success"
-                className="w-100"
-                onClick={handleLogin}
-                disabled={loading}
-              >
+              <Button variant="success" className="w-100" onClick={handleLogin} disabled={loading}>
                 {loading ? "Connexion..." : "Se connecter avec MetaMask"}
               </Button>
             </Form>

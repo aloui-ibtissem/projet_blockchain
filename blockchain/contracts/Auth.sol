@@ -8,7 +8,8 @@ contract Auth {
         EncadrantAca,
         EncadrantPro,
         ResponsableUni,
-        ResponsableEnt
+        ResponsableEnt,
+        TierDebloqueur 
     }
 
     mapping(address => Role) public roles;

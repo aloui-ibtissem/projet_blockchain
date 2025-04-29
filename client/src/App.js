@@ -11,6 +11,9 @@ import DashboardEncadrantAca from './pages/DashboardEncadrantAca';
 import DashboardEncadrantPro from './pages/DashboardEncadrantPro';
 import DashboardRespUniversite from './pages/DashboardRespUniversite';
 import DashboardRespEntreprise from './pages/DashboardRespEntreprise';
+import DashboardTierUni from './pages/DashboardTierUni';  
+import DashboardTierEnt from './pages/DashboardTierEnt';  
+
 
 import Navigation from './components/Navigation';
 import Footer from './components/Footer';
@@ -50,6 +53,9 @@ function App() {
               <Route path="/encPro" element={<DashboardEncadrantPro token={token} />} />
               <Route path="/respUniv" element={<DashboardRespUniversite token={token} />} />
               <Route path="/respEnt" element={<DashboardRespEntreprise token={token} />} />
+              <Route path="/tierUni" element={<DashboardTierUni token={token} />} /> 
+              <Route path="/tierEnt" element={<DashboardTierEnt token={token} />} /> 
+
 
               <Route path="*" element={<Navigate to="/" replace />} />
               <Route path="/verify/:token" element={<VerifyEmailPage />} />

@@ -1,30 +1,55 @@
-// controllers/RapportStageController.js
-const RapportStage = require('../models/RapportStage');
-const EvaluationRapport = require('../models/EvaluationRapport');
-const { envoyerNotification } = require('../utils/notifications');
+const db = require("../config/db");
 
-// Soumettre un rapport de stage
-exports.soumettreRapport = (req, res) => {
-    const { stageId, etudiantId, dateSoumission, fichier } = req.body;
+exports.getRapportsEnRetardUni = async (req, res) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT RapportStage.id AS rapportId, Etudiant.prenom AS etudiantPrenom, Etudiant.nom AS etudiantNom, Stage.dateDebut, Stage.dateFin, RapportStage.dateSoumission
+      FROM RapportStage
+      JOIN Stage ON RapportStage.stageId = Stage.id
+      JOIN Etudiant ON RapportStage.etudiantId = Etudiant.id
+      WHERE RapportStage.statutAcademique = FALSE AND CURRENT_DATE > DATE_ADD(RapportStage.dateSoumission, INTERVAL 7 DAY)
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
+};
 
-    const rapportData = {
-        stageId,
-        etudiantId,
-        dateSoumission,
-        statutAcademique: false,
-        statutProfessionnel: false,
-    };
+exports.validerRapportUni = async (req, res) => {
+  try {
+    const { rapportId } = req.body;
+    await db.execute(`UPDATE RapportStage SET statutAcademique = TRUE WHERE id = ?`, [rapportId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
+};
 
-    RapportStage.create(rapportData, (err, result) => {
-        if (err) return res.status(500).send(err);
+exports.getRapportsEnRetardEnt = async (req, res) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT RapportStage.id AS rapportId, Etudiant.prenom AS etudiantPrenom, Etudiant.nom AS etudiantNom, Stage.dateDebut, Stage.dateFin, RapportStage.dateSoumission
+      FROM RapportStage
+      JOIN Stage ON RapportStage.stageId = Stage.id
+      JOIN Etudiant ON RapportStage.etudiantId = Etudiant.id
+      WHERE RapportStage.statutProfessionnel = FALSE AND CURRENT_DATE > DATE_ADD(RapportStage.dateSoumission, INTERVAL 7 DAY)
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
+};
 
-        // Notification à l'étudiant
-        envoyerNotification('Etudiant', 'Votre rapport a été soumis.');
-
-        // Notification aux encadrants pour qu'ils évaluent le rapport
-        envoyerNotification('Academique', 'Un rapport de stage a été soumis pour évaluation.');
-        envoyerNotification('Professionnel', 'Un rapport de stage a été soumis pour évaluation.');
-
-        res.status(201).send({ message: 'Rapport soumis avec succès.' });
-    });
+exports.validerRapportEnt = async (req, res) => {
+  try {
+    const { rapportId } = req.body;
+    await db.execute(`UPDATE RapportStage SET statutProfessionnel = TRUE WHERE id = ?`, [rapportId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
 };

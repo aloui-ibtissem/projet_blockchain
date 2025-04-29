@@ -4,7 +4,6 @@ const crypto = require("crypto");
 const db = require("../config/db");
 const sendEmail = require("../utils/sendEmail");
 const AuthAbi = require("../abis/Auth.json");
-
 require("dotenv").config();
 
 const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
@@ -16,17 +15,15 @@ console.log("AuthController chargé");
 
 exports.register = async (req, res) => {
   try {
-    const { prenom, nom, email, role, signature } = req.body;
+    const { prenom, nom, email, role, signature, universiteId, entrepriseId, structureType } = req.body;
 
     const message = `Inscription:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
 
+    // Vérifier si l'adresse existe déjà
     const tables = [
-      "Etudiant",
-      "EncadrantAcademique",
-      "EncadrantProfessionnel",
-      "ResponsableUniversitaire",
-      "ResponsableEntreprise"
+      "Etudiant", "EncadrantAcademique", "EncadrantProfessionnel",
+      "ResponsableUniversitaire", "ResponsableEntreprise", "TierDebloqueur"
     ];
     for (const table of tables) {
       const [rows] = await db.execute(`SELECT id FROM ${table} WHERE ethAddress = ?`, [recoveredAddr]);
@@ -35,6 +32,7 @@ exports.register = async (req, res) => {
       }
     }
 
+    // Vérifier sur blockchain
     const roleOnChain = await authContract.getRole(recoveredAddr);
     if (roleOnChain.toString() !== "0") {
       return res.status(400).json({ error: "Déjà enregistré sur la blockchain." });
@@ -42,9 +40,11 @@ exports.register = async (req, res) => {
 
     const token = crypto.randomBytes(24).toString("hex");
 
+    // Enregistrer toutes les données pour vérification
     await db.execute(
-      `INSERT INTO TokenVerif (prenom, nom, email, role, signature, token) VALUES (?, ?, ?, ?, ?, ?)`,
-      [prenom, nom, email, role, signature, token]
+      `INSERT INTO TokenVerif (prenom, nom, email, role, signature, token, universiteId, entrepriseId, structureType)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [prenom, nom, email, role, signature, token, universiteId || null, entrepriseId || null, structureType || null]
     );
 
     const lien = `http://localhost:3000/api/auth/verify/${token}`;
@@ -54,11 +54,7 @@ exports.register = async (req, res) => {
       <a href="${lien}">Confirmer mon adresse</a>
     `;
 
-    await sendEmail({
-      to: email,
-      subject: "Confirmez votre inscription",
-      html
-    });
+    await sendEmail({ to: email, subject: "Confirmez votre inscription", html });
 
     return res.json({ success: true, message: "Email de vérification envoyé." });
   } catch (err) {
@@ -71,16 +67,13 @@ exports.verifyEmailToken = async (req, res) => {
   try {
     const token = req.params.token;
 
-    const [rows] = await db.execute(
-      "SELECT * FROM TokenVerif WHERE token = ? AND utilisé = FALSE",
-      [token]
-    );
-
+    const [rows] = await db.execute("SELECT * FROM TokenVerif WHERE token = ? AND utilisé = FALSE", [token]);
     if (!rows.length) {
       return res.status(400).send("Lien invalide ou déjà utilisé.");
     }
 
-    const { prenom, nom, email, role, signature } = rows[0];
+    const { prenom, nom, email, role, signature, universiteId, entrepriseId, structureType } = rows[0];
+
     const message = `Inscription:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
 
@@ -89,23 +82,38 @@ exports.verifyEmailToken = async (req, res) => {
       EncadrantAcademique: 2,
       EncadrantProfessionnel: 3,
       ResponsableUniversite: 4,
-      ResponsableEntreprise: 5
+      ResponsableEntreprise: 5,
+      TierDebloqueur: 6
     }[role];
 
     const tx = await authContract.selfRegister(roleEnum);
     await tx.wait();
 
-    const table =
-      role === "Etudiant" ? "Etudiant" :
-      role === "EncadrantAcademique" ? "EncadrantAcademique" :
-      role === "EncadrantProfessionnel" ? "EncadrantProfessionnel" :
-      role === "ResponsableUniversite" ? "ResponsableUniversitaire" :
-      "ResponsableEntreprise";
+    let insertQuery = "";
+    let insertParams = [];
 
-    await db.execute(
-      `INSERT INTO ${table} (prenom, nom, email, ethAddress, role) VALUES (?, ?, ?, ?, ?)`,
-      [prenom, nom, email, recoveredAddr, role]
-    );
+    if (role === "Etudiant") {
+      insertQuery = `INSERT INTO Etudiant (prenom, nom, email, universiteId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role];
+    } else if (role === "EncadrantAcademique") {
+      insertQuery = `INSERT INTO EncadrantAcademique (prenom, nom, email, universiteId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role];
+    } else if (role === "EncadrantProfessionnel") {
+      insertQuery = `INSERT INTO EncadrantProfessionnel (prenom, nom, email, entrepriseId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, entrepriseId, recoveredAddr, role];
+    } else if (role === "ResponsableUniversite") {
+      insertQuery = `INSERT INTO ResponsableUniversitaire (prenom, nom, email, universiteId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role];
+    } else if (role === "ResponsableEntreprise") {
+      insertQuery = `INSERT INTO ResponsableEntreprise (prenom, nom, email, entrepriseId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, entrepriseId, recoveredAddr, role];
+    } else if (role === "TierDebloqueur") {
+      insertQuery = `INSERT INTO TierDebloqueur (prenom, nom, email, structureType, universiteId, entrepriseId, ethAddress, role)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, structureType, universiteId || null, entrepriseId || null, recoveredAddr, role];
+    }
+
+    await db.execute(insertQuery, insertParams);
 
     await db.execute("UPDATE TokenVerif SET utilisé=TRUE WHERE token=?", [token]);
 
@@ -119,23 +127,20 @@ exports.verifyEmailToken = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, role, signature } = req.body;
+
     const message = `Connexion:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
 
-    const table =
-      role === "Etudiant" ? "Etudiant" :
-      role === "EncadrantAcademique" ? "EncadrantAcademique" :
-      role === "EncadrantProfessionnel" ? "EncadrantProfessionnel" :
-      role === "ResponsableUniversite" ? "ResponsableUniversitaire" :
-      role === "ResponsableEntreprise" ? "ResponsableEntreprise" :
-      null;
+    const table = role === "Etudiant" ? "Etudiant" :
+                  role === "EncadrantAcademique" ? "EncadrantAcademique" :
+                  role === "EncadrantProfessionnel" ? "EncadrantProfessionnel" :
+                  role === "ResponsableUniversite" ? "ResponsableUniversitaire" :
+                  role === "ResponsableEntreprise" ? "ResponsableEntreprise" :
+                  role === "TierDebloqueur" ? "TierDebloqueur" : null;
 
     if (!table) return res.status(400).json({ error: "Rôle invalide" });
 
-    const [rows] = await db.execute(
-      `SELECT ethAddress FROM ${table} WHERE email=? AND role=?`,
-      [email, role]
-    );
+    const [rows] = await db.execute(`SELECT ethAddress FROM ${table} WHERE email=? AND role=?`, [email, role]);
 
     if (!rows.length) return res.status(404).json({ error: "Utilisateur introuvable" });
 
@@ -156,27 +161,3 @@ exports.login = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
-
-exports.resetRole = async (req, res) => {
-  try {
-    const { address } = req.body;
-
-    if (!ethers.utils.isAddress(address)) {
-      return res.status(400).json({ error: "Adresse Ethereum invalide." });
-    }
-
-    const role = await authContract.getRole(address);
-    if (role.toString() === "0") {
-      return res.status(400).json({ error: "Cet utilisateur n'est pas inscrit sur la blockchain." });
-    }
-
-    const tx = await authContract.connect(signer).resetRole(address);
-    await tx.wait();
-
-    res.json({ success: true, message: `Le rôle de ${address} a été réinitialisé sur la blockchain.` });
-  } catch (err) {
-    console.error("resetRole error:", err);
-    res.status(500).json({ error: "Erreur lors de la réinitialisation du rôle." });
-  }
-};
-

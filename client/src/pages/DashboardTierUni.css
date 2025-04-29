@@ -1,0 +1,13 @@
+.table th,
+.table td {
+  vertical-align: middle;
+  text-align: center;
+}
+
+.card-header h4 {
+  font-weight: bold;
+}
+
+button {
+  font-weight: 500;
+}

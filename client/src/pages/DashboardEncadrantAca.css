@@ -1,49 +1,126 @@
+/* DashboardEncadrantAca.css */
+
 .dashboard-aca {
-  padding: 30px;
-  font-family: "Segoe UI", sans-serif;
-  color: #2c3e50;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9f9f9;
+  color: #333;
 }
 
-h2 {
+.dashboard-aca h2 {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 40px;
+  font-size: 28px;
+  color: #222;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 10px;
+}
+
+.alert {
+  margin-bottom: 20px;
+  padding: 12px 18px;
+  background-color: #eaf4ff;
+  border-left: 4px solid #0077cc;
+  color: #005999;
+  font-weight: 500;
+  border-radius: 4px;
 }
 
 section {
   margin-bottom: 40px;
+  background-color: #fff;
+  padding: 25px 30px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
-.list {
+section h3 {
+  font-size: 20px;
+  margin-bottom: 20px;
+  color: #1e1e1e;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 6px;
+}
+
+ul {
   list-style: none;
   padding: 0;
 }
 
-.list li {
-  background: #f5f5f5;
-  margin-bottom: 10px;
-  padding: 15px;
-  border-left: 5px solid #007bff;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-button {
-  padding: 6px 12px;
-  background-color: #007bff;
-  border: none;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #0056b3;
-}
-
-.message-box {
-  background-color: #dff0d8;
-  padding: 10px;
+li {
   margin-bottom: 20px;
-  border-left: 5px solid #3c763d;
+  padding: 15px 20px;
+  border: 1px solid #e3e3e3;
+  border-radius: 6px;
+  background-color: #fafafa;
+}
+
+li strong {
+  font-size: 16px;
+  color: #222;
+}
+
+li span {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: #555;
+}
+
+.btn-group {
+  margin-top: 12px;
+}
+
+.btn-group button {
+  margin-right: 10px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-accept {
+  background-color: #007a4d;
+  color: #fff;
+}
+
+.btn-accept:hover {
+  background-color: #005f3a;
+}
+
+.btn-reject {
+  background-color: #c0392b;
+  color: #fff;
+}
+
+.btn-reject:hover {
+  background-color: #a83226;
+}
+
+.badge {
+  background-color: #eee;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 12px;
+  margin-left: 8px;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .dashboard-aca {
+    padding: 20px 15px;
+  }
+
+  section {
+    padding: 20px;
+  }
+
+  .btn-group button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
 }
