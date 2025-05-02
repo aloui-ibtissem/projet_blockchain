@@ -11,8 +11,8 @@ import DashboardEncadrantAca from './pages/DashboardEncadrantAca';
 import DashboardEncadrantPro from './pages/DashboardEncadrantPro';
 import DashboardRespUniversite from './pages/DashboardRespUniversite';
 import DashboardRespEntreprise from './pages/DashboardRespEntreprise';
-import DashboardTierUni from './pages/DashboardTierUni';  
-import DashboardTierEnt from './pages/DashboardTierEnt';  
+import DashboardTierUni from './pages/TierUniDashboard';  
+import DashboardTierEnt from './pages/TierEntDashboard';  
 
 
 import Navigation from './components/Navigation';

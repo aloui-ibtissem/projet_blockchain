@@ -48,28 +48,35 @@ function LoginPage({ onLogin }) {
         if (onLogin) onLogin(token, userRole);
 
         setSuccessMessage("Connexion réussie !");
-        setTimeout(() => {
-          switch (userRole) {
-            case "Etudiant":
-              navigate("/etudiant");
-              break;
-            case "EncadrantAcademique":
-              navigate("/encAca");
-              break;
-            case "EncadrantProfessionnel":
-              navigate("/encPro");
-              break;
-            case "ResponsableUniversite":
-              navigate("/respUniv");
-              break;
-            case "ResponsableEntreprise":
-              navigate("/respEnt");
-              break;
-            case "TierDebloqueur":
-              navigate("/tier");
-              break;
-            default:
+
+        setTimeout(async () => {
+          if (userRole === "TierDebloqueur") {
+            try {
+              const info = await axios.get("http://localhost:3000/api/auth/tier/info", {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+
+              const structure = info.data.structureType;
+              if (structure === "universite") {
+                navigate("/tierUni");
+              } else if (structure === "entreprise") {
+                navigate("/tierEnt");
+              } else {
+                navigate("/");
+              }
+            } catch (e) {
+              console.error("Erreur récupération structureType:", e);
               navigate("/");
+            }
+          } else {
+            const paths = {
+              Etudiant: "/etudiant",
+              EncadrantAcademique: "/encAca",
+              EncadrantProfessionnel: "/encPro",
+              ResponsableUniversite: "/respUniv",
+              ResponsableEntreprise: "/respEnt",
+            };
+            navigate(paths[userRole] || "/");
           }
         }, 800);
       } else {
@@ -89,14 +96,17 @@ function LoginPage({ onLogin }) {
         <Col md={6}>
           <Card className="p-4 shadow-sm">
             <h2 className="mb-4 text-center">Connexion</h2>
-
             {errorMessage && <Alert variant="danger">{errorMessage}</Alert>}
             {successMessage && <Alert variant="success">{successMessage}</Alert>}
 
             <Form>
               <Form.Group className="mb-3">
                 <Form.Label>Email</Form.Label>
-                <Form.Control type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Form.Control
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </Form.Group>
 
               <Form.Group className="mb-3">

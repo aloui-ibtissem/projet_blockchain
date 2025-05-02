@@ -1,14 +1,30 @@
-const express = require('express');
+// routes/rapportStageRoutes.js
+const express = require("express");
 const router = express.Router();
-const rapportController = require('../controllers/rapportStageController');
-const verifyToken = require('../middlewares/verifyToken');
+const rapportStageController = require("../controllers/rapportStageController");
+const auth = require("../middlewares/checkToken");
+const upload = require("../middlewares/upload");
 
-// Routes spécifiques pour Tier Université
-router.get('/tierUni/rapports-en-retard', verifyToken, rapportController.getRapportsEnRetardUni);
-router.post('/tierUni/valider-rapport', verifyToken, rapportController.validerRapportUni);
+// Appliquer auth à toutes les routes
+router.use(auth);
 
-// Routes spécifiques pour Tier Entreprise
-router.get('/tierEnt/rapports-en-retard', verifyToken, rapportController.getRapportsEnRetardEnt);
-router.post('/tierEnt/valider-rapport', verifyToken, rapportController.validerRapportEnt);
+// Soumission d’un rapport (fichier PDF/DOCX)
+router.post("/submit", upload.single("rapport"), rapportStageController.submitReport);
+
+// Validation ou ajout d’un commentaire
+router.post("/validate", rapportStageController.validateReport);
+router.post("/commenter", rapportStageController.commenterRapport);
+
+// Liste des rapports assignés à l'encadrant connecté
+router.get("/mes-rapports", rapportStageController.getRapportsEncadrant);
+
+// Récupération des commentaires d’un rapport
+router.get("/commentaires/:rapportId", rapportStageController.getCommentairesRapport);
+
+// Vérification automatique : rapport non soumis à temps
+router.get("/verifier-soumission", rapportStageController.verifierSoumissionRapportEtudiant);
+
+// Vérification automatique : validation en retard → rediriger vers tier
+router.get("/verifier-validation", rapportStageController.verifierValidationEncadrantsEtAffecterTier);
 
 module.exports = router;

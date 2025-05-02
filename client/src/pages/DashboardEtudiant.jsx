@@ -1,8 +1,9 @@
+// DashboardEtudiant.jsx
 import React, { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Container, Row, Col, Card, Button, Form, Alert } from "react-bootstrap";
+import { Container, Row, Col, Card, Button, Form, Alert, Collapse } from "react-bootstrap";
 import "./DashboardEtudiant.css";
 
 function DashboardEtudiant() {
@@ -13,40 +14,33 @@ function DashboardEtudiant() {
   const [userEmail, setUserEmail] = useState("");
   const [message, setMessage] = useState("");
   const [form, setForm] = useState({
-    sujet: "",
-    objectifs: "",
-    dateDebut: "",
-    dateFin: "",
-    encadrantAcademique: "",
-    encadrantProfessionnel: ""
+    sujet: "", objectifs: "", dateDebut: "", dateFin: "", encadrantAcademique: "", encadrantProfessionnel: ""
   });
   const [rapport, setRapport] = useState(null);
   const [attestationUrl, setAttestationUrl] = useState("");
   const [notifications, setNotifications] = useState([]);
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [currentStage, setCurrentStage] = useState(null);
+  const [commentaires, setCommentaires] = useState([]);
 
   useEffect(() => {
     if (!token || role !== "Etudiant") return navigate("/login");
-
     const decoded = jwtDecode(token);
-    setUserEmail(decoded.email);
     if (decoded.exp < Date.now() / 1000) {
       localStorage.clear();
       return navigate("/login");
     }
-
+    setUserEmail(decoded.email);
     fetchNotifications();
     fetchStage();
   }, []);
 
-  const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const proposeStage = async () => {
     try {
       setMessage("Envoi de la proposition...");
-      await axios.post("http://localhost:3000/api/stage/propose", form, {
+      await axios.post("http://localhost:3000/api/stage/proposeStage", form, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage("Proposition envoyée avec succès !");
@@ -56,17 +50,18 @@ function DashboardEtudiant() {
   };
 
   const submitRapport = async () => {
-    if (!rapport) return setMessage("Veuillez sélectionner un fichier PDF.");
+    if (!rapport) return setMessage("Veuillez sélectionner un fichier PDF ou DOCX.");
     const formData = new FormData();
     formData.append("rapport", rapport);
     try {
-      await axios.post("http://localhost:3000/api/stage/submitReport", formData, {
+      await axios.post("http://localhost:3000/api/rapport/submit", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data"
         }
       });
       setMessage("Rapport soumis avec succès !");
+      fetchCommentaires(); // Charger les commentaires si déjà disponibles
     } catch (err) {
       setMessage("Erreur : " + (err.response?.data?.error || err.message));
     }
@@ -100,8 +95,20 @@ function DashboardEtudiant() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCurrentStage(res.data);
+      if (res.data?.rapportId) fetchCommentaires(res.data.rapportId);
     } catch (err) {
       console.warn("Aucun stage trouvé pour l'étudiant.");
+    }
+  };
+
+  const fetchCommentaires = async (rapportId) => {
+    try {
+      const res = await axios.get(`http://localhost:3000/api/rapport/commentaires/${rapportId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCommentaires(res.data);
+    } catch (err) {
+      console.warn("Aucun commentaire disponible.");
     }
   };
 
@@ -111,27 +118,23 @@ function DashboardEtudiant() {
       {message && <Alert variant="info">{message}</Alert>}
 
       <Card className="mb-4">
-        <Card.Header>Informations personnelles</Card.Header>
-        <Card.Body>
-          <strong>Email :</strong> {userEmail}
-        </Card.Body>
-      </Card>
-
-      <Card className="mb-4">
-        <Card.Header>Notifications</Card.Header>
-        <Card.Body>
-          {notifications.length > 0 ? (
-            <ul>
-              {notifications.map(n => (
-                <li key={n.id}>
-                  {n.message} - <small>{new Date(n.date_envoi).toLocaleDateString()}</small>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Aucune notification pour l'instant.</p>
-          )}
-        </Card.Body>
+        <Card.Header>
+          Notifications
+          <Button variant="link" onClick={() => setNotificationsVisible(!notificationsVisible)}>Afficher/Masquer</Button>
+        </Card.Header>
+        <Collapse in={notificationsVisible}>
+          <Card.Body>
+            {notifications.length > 0 ? (
+              <ul>
+                {notifications.map((n) => (
+                  <li key={n.id}>
+                    {n.message} <small>({new Date(n.date_envoi).toLocaleDateString()})</small>
+                  </li>
+                ))}
+              </ul>
+            ) : <p>Aucune notification pour l'instant.</p>}
+          </Card.Body>
+        </Collapse>
       </Card>
 
       {currentStage && (
@@ -140,66 +143,27 @@ function DashboardEtudiant() {
           <Card.Body>
             <p><strong>Entreprise :</strong> {currentStage.entreprise}</p>
             <p><strong>Dates :</strong> {new Date(currentStage.dateDebut).toLocaleDateString()} → {new Date(currentStage.dateFin).toLocaleDateString()}</p>
-            <hr />
-            <p>
-              <strong>Encadrant académique :</strong> {currentStage.acaPrenom} {currentStage.acaNom}
-              <a href={`mailto:${currentStage.acaEmail}`} style={{ marginLeft: "10px" }}>{currentStage.acaEmail}</a>
-            </p>
-            <p>
-              <strong>Encadrant professionnel :</strong> {currentStage.proPrenom} {currentStage.proNom}
-              <a href={`mailto:${currentStage.proEmail}`} style={{ marginLeft: "10px" }}>{currentStage.proEmail}</a>
-            </p>
+            <p><strong>Encadrant académique :</strong> {currentStage.acaPrenom} {currentStage.acaNom} (<a href={`mailto:${currentStage.acaEmail}`}>{currentStage.acaEmail}</a>)</p>
+            <p><strong>Encadrant professionnel :</strong> {currentStage.proPrenom} {currentStage.proNom} (<a href={`mailto:${currentStage.proEmail}`}>{currentStage.proEmail}</a>)</p>
           </Card.Body>
         </Card>
       )}
 
       <Card className="mb-4">
-        <Card.Header>Proposer un Sujet de Stage</Card.Header>
+        <Card.Header>Proposer un Sujet</Card.Header>
         <Card.Body>
           <Form>
-            <Row>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Sujet</Form.Label>
-                  <Form.Control name="sujet" value={form.sujet} onChange={handleChange} />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Objectifs</Form.Label>
-                  <Form.Control name="objectifs" value={form.objectifs} onChange={handleChange} />
-                </Form.Group>
-              </Col>
+            <Row><Col><Form.Control name="sujet" placeholder="Sujet" value={form.sujet} onChange={handleChange} /></Col></Row>
+            <Row className="mt-2"><Col><Form.Control name="objectifs" placeholder="Objectifs" value={form.objectifs} onChange={handleChange} /></Col></Row>
+            <Row className="mt-2">
+              <Col><Form.Control type="date" name="dateDebut" value={form.dateDebut} onChange={handleChange} /></Col>
+              <Col><Form.Control type="date" name="dateFin" value={form.dateFin} onChange={handleChange} /></Col>
             </Row>
-            <Row className="mt-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Date de Début</Form.Label>
-                  <Form.Control type="date" name="dateDebut" value={form.dateDebut} onChange={handleChange} />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Date de Fin</Form.Label>
-                  <Form.Control type="date" name="dateFin" value={form.dateFin} onChange={handleChange} />
-                </Form.Group>
-              </Col>
+            <Row className="mt-2">
+              <Col><Form.Control name="encadrantAcademique" placeholder="Email Encadrant Académique" value={form.encadrantAcademique} onChange={handleChange} /></Col>
+              <Col><Form.Control name="encadrantProfessionnel" placeholder="Email Encadrant Professionnel" value={form.encadrantProfessionnel} onChange={handleChange} /></Col>
             </Row>
-            <Row className="mt-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Email Encadrant Académique</Form.Label>
-                  <Form.Control name="encadrantAcademique" value={form.encadrantAcademique} onChange={handleChange} />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Email Encadrant Professionnel</Form.Label>
-                  <Form.Control name="encadrantProfessionnel" value={form.encadrantProfessionnel} onChange={handleChange} />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Button className="mt-3" onClick={proposeStage} variant="primary">Soumettre</Button>
+            <Button className="mt-3" onClick={proposeStage}>Soumettre</Button>
           </Form>
         </Card.Body>
       </Card>
@@ -208,17 +172,31 @@ function DashboardEtudiant() {
         <Card.Header>Soumission du Rapport</Card.Header>
         <Card.Body>
           <Form.Group>
-            <Form.Label>Fichier PDF</Form.Label>
-            <Form.Control type="file" accept="application/pdf" onChange={e => setRapport(e.target.files[0])} />
+            <Form.Control type="file" accept="application/pdf,.doc,.docx" onChange={(e) => setRapport(e.target.files[0])} />
           </Form.Group>
-          <Button className="mt-2" onClick={submitRapport} variant="success">Envoyer le Rapport</Button>
+          <Button className="mt-2" onClick={submitRapport}>Envoyer</Button>
+        </Card.Body>
+      </Card>
+
+      <Card className="mb-4">
+        <Card.Header>Commentaires sur votre rapport</Card.Header>
+        <Card.Body>
+          {commentaires.length > 0 ? (
+            <ul>
+              {commentaires.map(c => (
+                <li key={c.id}>
+                  <strong>{new Date(c.date_envoi).toLocaleString()} :</strong> {c.commentaire}
+                </li>
+              ))}
+            </ul>
+          ) : <p>Aucun commentaire pour l’instant.</p>}
         </Card.Body>
       </Card>
 
       <Card className="mb-4">
         <Card.Header>Attestation</Card.Header>
         <Card.Body>
-          <Button variant="info" onClick={fetchAttestation}>Vérifier l'attestation</Button>
+          <Button onClick={fetchAttestation}>Vérifier l'attestation</Button>
           {attestationUrl && (
             <p className="mt-2">
               <a href={attestationUrl} target="_blank" rel="noreferrer">Voir l’attestation</a>

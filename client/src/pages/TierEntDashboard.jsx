@@ -1,25 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 import {
-  Container,
-  Row,
-  Col,
-  Card,
-  Button,
-  Alert,
-  Table,
-  Spinner,
+  Container, Row, Col, Card, Button, Alert, Table, Spinner
 } from "react-bootstrap";
 import "./DashboardTierEnt.css";
 
-function DashboardTierEnt() {
+function TierEntDashboard() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
 
-  const [userEmail, setUserEmail] = useState("");
   const [rapports, setRapports] = useState([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -27,99 +19,94 @@ function DashboardTierEnt() {
   useEffect(() => {
     if (!token || role !== "TierDebloqueur") return navigate("/login");
 
-    const decoded = jwtDecode(token);
-    setUserEmail(decoded.email);
-
-    if (decoded.exp < Date.now() / 1000) {
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.exp < Date.now() / 1000) {
+        localStorage.clear();
+        return navigate("/login");
+      }
+      fetchRapports();
+    } catch {
       localStorage.clear();
       return navigate("/login");
     }
-
-    fetchRapports();
   }, []);
 
   const fetchRapports = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:3000/api/rapport/tiers-entreprise", {
+      const { data } = await axios.get("http://localhost:3000/api/rapport/tiers-entreprise", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRapports(res.data || []);
-    } catch (err) {
-      console.error("Erreur récupération rapports:", err);
-      setMessage("Erreur lors de la récupération des rapports.");
+      setRapports(Array.isArray(data) ? data : []);
+      setMessage("");
+    }  catch (err) {
+      console.warn("Erreur de récupération des rapports :", err.message);
+      setRapports([]); // pour éviter affichage résiduels
+      setMessage("");  // pas de message utilisateur
     } finally {
       setLoading(false);
     }
   };
 
-  const validerRapport = async (id) => {
+  const validerRapport = async (rapportId) => {
     try {
-      await axios.post(
-        "http://localhost:3000/api/rapport/valider-par-tier",
-        { rapportId: id },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage("✅ Rapport validé avec succès.");
+      await axios.post("http://localhost:3000/api/rapport/valider-par-tier", {
+        rapportId
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMessage(" Rapport validé.");
       fetchRapports();
-    } catch (err) {
-      setMessage("❌ Erreur lors de la validation.");
+    } catch {
+      setMessage(" Erreur lors de la validation.");
     }
   };
 
   return (
-    <Container className="mt-5">
+    <Container className="py-5">
       <Row className="justify-content-center">
-        <Col md={10}>
-          <Card className="shadow-sm">
-            <Card.Header className="bg-dark text-white">
-              <h4 className="mb-0">Tier Débloqueur – Entreprise</h4>
-              <small>{userEmail}</small>
+        <Col md={11} lg={10}>
+          <Card className="shadow border-0 dashboard-card">
+            <Card.Header className="dashboard-header bg-dark text-white">
+              <h5 className="mb-0 fw-bold">Espace  Entreprise</h5>
             </Card.Header>
             <Card.Body>
-              {message && <Alert variant="info">{message}</Alert>}
+              {message && <Alert variant="secondary">{message}</Alert>}
 
               {loading ? (
-                <div className="text-center py-5">
-                  <Spinner animation="border" variant="primary" />
+                <div className="text-center py-4">
+                  <Spinner animation="border" variant="dark" />
                 </div>
+              ) : rapports.length > 0 ? (
+                <Table striped bordered hover responsive className="align-middle text-center">
+                  <thead className="table-dark">
+                    <tr>
+                      <th>#</th>
+                      <th>ID Étudiant</th>
+                      <th>Période</th>
+                      <th>Soumis le</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rapports.map((r, i) => (
+                      <tr key={r.rapportId}>
+                        <td>{i + 1}</td>
+                        <td>{`ETU-${r.rapportId.toString().padStart(4, "0")}`}</td>
+                        <td>{new Date(r.dateDebut).toLocaleDateString()} → {new Date(r.dateFin).toLocaleDateString()}</td>
+                        <td>{new Date(r.dateSoumission).toLocaleDateString()}</td>
+                        <td>
+                          <Button variant="outline-success" size="sm" onClick={() => validerRapport(r.rapportId)}>
+                            Valider
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
               ) : (
-                <>
-                  {rapports.length > 0 ? (
-                    <Table striped bordered hover responsive className="mt-3">
-                      <thead className="table-dark">
-                        <tr>
-                          <th>Étudiant</th>
-                          <th>Date Début</th>
-                          <th>Date Fin</th>
-                          <th>Date Soumission</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rapports.map((r) => (
-                          <tr key={r.rapportId}>
-                            <td>{r.etudiantPrenom} {r.etudiantNom}</td>
-                            <td>{new Date(r.dateDebut).toLocaleDateString()}</td>
-                            <td>{new Date(r.dateFin).toLocaleDateString()}</td>
-                            <td>{new Date(r.dateSoumission).toLocaleDateString()}</td>
-                            <td>
-                              <Button
-                                variant="success"
-                                size="sm"
-                                onClick={() => validerRapport(r.rapportId)}
-                              >
-                                Valider
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  ) : (
-                    <p className="text-muted text-center">Aucun rapport en attente de validation.</p>
-                  )}
-                </>
+                <div className="text-muted text-center pt-3">Aucun rapport à traiter.</div>
               )}
             </Card.Body>
           </Card>
@@ -129,4 +116,4 @@ function DashboardTierEnt() {
   );
 }
 
-export default DashboardTierEnt;
+export default TierEntDashboard;

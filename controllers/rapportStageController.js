@@ -1,55 +1,81 @@
+// controllers/rapportStageController.js
 const db = require("../config/db");
+const rapportService = require("../services/rapportService");
+const notificationService = require("../services/notificationService");
 
-exports.getRapportsEnRetardUni = async (req, res) => {
+// Soumission d’un rapport (soumission illimitée possible après commentaire)
+exports.submitReport = async (req, res) => {
   try {
-    const [rows] = await db.execute(`
-      SELECT RapportStage.id AS rapportId, Etudiant.prenom AS etudiantPrenom, Etudiant.nom AS etudiantNom, Stage.dateDebut, Stage.dateFin, RapportStage.dateSoumission
-      FROM RapportStage
-      JOIN Stage ON RapportStage.stageId = Stage.id
-      JOIN Etudiant ON RapportStage.etudiantId = Etudiant.id
-      WHERE RapportStage.statutAcademique = FALSE AND CURRENT_DATE > DATE_ADD(RapportStage.dateSoumission, INTERVAL 7 DAY)
-    `);
-    res.json(rows);
+    const result = await rapportService.submitReport(req.user, req.file, db);
+    res.json({ success: true, result });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erreur serveur." });
+    console.error("submitReport error:", err);
+    res.status(500).json({ error: "Erreur lors de la soumission du rapport." });
   }
 };
 
-exports.validerRapportUni = async (req, res) => {
+// Validation d’un rapport par encadrant ou tier débloqueur
+exports.validateReport = async (req, res) => {
   try {
-    const { rapportId } = req.body;
-    await db.execute(`UPDATE RapportStage SET statutAcademique = TRUE WHERE id = ?`, [rapportId]);
-    res.json({ success: true });
+    const result = await rapportService.validateReport(req.body, req.user, db);
+    res.json({ success: true, result });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erreur serveur." });
+    console.error("validateReport error:", err);
+    res.status(500).json({ error: "Erreur lors de la validation du rapport." });
   }
 };
 
-exports.getRapportsEnRetardEnt = async (req, res) => {
+// Ajout d’un commentaire sur un rapport
+exports.commenterRapport = async (req, res) => {
   try {
-    const [rows] = await db.execute(`
-      SELECT RapportStage.id AS rapportId, Etudiant.prenom AS etudiantPrenom, Etudiant.nom AS etudiantNom, Stage.dateDebut, Stage.dateFin, RapportStage.dateSoumission
-      FROM RapportStage
-      JOIN Stage ON RapportStage.stageId = Stage.id
-      JOIN Etudiant ON RapportStage.etudiantId = Etudiant.id
-      WHERE RapportStage.statutProfessionnel = FALSE AND CURRENT_DATE > DATE_ADD(RapportStage.dateSoumission, INTERVAL 7 DAY)
-    `);
-    res.json(rows);
+    const result = await rapportService.commenterRapport(req.body, req.user, db);
+    res.json({ success: true, result });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erreur serveur." });
+    console.error("commenterRapport error:", err);
+    res.status(500).json({ error: "Erreur lors de l'ajout du commentaire." });
   }
 };
 
-exports.validerRapportEnt = async (req, res) => {
+// Liste des rapports assignés à l'encadrant
+exports.getRapportsEncadrant = async (req, res) => {
   try {
-    const { rapportId } = req.body;
-    await db.execute(`UPDATE RapportStage SET statutProfessionnel = TRUE WHERE id = ?`, [rapportId]);
-    res.json({ success: true });
+    const result = await rapportService.getRapportsEncadrant(req.user, db);
+    res.json(result);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erreur serveur." });
+    console.error("getRapportsEncadrant error:", err);
+    res.status(500).json({ error: "Erreur chargement des rapports." });
+  }
+};
+
+// Liste des commentaires d’un rapport
+exports.getCommentairesRapport = async (req, res) => {
+  try {
+    const result = await rapportService.getCommentairesRapport(req.params.rapportId, db);
+    res.json(result);
+  } catch (err) {
+    console.error("getCommentairesRapport error:", err);
+    res.status(500).json({ error: "Erreur récupération des commentaires." });
+  }
+};
+
+// Tâche de vérification automatique : Rapports non soumis 7 jours avant fin stage
+exports.verifierSoumissionRapportEtudiant = async (req, res) => {
+  try {
+    const result = await rapportService.verifierSoumissionsTardives(db);
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error("verifierSoumissionRapportEtudiant error:", err);
+    res.status(500).json({ error: "Erreur vérification soumission rapport." });
+  }
+};
+
+// Tâche de vérification automatique : Réaffectation au tier débloqueur après 7 jours fin stage
+exports.verifierValidationEncadrantsEtAffecterTier = async (req, res) => {
+  try {
+    const result = await rapportService.verifierEtRedirigerVersTier(db);
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error("verifierValidationEncadrantsEtAffecterTier error:", err);
+    res.status(500).json({ error: "Erreur dans la réaffectation tier débloqueur." });
   }
 };

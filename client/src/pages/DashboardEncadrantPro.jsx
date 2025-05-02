@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
-import "./DashboardEncadrantAca.css"; 
+import "./DashboardEncadrantAca.css";
 
 function DashboardEncadrantPro() {
   const token = localStorage.getItem("token");
@@ -12,6 +12,8 @@ function DashboardEncadrantPro() {
   const [propositions, setPropositions] = useState([]);
   const [encadrements, setEncadrements] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [rapports, setRapports] = useState([]);
+  const [commentaire, setCommentaire] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -26,6 +28,7 @@ function DashboardEncadrantPro() {
     fetchPropositions();
     fetchEncadrements();
     fetchNotifications();
+    fetchRapports();
   }, []);
 
   const fetchPropositions = async () => {
@@ -61,6 +64,42 @@ function DashboardEncadrantPro() {
     }
   };
 
+  const fetchRapports = async () => {
+    try {
+      const res = await axios.get("http://localhost:3000/api/stage/rapports", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setRapports(res.data);
+    } catch {
+      setMessage("Erreur lors du chargement des rapports.");
+    }
+  };
+
+  const commenterRapport = async (rapportId) => {
+    try {
+      if (!commentaire.trim()) return alert("Commentaire vide");
+      await axios.post("http://localhost:3000/api/stage/commenter-rapport", { rapportId, commentaire }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMessage("Commentaire envoyé à l'étudiant.");
+      setCommentaire("");
+    } catch {
+      setMessage("Erreur lors de l'envoi du commentaire.");
+    }
+  };
+
+  const validerRapport = async (rapportId) => {
+    try {
+      await axios.post("http://localhost:3000/api/stage/validateReport", { rapportId }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMessage("Rapport validé.");
+      fetchRapports();
+    } catch {
+      setMessage("Erreur validation rapport.");
+    }
+  };
+
   const handleDecision = async (id, action) => {
     try {
       let commentaire = "";
@@ -81,18 +120,6 @@ function DashboardEncadrantPro() {
     }
   };
 
-  const validerRapport = async (stageId) => {
-    try {
-      await axios.post("http://localhost:3000/api/stage/validateReport", { stageId }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMessage("Rapport validé.");
-      fetchEncadrements();
-    } catch {
-      setMessage("Erreur validation rapport.");
-    }
-  };
-
   return (
     <div className="dashboard-aca">
       <h2>Encadrant Professionnel</h2>
@@ -102,9 +129,7 @@ function DashboardEncadrantPro() {
         <h3>Notifications</h3>
         <ul>
           {notifications.map(n => (
-            <li key={n.id}>
-              {n.message} - <small>{new Date(n.date_envoi).toLocaleDateString()}</small>
-            </li>
+            <li key={n.id}>{n.message} - <small>{new Date(n.date_envoi).toLocaleDateString()}</small></li>
           ))}
         </ul>
       </section>
@@ -131,18 +156,17 @@ function DashboardEncadrantPro() {
       </section>
 
       <section>
-        <h3>Stages Suivis</h3>
-        <ul>
-          {encadrements.map(e => (
-            <li key={e.id}>
-              <strong>{e.titre}</strong> – Étudiant : {e.etudiant}
-              
-              {e.status === "rapport_soumis" && (
-                <button onClick={() => validerRapport(e.id)}>Valider le Rapport</button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <h3>Rapports à Examiner</h3>
+        {rapports.map(r => (
+          <div key={r.id} className="rapport-item">
+            <p><strong>{r.prenomEtudiant} {r.nomEtudiant}</strong> – <a href={`http://localhost:3000${r.fichier}`} target="_blank" rel="noreferrer">Voir le rapport</a></p>
+            <textarea value={commentaire} onChange={(e) => setCommentaire(e.target.value)} placeholder="Ajouter un commentaire..." />
+            <div className="btn-group">
+              <button className="btn-comment" onClick={() => commenterRapport(r.id)}>Commenter</button>
+              <button className="btn-validate" onClick={() => validerRapport(r.id)}>Valider</button>
+            </div>
+          </div>
+        ))}
       </section>
     </div>
   );

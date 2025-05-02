@@ -2,26 +2,26 @@ const express = require("express");
 const router = express.Router();
 const stageController = require("../controllers/stageController");
 const auth = require("../middlewares/checkToken");
-const upload = require("../middlewares/upload");
 
-router.post("/propose", auth, stageController.proposeStage);
-router.post("/validate-sujet", auth, stageController.validateSujet);
-router.post("/submitReport", auth, upload.single("rapport"), stageController.submitReport);
-router.post("/validateReport", auth, stageController.validateReport);
-router.get("/current", auth, stageController.getCurrentStage);
+// Middleware d'authentification pour toutes les routes
+router.use(auth);
 
-router.get("/encadrements", auth, stageController.getEncadrementsAca);
-router.get("/encadrementsPro", auth, stageController.getEncadrementsPro);
+//  Proposition et validation de stage
+router.post("/proposeStage", stageController.proposeStage);
+router.post("/validate-sujet", stageController.validateSujet);
 
-router.get("/notifications", auth, stageController.getNotifications);
-router.get("/rapports", auth, stageController.getRapportsEncadrant); // pour encadrant
-router.post("/commenter-rapport", auth, stageController.commenterRapport); // ajouter un commentaire
+//  Informations du stage
+router.get("/current", stageController.getCurrentStage);
 
+//  Propositions en attente (dashboards des encadrants)
+router.get("/propositions/academique", stageController.getPropositionsAca);
+router.get("/propositions/professionnel", stageController.getPropositionsPro);
 
-router.get("/propositions", auth, stageController.getPropositionsAca);
-router.get("/propositionsPro", auth, stageController.getPropositionsPro);
+//  Encadrements (dashboards)
+router.get("/encadrements/academique", stageController.getEncadrementsAca);
+router.get("/encadrements/professionnel", stageController.getEncadrementsPro);
 
-
-
+//  Notifications de l'utilisateur connecté
+router.get("/notifications", stageController.getNotifications);
 
 module.exports = router;

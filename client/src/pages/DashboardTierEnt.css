@@ -1,13 +1,43 @@
+.dashboard-card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.dashboard-header {
+  padding: 20px 24px;
+  background: linear-gradient(90deg, #111827 0%, #1f2937 100%);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-header h5 {
+  font-weight: 600;
+  font-size: 20px;
+  margin-bottom: 0;
+}
+
 .table th,
 .table td {
   vertical-align: middle;
   text-align: center;
 }
 
-.card-header h4 {
-  font-weight: bold;
+.table th {
+  background-color: #343a40;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.table td {
+  font-size: 14px;
 }
 
 button {
   font-weight: 500;
+}
+
+.alert {
+  margin-top: 15px;
+  font-size: 14px;
 }

@@ -12,6 +12,9 @@ function DashboardEncadrantAca() {
   const [propositions, setPropositions] = useState([]);
   const [encadrements, setEncadrements] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [rapports, setRapports] = useState([]);
+  const [commentaire, setCommentaire] = useState("");
+  const [selectedRapport, setSelectedRapport] = useState(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -26,71 +29,72 @@ function DashboardEncadrantAca() {
     fetchPropositions();
     fetchEncadrements();
     fetchNotifications();
+    fetchRapports();
   }, []);
 
   const fetchPropositions = async () => {
-    try {
-      const res = await axios.get("http://localhost:3000/api/stage/propositions", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setPropositions(res.data);
-    } catch {
-      setMessage("Erreur lors du chargement des propositions.");
-    }
+    const res = await axios.get("http://localhost:3000/api/stage/propositions", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setPropositions(res.data);
   };
 
   const fetchEncadrements = async () => {
-    try {
-      const res = await axios.get("http://localhost:3000/api/stage/encadrements", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setEncadrements(res.data);
-    } catch {
-      setMessage("Erreur lors du chargement des encadrements.");
-    }
+    const res = await axios.get("http://localhost:3000/api/stage/encadrements", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setEncadrements(res.data);
   };
 
   const fetchNotifications = async () => {
-    try {
-      const res = await axios.get("http://localhost:3000/api/notifications", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotifications(res.data);
-    } catch (err) {
-      console.error("Erreur notifications", err);
-    }
+    const res = await axios.get("http://localhost:3000/api/notifications", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setNotifications(res.data);
+  };
+
+  const fetchRapports = async () => {
+    const res = await axios.get("http://localhost:3000/api/rapport/mes-rapports", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setRapports(res.data);
+  };
+
+  const commenterRapport = async () => {
+    if (!commentaire || !selectedRapport) return;
+    await axios.post("http://localhost:3000/api/rapport/commenter", {
+      rapportId: selectedRapport,
+      commentaire,
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setMessage("Commentaire envoyé.");
+    setCommentaire("");
+  };
+
+  const validerRapport = async (rapportId) => {
+    await axios.post("http://localhost:3000/api/stage/validateReport", {
+      rapportId
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setMessage("Rapport validé.");
+    fetchRapports();
   };
 
   const handleDecision = async (id, action) => {
-    try {
-      let commentaire = "";
-      if (action === "rejeter") {
-        commentaire = prompt("Motif du refus (facultatif) :") || "";
-      }
-      await axios.post("http://localhost:3000/api/stage/validate-sujet", {
-        sujetId: id,
-        action,
-        commentaire,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMessage(`Sujet ${action === "accepter" ? "accepté" : "refusé"}.`);
-      fetchPropositions();
-    } catch {
-      setMessage("Erreur lors de l'action.");
-    }
-  };
+    let commentaire = "";
+    if (action === "rejeter") commentaire = prompt("Motif du refus :") || "";
 
-  const validerRapport = async (stageId) => {
-    try {
-      await axios.post("http://localhost:3000/api/stage/validateReport", { stageId }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMessage("Rapport validé.");
-      fetchEncadrements();
-    } catch {
-      setMessage("Erreur validation rapport.");
-    }
+    await axios.post("http://localhost:3000/api/stage/validate-sujet", {
+      sujetId: id,
+      action,
+      commentaire,
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setMessage("Sujet traité.");
+    fetchPropositions();
   };
 
   return (
@@ -109,18 +113,16 @@ function DashboardEncadrantAca() {
 
       <section>
         <h3>Propositions de Stage</h3>
-        {propositions.length === 0 ? (
-          <p>Aucune proposition en attente.</p>
-        ) : (
+        {propositions.length === 0 ? <p>Aucune proposition.</p> : (
           <ul className="proposition-list">
             {propositions.map(p => (
               <li key={p.id}>
                 <strong>{p.titre}</strong><br />
-                <span><strong>Objectifs :</strong> {p.description}</span><br />
-                <span><strong>Étudiant :</strong> {p.etudiantNomComplet}</span>
+                <em>{p.description}</em><br />
+                <span>{p.etudiantNomComplet}</span>
                 <div className="btn-group">
-                  <button className="btn-accept" onClick={() => handleDecision(p.id, "accepter")}> Accepter</button>
-                  <button className="btn-reject" onClick={() => handleDecision(p.id, "rejeter")}> Rejeter</button>
+                  <button onClick={() => handleDecision(p.id, "accepter")}>Accepter</button>
+                  <button onClick={() => handleDecision(p.id, "rejeter")}>Rejeter</button>
                 </div>
               </li>
             ))}
@@ -129,18 +131,21 @@ function DashboardEncadrantAca() {
       </section>
 
       <section>
-        <h3> Stages Encadrés</h3>
-        <ul>
-          {encadrements.map(e => (
-            <li key={e.id}>
-              <strong>{e.titre}</strong> – Étudiant : {e.etudiant}
-              
-              {e.status === "rapport_soumis" && (
-                <button onClick={() => validerRapport(e.id)}>Valider le Rapport</button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <h3>Rapports à Examiner</h3>
+        {rapports.length === 0 ? <p>Aucun rapport.</p> : (
+          <ul>
+            {rapports.map(r => (
+              <li key={r.id}>
+                <strong>{r.prenomEtudiant} {r.nomEtudiant}</strong> - {new Date(r.dateSoumission).toLocaleDateString()}
+                <a href={`http://localhost:3000${r.fichier}`} target="_blank" rel="noreferrer">Voir fichier</a>
+                <br />
+                <textarea placeholder="Commentaire" onChange={(e) => setCommentaire(e.target.value)} />
+                <button onClick={() => { setSelectedRapport(r.id); commenterRapport(); }}>Envoyer Commentaire</button>
+                <button onClick={() => validerRapport(r.id)}>Valider</button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

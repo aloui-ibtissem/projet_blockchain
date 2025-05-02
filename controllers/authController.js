@@ -161,3 +161,17 @@ exports.login = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+/// get  tier debloqueur infos to authenticate him properly based on his structuretype
+exports.getTierInfo = async (req, res) => {
+  try {
+    const { email } = req.user;
+    const [[tier]] = await db.execute("SELECT structureType FROM TierDebloqueur WHERE email = ?", [email]);
+    if (!tier) return res.status(404).json({ error: "Tier non trouvé" });
+
+    res.json({ success: true, structureType: tier.structureType });
+  } catch (err) {
+    console.error("getTierInfo error:", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+};
+
