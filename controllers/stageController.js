@@ -1,105 +1,95 @@
-const db = require("../config/db");
 const stageService = require("../services/stageService");
-const notificationService = require("../services/notificationService");
+const db = require("../config/db");
 
-// 1. Proposer un stage
 exports.proposeStage = async (req, res) => {
   try {
     const { sujet, objectifs, dateDebut, dateFin, encadrantAcademique, encadrantProfessionnel } = req.body;
-    const etudiantEmail = req.user.email;
+    const emailEtudiant = req.user.email;
 
     await stageService.proposerSujet({
-      sujet,
-      objectifs,
-      dateDebut,
-      dateFin,
-      encadrantAcademique,
-      encadrantProfessionnel,
-      etudiantEmail
+      sujet, objectifs, dateDebut, dateFin,
+      encadrantAcademique, encadrantProfessionnel,
+      etudiantEmail: emailEtudiant
     });
 
-    res.json({ success: true });
+    res.status(200).json({ message: "Proposition de stage envoyée." });
   } catch (err) {
-    console.error("proposeStage error:", err);
-    res.status(500).json({ error: "Erreur lors de la proposition de stage." });
+    console.error("proposeStage:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-// 2. Valider ou rejeter un sujet
 exports.validateSujet = async (req, res) => {
   try {
     const { sujetId, action, commentaire } = req.body;
     const { email, role } = req.user;
 
-    await stageService.validerOuRejeterSujet({
-      sujetId,
-      action,
-      commentaire,
-      email,
-      role
-    });
-
-    res.json({ success: true });
+    await stageService.validerOuRejeterSujet({ sujetId, action, commentaire, email, role });
+    res.status(200).json({ message: `Sujet ${action} avec succès.` });
   } catch (err) {
-    console.error("validateSujet error:", err);
-    res.status(500).json({ error: "Erreur lors de la validation du sujet." });
+    console.error("validateSujet:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-// 3. Liste des encadrements pour le dashboard (Aca ou Pro)
-exports.getEncadrementsAca = async (req, res) => {
+exports.getCurrentStage = async (req, res) => {
   try {
-    const result = await stageService.getEncadrements(req.user, "academique", db);
-    res.json(result);
+    const { email } = req.user;
+    const stage = await stageService.getCurrentStageByEmail(email);
+    res.status(200).json(stage);
   } catch (err) {
-    res.status(500).json({ error: "Erreur chargement encadrements académiques." });
+    console.error("getCurrentStage:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-exports.getEncadrementsPro = async (req, res) => {
-  try {
-    const result = await stageService.getEncadrements(req.user, "professionnel", db);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: "Erreur chargement encadrements professionnels." });
-  }
-};
-
-// 4. Notifications de l'utilisateur connecté
-exports.getNotifications = async (req, res) => {
-  try {
-    const result = await notificationService.getUserNotifications(req.user, db);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: "Erreur chargement notifications." });
-  }
-};
-
-// 5. Propositions en attente à afficher dans les dashboards encadrants
 exports.getPropositionsAca = async (req, res) => {
   try {
-    const result = await stageService.getPropositions(req.user, "academique", db);
-    res.json(result);
+    const propositions = await stageService.getPropositionsEncadrant("academique", req.user.email);
+    res.status(200).json(propositions);
   } catch (err) {
-    res.status(500).json({ error: "Erreur chargement propositions académiques." });
+    res.status(500).json({ error: err.message });
   }
 };
 
 exports.getPropositionsPro = async (req, res) => {
   try {
-    const result = await stageService.getPropositions(req.user, "professionnel", db);
-    res.json(result);
+    const propositions = await stageService.getPropositionsEncadrant("professionnel", req.user.email);
+    res.status(200).json(propositions);
   } catch (err) {
-    res.status(500).json({ error: "Erreur chargement propositions professionnelles." });
+    res.status(500).json({ error: err.message });
   }
 };
 
-// 6. Infos du stage en cours (dashboard étudiant)
-exports.getCurrentStage = async (req, res) => {
+exports.getEncadrementsAca = async (req, res) => {
   try {
-    const result = await stageService.getCurrentStage(req.user, db);
-    res.json(result);
+    const encadrements = await stageService.getEncadrements("academique", req.user.email);
+    res.status(200).json(encadrements);
   } catch (err) {
-    res.status(500).json({ error: "Erreur récupération du stage." });
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getEncadrementsPro = async (req, res) => {
+  try {
+    const encadrements = await stageService.getEncadrements("professionnel", req.user.email);
+    res.status(200).json(encadrements);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getNotifications = async (req, res) => {
+  try {
+    const { id, role } = req.user;
+    const [rows] = await db.execute(
+      `SELECT id, message, date_envoi, est_lu FROM notifications
+       WHERE destinataire_id = ? AND destinataire_type = ?
+       ORDER BY date_envoi DESC`,
+      [id, role.toLowerCase()]
+    );
+    res.status(200).json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

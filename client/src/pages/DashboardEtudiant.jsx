@@ -40,7 +40,7 @@ function DashboardEtudiant() {
   const proposeStage = async () => {
     try {
       setMessage("Envoi de la proposition...");
-      await axios.post("http://localhost:3000/api/stage/proposeStage", form, {
+      await axios.post("http://localhost:3000/api/stage/propose", form, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage("Proposition envoyée avec succès !");

@@ -1,8 +1,10 @@
+
 const { ethers } = require("ethers");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const db = require("../config/db");
 const sendEmail = require("../utils/sendEmail");
+const { genererIdentifiantActeur } = require("../utils/identifiantUtils");
 const AuthAbi = require("../abis/Auth.json");
 require("dotenv").config();
 
@@ -32,7 +34,6 @@ exports.register = async (req, res) => {
       }
     }
 
-    // Vérifier sur blockchain
     const roleOnChain = await authContract.getRole(recoveredAddr);
     if (roleOnChain.toString() !== "0") {
       return res.status(400).json({ error: "Déjà enregistré sur la blockchain." });
@@ -40,7 +41,6 @@ exports.register = async (req, res) => {
 
     const token = crypto.randomBytes(24).toString("hex");
 
-    // Enregistrer toutes les données pour vérification
     await db.execute(
       `INSERT INTO TokenVerif (prenom, nom, email, role, signature, token, universiteId, entrepriseId, structureType)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -48,11 +48,9 @@ exports.register = async (req, res) => {
     );
 
     const lien = `http://localhost:3000/api/auth/verify/${token}`;
-    const html = `
-      <h3>Bonjour ${prenom},</h3>
-      <p>Merci pour votre inscription. Cliquez ici pour confirmer :</p>
-      <a href="${lien}">Confirmer mon adresse</a>
-    `;
+    const html = `<h3>Bonjour ${prenom},</h3>
+                  <p>Merci pour votre inscription. Cliquez ici pour confirmer :</p>
+                  <a href="${lien}">Confirmer mon adresse</a>`;
 
     await sendEmail({ to: email, subject: "Confirmez votre inscription", html });
 
@@ -66,14 +64,10 @@ exports.register = async (req, res) => {
 exports.verifyEmailToken = async (req, res) => {
   try {
     const token = req.params.token;
-
     const [rows] = await db.execute("SELECT * FROM TokenVerif WHERE token = ? AND utilisé = FALSE", [token]);
-    if (!rows.length) {
-      return res.status(400).send("Lien invalide ou déjà utilisé.");
-    }
+    if (!rows.length) return res.status(400).send("Lien invalide ou déjà utilisé.");
 
     const { prenom, nom, email, role, signature, universiteId, entrepriseId, structureType } = rows[0];
-
     const message = `Inscription:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
 
@@ -92,31 +86,36 @@ exports.verifyEmailToken = async (req, res) => {
     let insertQuery = "";
     let insertParams = [];
 
+    const identifiant = await genererIdentifiantActeur({ role, structureType, structureId: structureType === "entreprise" ? entrepriseId : universiteId });
+
     if (role === "Etudiant") {
-      insertQuery = `INSERT INTO Etudiant (prenom, nom, email, universiteId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role];
+      insertQuery = `INSERT INTO Etudiant (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
     } else if (role === "EncadrantAcademique") {
-      insertQuery = `INSERT INTO EncadrantAcademique (prenom, nom, email, universiteId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role];
+      insertQuery = `INSERT INTO EncadrantAcademique (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
     } else if (role === "EncadrantProfessionnel") {
-      insertQuery = `INSERT INTO EncadrantProfessionnel (prenom, nom, email, entrepriseId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, entrepriseId, recoveredAddr, role];
+      insertQuery = `INSERT INTO EncadrantProfessionnel (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, entrepriseId, recoveredAddr, role, identifiant];
     } else if (role === "ResponsableUniversite") {
-      insertQuery = `INSERT INTO ResponsableUniversitaire (prenom, nom, email, universiteId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role];
+      insertQuery = `INSERT INTO ResponsableUniversitaire (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
     } else if (role === "ResponsableEntreprise") {
-      insertQuery = `INSERT INTO ResponsableEntreprise (prenom, nom, email, entrepriseId, ethAddress, role) VALUES (?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, entrepriseId, recoveredAddr, role];
+      insertQuery = `INSERT INTO ResponsableEntreprise (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, entrepriseId, recoveredAddr, role, identifiant];
     } else if (role === "TierDebloqueur") {
-      insertQuery = `INSERT INTO TierDebloqueur (prenom, nom, email, structureType, universiteId, entrepriseId, ethAddress, role)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, structureType, universiteId || null, entrepriseId || null, recoveredAddr, role];
+      insertQuery = `INSERT INTO TierDebloqueur (prenom, nom, email, structureType, universiteId, entrepriseId, ethAddress, role, identifiant_unique)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      insertParams = [prenom, nom, email, structureType, universiteId || null, entrepriseId || null, recoveredAddr, role, identifiant];
     }
 
     await db.execute(insertQuery, insertParams);
-
     await db.execute("UPDATE TokenVerif SET utilisé=TRUE WHERE token=?", [token]);
-
     res.redirect("http://localhost:3001/login");
   } catch (err) {
     console.error("verifyEmailToken error:", err);
@@ -127,7 +126,6 @@ exports.verifyEmailToken = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, role, signature } = req.body;
-
     const message = `Connexion:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
 
@@ -137,11 +135,9 @@ exports.login = async (req, res) => {
                   role === "ResponsableUniversite" ? "ResponsableUniversitaire" :
                   role === "ResponsableEntreprise" ? "ResponsableEntreprise" :
                   role === "TierDebloqueur" ? "TierDebloqueur" : null;
-
     if (!table) return res.status(400).json({ error: "Rôle invalide" });
 
     const [rows] = await db.execute(`SELECT ethAddress FROM ${table} WHERE email=? AND role=?`, [email, role]);
-
     if (!rows.length) return res.status(404).json({ error: "Utilisateur introuvable" });
 
     const dbAddress = rows[0].ethAddress.toLowerCase();
@@ -161,17 +157,15 @@ exports.login = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
-/// get  tier debloqueur infos to authenticate him properly based on his structuretype
+
 exports.getTierInfo = async (req, res) => {
   try {
     const { email } = req.user;
     const [[tier]] = await db.execute("SELECT structureType FROM TierDebloqueur WHERE email = ?", [email]);
     if (!tier) return res.status(404).json({ error: "Tier non trouvé" });
-
     res.json({ success: true, structureType: tier.structureType });
   } catch (err) {
     console.error("getTierInfo error:", err);
     res.status(500).json({ error: "Erreur serveur" });
   }
 };
-

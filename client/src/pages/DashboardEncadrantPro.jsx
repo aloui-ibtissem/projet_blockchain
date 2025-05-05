@@ -33,7 +33,7 @@ function DashboardEncadrantPro() {
 
   const fetchPropositions = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/stage/propositionsPro", {
+      const res = await axios.get("http://localhost:3000/api/stage/propositions/professionnel", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPropositions(res.data);
@@ -44,7 +44,7 @@ function DashboardEncadrantPro() {
 
   const fetchEncadrements = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/stage/encadrementsPro", {
+      const res = await axios.get("http://localhost:3000/api/stage/encadrements/professionnel", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setEncadrements(res.data);
@@ -55,7 +55,7 @@ function DashboardEncadrantPro() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/notifications", {
+      const res = await axios.get("http://localhost:3000/api/stage/notifications", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications(res.data);
@@ -66,7 +66,7 @@ function DashboardEncadrantPro() {
 
   const fetchRapports = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/stage/rapports", {
+      const res = await axios.get("http://localhost:3000/api/rapport/mes-rapports", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRapports(res.data);
@@ -78,7 +78,7 @@ function DashboardEncadrantPro() {
   const commenterRapport = async (rapportId) => {
     try {
       if (!commentaire.trim()) return alert("Commentaire vide");
-      await axios.post("http://localhost:3000/api/stage/commenter-rapport", { rapportId, commentaire }, {
+      await axios.post("http://localhost:3000/api/rapport/commenter", { rapportId, commentaire }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMessage("Commentaire envoyé à l'étudiant.");
@@ -90,7 +90,7 @@ function DashboardEncadrantPro() {
 
   const validerRapport = async (rapportId) => {
     try {
-      await axios.post("http://localhost:3000/api/stage/validateReport", { rapportId }, {
+      await axios.post("http://localhost:3000/api/rapport/validate", { rapportId }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMessage("Rapport validé.");

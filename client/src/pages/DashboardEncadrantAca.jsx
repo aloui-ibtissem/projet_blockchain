@@ -1,3 +1,4 @@
+// DashboardEncadrantAca.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -33,21 +34,21 @@ function DashboardEncadrantAca() {
   }, []);
 
   const fetchPropositions = async () => {
-    const res = await axios.get("http://localhost:3000/api/stage/propositions", {
+    const res = await axios.get("http://localhost:3000/api/stage/propositions/academique", {
       headers: { Authorization: `Bearer ${token}` },
     });
     setPropositions(res.data);
   };
 
   const fetchEncadrements = async () => {
-    const res = await axios.get("http://localhost:3000/api/stage/encadrements", {
+    const res = await axios.get("http://localhost:3000/api/stage/encadrements/academique", {
       headers: { Authorization: `Bearer ${token}` },
     });
     setEncadrements(res.data);
   };
 
   const fetchNotifications = async () => {
-    const res = await axios.get("http://localhost:3000/api/notifications", {
+    const res = await axios.get("http://localhost:3000/api/stage/notifications", {
       headers: { Authorization: `Bearer ${token}` },
     });
     setNotifications(res.data);
@@ -73,7 +74,7 @@ function DashboardEncadrantAca() {
   };
 
   const validerRapport = async (rapportId) => {
-    await axios.post("http://localhost:3000/api/stage/validateReport", {
+    await axios.post("http://localhost:3000/api/rapport/validate", {
       rapportId
     }, {
       headers: { Authorization: `Bearer ${token}` },

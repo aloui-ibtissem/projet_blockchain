@@ -1,81 +1,71 @@
-// controllers/rapportStageController.js
-const db = require("../config/db");
 const rapportService = require("../services/rapportService");
-const notificationService = require("../services/notificationService");
+const db = require("../config/db");
 
-// Soumission d’un rapport (soumission illimitée possible après commentaire)
+/**
+ * Étudiant soumet son rapport de stage
+ */
 exports.submitReport = async (req, res) => {
   try {
-    const result = await rapportService.submitReport(req.user, req.file, db);
-    res.json({ success: true, result });
+    const user = req.user;
+    const file = req.file;
+
+    const result = await rapportService.submitReport(user, file);
+    res.status(200).json(result);
   } catch (err) {
-    console.error("submitReport error:", err);
-    res.status(500).json({ error: "Erreur lors de la soumission du rapport." });
+    console.error("Erreur dans submitReport:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Validation d’un rapport par encadrant ou tier débloqueur
+/**
+ * Validation par un encadrant ou un tier débloqueur
+ */
 exports.validateReport = async (req, res) => {
   try {
-    const result = await rapportService.validateReport(req.body, req.user, db);
-    res.json({ success: true, result });
+    const result = await rapportService.validateReport(req.body, req.user);
+    res.status(200).json(result);
   } catch (err) {
-    console.error("validateReport error:", err);
-    res.status(500).json({ error: "Erreur lors de la validation du rapport." });
+    console.error("Erreur dans validateReport:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Ajout d’un commentaire sur un rapport
+/**
+ * Encadrant ajoute un commentaire sur le rapport
+ */
 exports.commenterRapport = async (req, res) => {
   try {
-    const result = await rapportService.commenterRapport(req.body, req.user, db);
-    res.json({ success: true, result });
+    const result = await rapportService.commenterRapport(req.body);
+    res.status(200).json(result);
   } catch (err) {
-    console.error("commenterRapport error:", err);
-    res.status(500).json({ error: "Erreur lors de l'ajout du commentaire." });
+    console.error("Erreur dans commenterRapport:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Liste des rapports assignés à l'encadrant
-exports.getRapportsEncadrant = async (req, res) => {
+/**
+ * Liste des rapports à valider (pour encadrants uniquement)
+ */
+exports.getRapportsAValider = async (req, res) => {
   try {
-    const result = await rapportService.getRapportsEncadrant(req.user, db);
-    res.json(result);
+    const rapports = await rapportService.getRapportsEncadrant(req.user, db);
+    res.status(200).json(rapports);
   } catch (err) {
-    console.error("getRapportsEncadrant error:", err);
-    res.status(500).json({ error: "Erreur chargement des rapports." });
+    console.error("Erreur dans getRapportsAValider:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Liste des commentaires d’un rapport
-exports.getCommentairesRapport = async (req, res) => {
+/**
+ * Récupération des commentaires liés à un rapport
+ */
+exports.getCommentaires = async (req, res) => {
   try {
-    const result = await rapportService.getCommentairesRapport(req.params.rapportId, db);
-    res.json(result);
+    const { rapportId } = req.params;
+    const commentaires = await rapportService.getCommentairesRapport(rapportId, db);
+    res.status(200).json(commentaires);
   } catch (err) {
-    console.error("getCommentairesRapport error:", err);
-    res.status(500).json({ error: "Erreur récupération des commentaires." });
-  }
-};
-
-// Tâche de vérification automatique : Rapports non soumis 7 jours avant fin stage
-exports.verifierSoumissionRapportEtudiant = async (req, res) => {
-  try {
-    const result = await rapportService.verifierSoumissionsTardives(db);
-    res.json({ success: true, result });
-  } catch (err) {
-    console.error("verifierSoumissionRapportEtudiant error:", err);
-    res.status(500).json({ error: "Erreur vérification soumission rapport." });
-  }
-};
-
-// Tâche de vérification automatique : Réaffectation au tier débloqueur après 7 jours fin stage
-exports.verifierValidationEncadrantsEtAffecterTier = async (req, res) => {
-  try {
-    const result = await rapportService.verifierEtRedirigerVersTier(db);
-    res.json({ success: true, result });
-  } catch (err) {
-    console.error("verifierValidationEncadrantsEtAffecterTier error:", err);
-    res.status(500).json({ error: "Erreur dans la réaffectation tier débloqueur." });
+    console.error("Erreur dans getCommentaires:", err);
+    res.status(500).json({ error: err.message });
   }
 };

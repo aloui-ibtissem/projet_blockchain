@@ -1,30 +1,37 @@
-// routes/rapportStageRoutes.js
 const express = require("express");
 const router = express.Router();
-const rapportStageController = require("../controllers/rapportStageController");
+const rapportController = require("../controllers/rapportStageController");
 const auth = require("../middlewares/checkToken");
-const upload = require("../middlewares/upload");
+const multer = require("multer");
 
-// Appliquer auth à toutes les routes
+// Configuration du stockage pour le fichier rapport
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "public/uploads/");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + "-" + file.originalname);
+  }
+});
+const upload = multer({ storage });
+
+// Authentification requise pour toutes les routes
 router.use(auth);
 
-// Soumission d’un rapport (fichier PDF/DOCX)
-router.post("/submit", upload.single("rapport"), rapportStageController.submitReport);
+// Soumettre un rapport
+router.post("/submit", upload.single("fichier"), rapportController.submitReport);
 
-// Validation ou ajout d’un commentaire
-router.post("/validate", rapportStageController.validateReport);
-router.post("/commenter", rapportStageController.commenterRapport);
+// Valider un rapport
+router.post("/validate", rapportController.validateReport);
 
-// Liste des rapports assignés à l'encadrant connecté
-router.get("/mes-rapports", rapportStageController.getRapportsEncadrant);
+// Commenter un rapport
+router.post("/comment", rapportController.commenterRapport);
 
-// Récupération des commentaires d’un rapport
-router.get("/commentaires/:rapportId", rapportStageController.getCommentairesRapport);
+// Voir les rapports à valider
+router.get("/encadrant", rapportController.getRapportsAValider);
 
-// Vérification automatique : rapport non soumis à temps
-router.get("/verifier-soumission", rapportStageController.verifierSoumissionRapportEtudiant);
-
-// Vérification automatique : validation en retard → rediriger vers tier
-router.get("/verifier-validation", rapportStageController.verifierValidationEncadrantsEtAffecterTier);
+// Voir les commentaires sur un rapport
+router.get("/commentaires/:rapportId", rapportController.getCommentaires);
 
 module.exports = router;

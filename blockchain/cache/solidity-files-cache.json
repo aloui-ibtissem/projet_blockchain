@@ -709,6 +709,42 @@
       "artifacts": [
         "Auth"
       ]
+    },
+    "C:\\Users\\PC\\projet_blockchain\\blockchain\\contracts\\Attestation.sol": {
+      "lastModificationDate": 1746362328895,
+      "contentHash": "215a322c1750426d5a1b2820d02c2550",
+      "sourceName": "contracts/Attestation.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "Attestation"
+      ]
     }
   }
 }
