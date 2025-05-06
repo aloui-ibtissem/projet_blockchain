@@ -1,86 +1,120 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import "./DashboardRespUniversite.css";
+// src/pages/DashboardRespUniversitaire.jsx
+import React, { useEffect, useState } from 'react';
+import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { Container, Card, ListGroup, Alert, Spinner } from 'react-bootstrap';
+import './DashboardRespUniversite.css';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
 
 function DashboardRespUniversitaire() {
+  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+
   const [encadrants, setEncadrants] = useState([]);
   const [etudiants, setEtudiants] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
+    if (!token || role !== 'ResponsableUniversite') {
+      navigate('/login');
+      return;
+    }
+    const decoded = jwtDecode(token);
+    if (decoded.exp < Date.now() / 1000) {
+      localStorage.clear();
+      navigate('/login');
+      return;
+    }
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:3000/api/universite/dashboard", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
+      const res = await axios.get(
+        `${API_URL}/api/universite/dashboard`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setEncadrants(res.data.encadrants || []);
       setEtudiants(res.data.etudiants || []);
       setNotifications(res.data.notifications || []);
     } catch (err) {
       console.error(err);
-      setMessage("Erreur lors du chargement des données.");
+      setMessage('Erreur chargement données.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  if (loading) {
+    return (
+      <Container className="mt-5 text-center">
+        <Spinner animation="border" variant="primary" />
+      </Container>
+    );
+  }
+
   return (
-    <div className="dashboard-universite">
-      <h2>Responsable Universitaire - Espace de Gestion</h2>
+    <Container className="py-4">
+      <h2 className="text-center mb-4">
+        Responsable Universitaire
+      </h2>
+      {message && <Alert variant="danger">{message}</Alert>}
 
-      {message && <div className="alert-error">{message}</div>}
-
-      <section className="dashboard-section">
-        <h3>Encadrants Académiques</h3>
-        <ul>
+      <Card className="mb-4 shadow-sm">
+        <Card.Header>Encadrants Académiques</Card.Header>
+        <ListGroup variant="flush">
           {encadrants.length === 0 ? (
-            <li>Aucun encadrant disponible</li>
+            <ListGroup.Item>Aucun encadrant</ListGroup.Item>
           ) : (
-            encadrants.map((e) => (
-              <li key={e.id}>
-                {e.prenom} {e.nom} — <span>{e.email}</span>
-              </li>
+            encadrants.map(e => (
+              <ListGroup.Item key={e.id}>
+                {e.prenom} {e.nom} — {e.email}
+              </ListGroup.Item>
             ))
           )}
-        </ul>
-      </section>
+        </ListGroup>
+      </Card>
 
-      <section className="dashboard-section">
-        <h3>Étudiants Inscrits</h3>
-        <ul>
+      <Card className="mb-4 shadow-sm">
+        <Card.Header>Étudiants Inscrits</Card.Header>
+        <ListGroup variant="flush">
           {etudiants.length === 0 ? (
-            <li>Aucun étudiant trouvé</li>
+            <ListGroup.Item>Aucun étudiant</ListGroup.Item>
           ) : (
-            etudiants.map((e) => (
-              <li key={e.id}>
-                {e.prenom} {e.nom} — <span>{e.email}</span>
-              </li>
+            etudiants.map(e => (
+              <ListGroup.Item key={e.id}>
+                {e.prenom} {e.nom} — {e.email}
+              </ListGroup.Item>
             ))
           )}
-        </ul>
-      </section>
+        </ListGroup>
+      </Card>
 
-      <section className="dashboard-section">
-        <h3>Notifications Récentes</h3>
-        <ul>
+      <Card className="shadow-sm">
+        <Card.Header>Notifications</Card.Header>
+        <ListGroup variant="flush">
           {notifications.length === 0 ? (
-            <li>Aucune notification</li>
+            <ListGroup.Item>Aucune notification</ListGroup.Item>
           ) : (
-            notifications.map((n) => (
-              <li key={n.id}>
-                <strong>{n.message}</strong> <span className="notif-date">{new Date(n.date_envoi).toLocaleString()}</span>
-              </li>
+            notifications.map(n => (
+              <ListGroup.Item key={n.id}>
+                {n.message}{' '}
+                <small className="text-muted">
+                  {new Date(n.date_envoi).toLocaleString()}
+                </small>
+              </ListGroup.Item>
             ))
           )}
-        </ul>
-      </section>
-    </div>
+        </ListGroup>
+      </Card>
+    </Container>
   );
 }
 

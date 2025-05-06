@@ -1,25 +1,33 @@
 const express = require("express");
 const router = express.Router();
 const stageController = require("../controllers/stageController");
-const auth = require("../middlewares/checkToken");
+const checkToken = require("../middlewares/checkToken");
 
-router.use(auth);
+// Étudiant propose un sujet de stage
+router.post("/proposer", checkToken, stageController.proposeStage);
 
-// Proposition et validation
-router.post("/proposeStage", stageController.proposeStage);
-router.post("/validate-sujet", stageController.validateSujet);
+// Encadrants valident ou refusent une proposition
+router.post("/valider", checkToken, stageController.validateSujet);
 
-// Dashboards
-router.get("/propositions/academique", stageController.getPropositionsAca);
-router.get("/propositions/professionnel", stageController.getPropositionsPro);
+// Encadrant académique : voir les propositions
+router.get("/propositions/aca", checkToken, stageController.getPropositionsAca);
 
-router.get("/encadrements/academique", stageController.getEncadrementsAca);
-router.get("/encadrements/professionnel", stageController.getEncadrementsPro);
+// Encadrant professionnel : voir les propositions
+router.get("/propositions/pro", checkToken, stageController.getPropositionsPro);
 
-// Notifications
-router.get("/notifications", stageController.getNotifications);
+// Encadrant académique : voir les stages encadrés
+router.get("/encadrements/aca", checkToken, stageController.getEncadrementsAca);
 
-// Étudiant : stage en cours
-router.get("/current", stageController.getCurrentStage);
+// Encadrant professionnel : voir les stages encadrés
+router.get("/encadrements/pro", checkToken, stageController.getEncadrementsPro);
+
+// Étudiant : voir le stage en cours
+router.get("/mon-stage", checkToken, stageController.getCurrentStage);
+
+// Notifications dashboard
+router.get("/notifications", checkToken, stageController.getNotifications);
+
+// Recherche de stage par identifiant (ex: pour les responsables ou affichage public)
+router.get("/recherche/:identifiant", checkToken, stageController.rechercherParIdentifiant);
 
 module.exports = router;

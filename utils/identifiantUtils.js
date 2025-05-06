@@ -1,5 +1,16 @@
-
 const db = require("../config/db");
+
+/**
+ * Normalise une chaîne pour l'utiliser dans un identifiant
+ * Supprime accents, convertit en majuscule, remplace caractères non alphanumériques par '_'
+ */
+function slugify(str) {
+  return str
+    .toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // supprime accents
+    .replace(/[^\w]+/g, "_")                           // remplace non alphanum par '_'
+    .replace(/^_+|_+$/g, "");                          // supprime '_' en début/fin
+}
 
 /**
  * Génère l'année universitaire en cours, ex : 2024-2025
@@ -13,64 +24,73 @@ function genererAnneeUniversitaire() {
 }
 
 /**
- * Récupère l'acronyme d'une entreprise ou d'une université selon son ID
+ * Récupère le nom normalisé d'une entité selon son ID
  */
-async function getAcronymeById(table, id) {
-  const [rows] = await db.execute(`SELECT nom FROM ${table} WHERE id = ?`, [id]);
-  if (rows.length === 0) throw new Error(`ID introuvable dans la table ${table}`);
-  return rows[0].nom.toUpperCase(); // Les noms doivent être déjà codés en acronyme (ex : ENIG, GCT)
+async function getCodeEntite(tableName, id) {
+  const [rows] = await db.execute(
+    `SELECT nom FROM ${tableName} WHERE id = ?`,
+    [id]
+  );
+  if (rows.length === 0) {
+    throw new Error(`ID introuvable dans la table ${tableName} (id=${id})`);
+  }
+  return slugify(rows[0].nom);
 }
 
 /**
  * Génère un identifiant unique structuré pour un stage
- * Format : [Année]_ENTREPRISE_UNIVERSITE_001
+ * Format : [Année]_[NOM_ENTREPRISE]_[NOM_UNIVERSITE]_[XXX]
  */
 async function genererIdentifiantStage(entrepriseId, universiteId) {
   const annee = genererAnneeUniversitaire();
-  const entrepriseCode = await getAcronymeById("Entreprise", entrepriseId);
-  const universiteCode = await getAcronymeById("Universite", universiteId);
+  const codeEnt = await getCodeEntite("Entreprise", entrepriseId);
+  const codeUni = await getCodeEntite("Universite", universiteId);
 
-  const [[row]] = await db.execute(`
-    SELECT dernierNumero FROM CompteurStage WHERE annee = ? AND entrepriseId = ? AND universiteId = ?
-  `, [annee, entrepriseId, universiteId]);
-
-  let numero = 1;
+  const [[row]] = await db.execute(
+    `SELECT dernierNumero FROM CompteurStage
+     WHERE annee = ? AND entrepriseId = ? AND universiteId = ?`,
+    [annee, entrepriseId, universiteId]
+  );
+  let num = row ? row.dernierNumero + 1 : 1;
   if (row) {
-    numero = row.dernierNumero + 1;
-    await db.execute(`
-      UPDATE CompteurStage SET dernierNumero = ? 
-      WHERE annee = ? AND entrepriseId = ? AND universiteId = ?
-    `, [numero, annee, entrepriseId, universiteId]);
+    await db.execute(
+      `UPDATE CompteurStage SET dernierNumero = ? WHERE annee = ? AND entrepriseId = ? AND universiteId = ?`,
+      [num, annee, entrepriseId, universiteId]
+    );
   } else {
-    await db.execute(`
-      INSERT INTO CompteurStage (annee, entrepriseId, universiteId, dernierNumero)
-      VALUES (?, ?, ?, ?)
-    `, [annee, entrepriseId, universiteId, numero]);
+    await db.execute(
+      `INSERT INTO CompteurStage (annee, entrepriseId, universiteId, dernierNumero)
+       VALUES (?, ?, ?, ?)`,
+      [annee, entrepriseId, universiteId, num]
+    );
   }
-
-  return `${annee}_${entrepriseCode}_${universiteCode}_${String(numero).padStart(3, "0")}`;
+  return `${annee}_${codeEnt}_${codeUni}_${String(num).padStart(3, "0")}`;
 }
 
 /**
- * Génère un identifiant structuré pour un acteur (étudiant, encadrant, tier...)
- * Format : ROLE_ENTITE_001
+ * Génère un identifiant structuré pour un acteur
+ * Format : ROLE_[NOM_ENTITE]_[XXX]
+ * @param {{role:string, structureType:string, structureId:number}} opts
  */
 async function genererIdentifiantActeur({ role, structureType, structureId }) {
-  const acronyme = await getAcronymeById(structureType === "entreprise" ? "Entreprise" : "Universite", structureId);
-  const table = `${role}`; // Exemple : Etudiant, EncadrantAcademique, etc.
-  const column = "identifiant_unique";
+  if (!structureId) {
+    throw new Error(`structureId manquant pour ${structureType}`);
+  }
+  const table = structureType.toLowerCase() === "entreprise" ? "Entreprise" : "Universite";
+  const codeEntite = await getCodeEntite(table, structureId);
 
-  const [rows] = await db.execute(`
-    SELECT COUNT(*) AS total FROM ${table}
-    WHERE ${column} LIKE ?
-  `, [`${role.toUpperCase()}_${acronyme}_%`]);
-
+  const colonne = "identifiant_unique";
+  const [rows] = await db.execute(
+    `SELECT COUNT(*) AS total FROM ${role}
+     WHERE ${colonne} LIKE ?`,
+    [`${role.toUpperCase()}_${codeEntite}_%`]
+  );
   const next = rows[0].total + 1;
-  return `${role.toUpperCase()}_${acronyme}_${String(next).padStart(3, "0")}`;
+  return `${role.toUpperCase()}_${codeEntite}_${String(next).padStart(3, "0")}`;
 }
 
 module.exports = {
+  genererAnneeUniversitaire,
   genererIdentifiantStage,
-  genererIdentifiantActeur,
-  genererAnneeUniversitaire
+  genererIdentifiantActeur
 };

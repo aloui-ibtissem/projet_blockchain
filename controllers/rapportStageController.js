@@ -1,71 +1,79 @@
 const rapportService = require("../services/rapportService");
-const db = require("../config/db");
 
-/**
- * Étudiant soumet son rapport de stage
- */
-exports.submitReport = async (req, res) => {
+exports.submitRapport = async (req, res) => {
   try {
-    const user = req.user;
-    const file = req.file;
+    const token = req.user;
+    const fichier = req.file;
 
-    const result = await rapportService.submitReport(user, file);
-    res.status(200).json(result);
+    if (!fichier) return res.status(400).json({ error: "Aucun fichier reçu." });
+
+    await rapportService.soumettreRapport(token.email, fichier);
+    res.json({ message: "Rapport soumis avec succès." });
   } catch (err) {
-    console.error("Erreur dans submitReport:", err);
-    res.status(500).json({ error: err.message });
+    console.error("Erreur submitRapport:", err);
+    res.status(500).json({ error: "Erreur lors de la soumission du rapport." });
   }
 };
 
-/**
- * Validation par un encadrant ou un tier débloqueur
- */
-exports.validateReport = async (req, res) => {
+exports.validateRapport = async (req, res) => {
   try {
-    const result = await rapportService.validateReport(req.body, req.user);
-    res.status(200).json(result);
+    const token = req.user;
+    const { rapportId } = req.body;
+
+    await rapportService.validerRapport(token.email, token.role, rapportId);
+    res.json({ message: "Rapport validé." });
   } catch (err) {
-    console.error("Erreur dans validateReport:", err);
-    res.status(500).json({ error: err.message });
+    console.error("Erreur validateRapport:", err);
+    res.status(500).json({ error: "Erreur lors de la validation du rapport." });
   }
 };
 
-/**
- * Encadrant ajoute un commentaire sur le rapport
- */
-exports.commenterRapport = async (req, res) => {
+exports.commentRapport = async (req, res) => {
   try {
-    const result = await rapportService.commenterRapport(req.body);
-    res.status(200).json(result);
+    const token = req.user;
+    const { rapportId, commentaire } = req.body;
+
+    if (!commentaire || !rapportId) {
+      return res.status(400).json({ error: "Champs requis manquants." });
+    }
+
+    await rapportService.commenterRapport(token.email, rapportId, commentaire);
+    res.json({ message: "Commentaire enregistré." });
   } catch (err) {
-    console.error("Erreur dans commenterRapport:", err);
-    res.status(500).json({ error: err.message });
+    console.error("Erreur commentRapport:", err);
+    res.status(500).json({ error: "Erreur lors de l'ajout du commentaire." });
   }
 };
 
-/**
- * Liste des rapports à valider (pour encadrants uniquement)
- */
-exports.getRapportsAValider = async (req, res) => {
-  try {
-    const rapports = await rapportService.getRapportsEncadrant(req.user, db);
-    res.status(200).json(rapports);
-  } catch (err) {
-    console.error("Erreur dans getRapportsAValider:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-/**
- * Récupération des commentaires liés à un rapport
- */
 exports.getCommentaires = async (req, res) => {
   try {
     const { rapportId } = req.params;
-    const commentaires = await rapportService.getCommentairesRapport(rapportId, db);
-    res.status(200).json(commentaires);
+    const commentaires = await rapportService.getCommentairesRapport(rapportId);
+    res.json(commentaires);
   } catch (err) {
-    console.error("Erreur dans getCommentaires:", err);
-    res.status(500).json({ error: err.message });
+    console.error("Erreur getCommentaires:", err);
+    res.status(500).json({ error: "Erreur récupération commentaires." });
+  }
+};
+
+exports.getRapportsEncadrant = async (req, res) => {
+  try {
+    const token = req.user;
+    const rapports = await rapportService.getRapportsAValider(token.email, token.role);
+    res.json(rapports);
+  } catch (err) {
+    console.error("Erreur getRapportsEncadrant:", err);
+    res.status(500).json({ error: "Erreur récupération rapports." });
+  }
+};
+
+exports.getMesRapports = async (req, res) => {
+  try {
+    const token = req.user;
+    const rapports = await rapportService.getMesRapports(token.email);
+    res.json(rapports);
+  } catch (err) {
+    console.error("Erreur getMesRapports:", err);
+    res.status(500).json({ error: "Erreur récupération rapports étudiant." });
   }
 };

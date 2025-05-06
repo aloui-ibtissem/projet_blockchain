@@ -1,12 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const controller = require("../controllers/attestationController");
-const auth = require("../middlewares/checkToken");
-const upload = require("../middlewares/uploadAttestation");
+const multer = require("multer");
+const upload = multer();
+const attestationController = require("../controllers/attestationController");
+const checkToken = require("../middlewares/checkToken");
 
-router.use(auth);
+// Génération attestation (Responsable entreprise)
+router.post("/upload", checkToken, upload.single("fichier"), attestationController.uploadAttestation);
 
-router.post("/upload", upload.single("fichier"), controller.uploadAttestation);
-router.post("/valider", controller.validateOnChain); // peut être intégré dans le même endpoint
+// Vérification/consultation (étudiant)
+router.get("/voir", checkToken, attestationController.getAttestation);
 
 module.exports = router;

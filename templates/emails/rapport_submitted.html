@@ -1,7 +1,8 @@
 <p>Bonjour,</p>
-<p>L’étudiant <strong>{{prenom}} {{nom}}</strong> de l’université <strong>{{universite}}</strong> a soumis son rapport de stage intitulé :</p>
-<p><strong>{{titre}}</strong></p>
-<p>Date de soumission : <strong>{{dateSoumission}}</strong></p>
-<p><a href="{{lien}}">Télécharger le rapport</a></p>
-<p>Veuillez consulter votre <strong>tableau de bord</strong> ou ce <strong>mail</strong> pour plus de détails.</p>
-<p>Cordialement,<br>Plateforme de gestion de stage</p>
+<p>L'étudiant <strong>{{etudiantNom}}</strong> a soumis son rapport de stage.</p>
+<p>
+  <strong>Identifiant du stage :</strong> {{identifiantStage}}<br />
+  <strong>Date de soumission :</strong> {{dateSoumission}}<br />
+  <strong>Lien vers le rapport :</strong> <a href="{{rapportLink}}">Voir le rapport</a>
+</p>
+<p>Merci de le consulter et valider si conforme.</p>

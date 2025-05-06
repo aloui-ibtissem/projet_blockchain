@@ -1,139 +1,163 @@
-const path = require("path");
-const sendEmail = require("../utils/sendEmail");
-const notificationService = require("./notificationService");
 const db = require("../config/db");
+const path = require("path");
+const fs = require("fs");
+const { notifyUser } = require("./notificationService");
 
-/**
- * Soumission du rapport par l’étudiant (vérifie qu’il ne reste pas plus de 7 jours).
- */
-exports.submitReport = async (user, file) => {
-  if (!file) throw new Error("Aucun fichier fourni.");
+exports.soumettreRapport = async (email, fichier) => {
+  const [[etudiant]] = await db.execute("SELECT id, prenom, nom, universiteId FROM Etudiant WHERE email = ?", [email]);
+  if (!etudiant) throw new Error("Étudiant introuvable pour l'email " + email);
 
-  const [[etudiant]] = await db.execute("SELECT id, prenom, nom FROM Etudiant WHERE email=?", [user.email]);
-  if (!etudiant) throw new Error("Étudiant introuvable.");
+  const [[stage]] = await db.execute("SELECT * FROM Stage WHERE etudiantId = ?", [etudiant.id]);
+  if (!stage) throw new Error("Aucun stage trouvé");
 
-  const [[stage]] = await db.execute(`
-    SELECT id, dateFin FROM Stage WHERE etudiantId=?
-  `, [etudiant.id]);
-  if (!stage) throw new Error("Aucun stage trouvé.");
+  const rapportName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${fichier.originalname}`;
+  const rapportPath = `/uploads/${rapportName}`;
+  const fullPath = path.join(__dirname, `../public${rapportPath}`);
+  fs.writeFileSync(fullPath, fichier.buffer);
 
-  const today = new Date();
-  const dateFin = new Date(stage.dateFin);
-  const diffJours = (dateFin - today) / (1000 * 60 * 60 * 24);
-
-  if (diffJours > 7) {
-    throw new Error("Vous ne pouvez soumettre le rapport que dans les 7 jours précédant la fin du stage.");
+  const [existing] = await db.execute("SELECT * FROM RapportStage WHERE stageId = ?", [stage.id]);
+  if (existing.length > 0) {
+    await db.execute("UPDATE RapportStage SET fichier = ?, dateSoumission = NOW() WHERE stageId = ?", [rapportPath, stage.id]);
+  } else {
+    await db.execute(
+      `INSERT INTO RapportStage (stageId, etudiantId, fichier, dateSoumission)
+       VALUES (?, ?, ?, NOW())`,
+      [stage.id, etudiant.id, rapportPath]
+    );
   }
 
-  const filePath = `/uploads/${file.filename}`;
-  const dateSoumission = today.toISOString().slice(0, 10);
+  const [[aca]] = await db.execute("SELECT id, prenom FROM EncadrantAcademique WHERE id = ?", [stage.encadrantAcademiqueId]);
+  const [[pro]] = await db.execute("SELECT id, prenom FROM EncadrantProfessionnel WHERE id = ?", [stage.encadrantProfessionnelId]);
+  const [[universite]] = await db.execute("SELECT nom FROM Universite WHERE id = ?", [etudiant.universiteId]);
 
-  await db.execute(`
-    INSERT INTO RapportStage (stageId, etudiantId, dateSoumission, fichier)
-    VALUES (?, ?, ?, ?)
-  `, [stage.id, etudiant.id, dateSoumission, filePath]);
+  const templateData = {
+    prenom: etudiant.prenom,
+    nom: etudiant.nom,
+    universite: universite.nom,
+    titre: stage.titre,
+    dateSoumission: new Date().toLocaleDateString(),
+    lien: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/dashboard`
+  };
 
-  // Récupération encadrants
-  const [[encadrants]] = await db.execute(`
-    SELECT aca.id AS acaId, aca.email AS acaEmail,
-           pro.id AS proId, pro.email AS proEmail
-    FROM Stage s
-    JOIN EncadrantAcademique aca ON s.encadrantAcademiqueId = aca.id
-    JOIN EncadrantProfessionnel pro ON s.encadrantProfessionnelId = pro.id
-    WHERE s.id = ?
-  `, [stage.id]);
-
-  const message = `L’étudiant ${etudiant.prenom} ${etudiant.nom} a soumis son rapport.`;
-
-  await sendEmail({
-    to: [encadrants.acaEmail, encadrants.proEmail],
-    subject: "Nouveau rapport soumis",
-    templateName: "rapport_submitted",
-    templateData: {
-      etudiantNom: `${etudiant.prenom} ${etudiant.nom}`,
-      lienRapport: `http://localhost:3000${filePath}`
-    }
-  });
-
-  await notificationService.createMany([
-    { toId: encadrants.acaId, toType: "encadrant_academique", message },
-    { toId: encadrants.proId, toType: "encadrant_professionnel", message }
-  ]);
-
-  return { message: "Rapport soumis et notifications envoyées." };
+  for (const enc of [
+    { id: aca.id, role: 'EncadrantAcademique', prenom: aca.prenom },
+    { id: pro.id, role: 'EncadrantProfessionnel', prenom: pro.prenom }
+  ]) {
+    await notifyUser({
+      toId: enc.id,
+      toRole: enc.role,
+      subject: "Rapport de stage soumis",
+      templateName: "rapport_submitted",
+      templateData,
+      message: `Un rapport de stage a été soumis par ${etudiant.prenom} ${etudiant.nom}.`
+    });
+  }
 };
 
-/**
- * Validation par encadrant ou tier.
- */
-exports.validateReport = async ({ rapportId }, user) => {
-  const { role, email } = user;
-  let column;
+exports.validerRapport = async (email, role, rapportId) => {
+  const roleMap = {
+    EncadrantAcademique: "academique",
+    EncadrantProfessionnel: "professionnel"
+  };
+  const typeEncadrant = roleMap[role];
+  if (!typeEncadrant) throw new Error("Rôle non autorisé.");
 
-  if (role === "EncadrantAcademique") column = "statutAcademique";
-  else if (role === "EncadrantProfessionnel") column = "statutProfessionnel";
-  else if (role === "TierDebloqueur") column = "tierDebloqueurValid";
-  else throw new Error("Rôle non autorisé.");
+  const table = role === "EncadrantAcademique" ? "EncadrantAcademique" : "EncadrantProfessionnel";
+  const [[encadrant]] = await db.execute(`SELECT id FROM ${table} WHERE email = ?`, [email]);
+  if (!encadrant) throw new Error("Encadrant introuvable");
 
-  await db.execute(`UPDATE RapportStage SET ${column}=TRUE WHERE id=?`, [rapportId]);
+  const [rows] = await db.execute("SELECT * FROM EvaluationRapport WHERE rapportId = ? AND typeEncadrant = ?", [rapportId, typeEncadrant]);
 
-  const [[rapport]] = await db.execute(`SELECT etudiantId, stageId FROM RapportStage WHERE id=?`, [rapportId]);
-  const [[etudiant]] = await db.execute(`SELECT prenom, nom, email FROM Etudiant WHERE id=?`, [rapport.etudiantId]);
-
-  // Vérification validation complète
-  const [[status]] = await db.execute(`
-    SELECT statutAcademique, statutProfessionnel, tierDebloqueurValid
-    FROM RapportStage WHERE id=?`, [rapportId]);
-
-  const isValid = (status.statutAcademique && status.statutProfessionnel) || status.tierDebloqueurValid;
-
-  if (isValid) {
-    const [[resp]] = await db.execute(`
-      SELECT r.id FROM ResponsableEntreprise r
-      JOIN Stage s ON s.entrepriseId = r.entrepriseId
-      WHERE s.id = ?`, [rapport.stageId]);
-
-    if (resp) {
-      await notificationService.notifyUser({
-        toRole: "ResponsableEntreprise",
-        toId: resp.id,
-        subject: "Rapport prêt pour attestation",
-        templateName: "rapport_validated",
-        templateData: {
-          etudiantPrenom: etudiant.prenom
-        }
-      });
-    }
+  if (rows.length > 0) {
+    await db.execute("UPDATE EvaluationRapport SET validation = TRUE WHERE rapportId = ? AND typeEncadrant = ?", [rapportId, typeEncadrant]);
+  } else {
+    await db.execute(
+      `INSERT INTO EvaluationRapport (rapportId, encadrantId, typeEncadrant, validation)
+       VALUES (?, ?, ?, TRUE)`,
+      [rapportId, encadrant.id, typeEncadrant]
+    );
   }
 
-  return { message: "Validation enregistrée." };
+  const [[rapport]] = await db.execute("SELECT * FROM RapportStage WHERE id = ?", [rapportId]);
+  const [[stage]] = await db.execute("SELECT * FROM Stage WHERE id = ?", [rapport.stageId]);
+  const [[etudiant]] = await db.execute("SELECT * FROM Etudiant WHERE id = ?", [stage.etudiantId]);
+
+  const [validations] = await db.execute("SELECT * FROM EvaluationRapport WHERE rapportId = ?", [rapportId]);
+  const validatedCount = validations.filter(v => v.validation).length;
+
+  if (validatedCount >= 2) {
+    await notifyUser({
+      toId: etudiant.id,
+      toRole: "Etudiant",
+      subject: "Rapport validé",
+      templateName: "rapport_validated",
+      templateData: {
+        etudiantPrenom: etudiant.prenom,
+        encadrantPrenom: email.split('@')[0],
+        encadrantNom: '',
+        institution: "Encadrants",
+        encadrantType: "académique et professionnel"
+      },
+      message: "Votre rapport a été validé par les deux encadrants."
+    });
+  }
 };
 
-/**
- * Ajout de commentaire sur le rapport.
- */
-exports.commenterRapport = async ({ rapportId, commentaire }) => {
-  const [[rapport]] = await db.execute("SELECT etudiantId FROM RapportStage WHERE id=?", [rapportId]);
-  const [[etudiant]] = await db.execute("SELECT email FROM Etudiant WHERE id=?", [rapport.etudiantId]);
+exports.commenterRapport = async (email, rapportId, commentaire) => {
+  await db.execute(
+    `INSERT INTO CommentaireRapport (rapportId, commentaire)
+     VALUES (?, ?)`, [rapportId, commentaire]);
 
-  await db.execute(`
-    INSERT INTO CommentaireRapport (rapportId, commentaire)
-    VALUES (?, ?)`, [rapportId, commentaire]);
+  const [[etudiant]] = await db.execute(
+    "SELECT E.prenom, E.nom, E.id FROM Etudiant E JOIN RapportStage R ON E.id = R.etudiantId WHERE R.id = ?",
+    [rapportId]
+  );
+  if (!etudiant) return;
 
-  await sendEmail({
-    to: etudiant.email,
-    subject: "Commentaire sur votre rapport",
-    templateName: "commentaire",
-    templateData: { commentaire }
-  });
-
-  await notificationService.notifyUser({
+  await notifyUser({
+    toId: etudiant.id,
     toRole: "Etudiant",
-    toId: rapport.etudiantId,
-    subject: "Commentaire reçu",
+    subject: "Nouveau commentaire reçu sur votre rapport",
     templateName: "commentaire",
-    templateData: { commentaire }
+    templateData: {
+      etudiantPrenom: etudiant.prenom,
+      encadrantPrenom: email.split('@')[0],
+      encadrantNom: '',
+      commentaire,
+      lienRapport: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/dashboard`
+    },
+    message: `Un encadrant a laissé un commentaire sur votre rapport.`
   });
+};
 
-  return { message: "Commentaire enregistré et notifié." };
+exports.getCommentairesRapport = async (rapportId) => {
+  const [rows] = await db.execute(
+    "SELECT * FROM CommentaireRapport WHERE rapportId = ? ORDER BY date_envoi DESC", [rapportId]);
+  return rows;
+};
+
+exports.getRapportsAValider = async (email, role) => {
+  const table = role === "EncadrantAcademique" ? "EncadrantAcademique" : "EncadrantProfessionnel";
+  const [[encadrant]] = await db.execute(`SELECT id FROM ${table} WHERE email = ?`, [email]);
+  if (!encadrant) throw new Error("Encadrant introuvable");
+
+  const [rows] = await db.execute(`
+    SELECT r.id, r.fichier, e.nom AS nomEtudiant, e.prenom AS prenomEtudiant
+    FROM RapportStage r
+    JOIN Stage s ON r.stageId = s.id
+    JOIN Etudiant e ON s.etudiantId = e.id
+    WHERE s.encadrant${role === "EncadrantAcademique" ? "Academique" : "Professionnel"}Id = ?`, [encadrant.id]);
+
+  return rows;
+};
+
+exports.getMesRapports = async (email) => {
+  const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email = ?", [email]);
+  if (!etudiant) throw new Error("Étudiant introuvable pour l'email " + email);
+
+  const [rows] = await db.execute(
+    `SELECT * FROM RapportStage WHERE etudiantId = ? ORDER BY dateSoumission DESC`,
+    [etudiant.id]
+  );
+  return rows;
 };

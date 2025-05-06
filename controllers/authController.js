@@ -1,4 +1,3 @@
-
 const { ethers } = require("ethers");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -8,149 +7,251 @@ const { genererIdentifiantActeur } = require("../utils/identifiantUtils");
 const AuthAbi = require("../abis/Auth.json");
 require("dotenv").config();
 
-const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
+const provider = new ethers.providers.JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL);
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-const authAddress = process.env.AUTH_CONTRACT_ADDRESS;
-const authContract = new ethers.Contract(authAddress, AuthAbi.abi, signer);
+const authContract = new ethers.Contract(
+  process.env.AUTH_CONTRACT_ADDRESS,
+  AuthAbi.abi,
+  signer
+);
 
 console.log("AuthController chargé");
 
+// 1) Envoi du mail de confirmation
 exports.register = async (req, res) => {
   try {
-    const { prenom, nom, email, role, signature, universiteId, entrepriseId, structureType } = req.body;
+    const {
+      prenom, nom, email, role, signature,
+      universiteId, entrepriseId, structureType: rawType
+    } = req.body;
 
+    // Détermination du type de structure selon le rôle
+    let structureType;
+    if (["Etudiant", "EncadrantAcademique", "ResponsableUniversite"].includes(role)) {
+      structureType = "universite";
+    } else if (["EncadrantProfessionnel", "ResponsableEntreprise"].includes(role)) {
+      structureType = "entreprise";
+    } else if (role === "TierDebloqueur") {
+      if (!rawType) {
+        return res.status(400).json({ error: "structureType requis pour TierDebloqueur." });
+      }
+      structureType = rawType.toLowerCase();
+      if (!["universite", "entreprise"].includes(structureType)) {
+        return res.status(400).json({ error: "structureType invalide." });
+      }
+    } else {
+      return res.status(400).json({ error: `Rôle inconnu : ${role}` });
+    }
+
+    // Vérification signature et unicité en base
     const message = `Inscription:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
-
-    // Vérifier si l'adresse existe déjà
     const tables = [
       "Etudiant", "EncadrantAcademique", "EncadrantProfessionnel",
       "ResponsableUniversitaire", "ResponsableEntreprise", "TierDebloqueur"
     ];
-    for (const table of tables) {
-      const [rows] = await db.execute(`SELECT id FROM ${table} WHERE ethAddress = ?`, [recoveredAddr]);
-      if (rows.length > 0) {
-        return res.status(400).json({ error: "Cette adresse Ethereum est déjà utilisée." });
+    for (const t of tables) {
+      const [rows] = await db.execute(
+        `SELECT id FROM ${t} WHERE ethAddress = ?`,
+        [recoveredAddr]
+      );
+      if (rows.length) {
+        return res.status(400).json({ error: "Adresse Ethereum déjà utilisée." });
       }
     }
 
-    const roleOnChain = await authContract.getRole(recoveredAddr);
-    if (roleOnChain.toString() !== "0") {
+    // Unicité on-chain
+    const onChainRole = await authContract.getRole(recoveredAddr);
+    if (onChainRole.toString() !== "0") {
       return res.status(400).json({ error: "Déjà enregistré sur la blockchain." });
     }
 
+    // Création du token
     const token = crypto.randomBytes(24).toString("hex");
+    let uniId = null, entId = null;
+    if (structureType === "universite") {
+      if (!universiteId) {
+        return res.status(400).json({ error: "universiteId requis." });
+      }
+      uniId = isNaN(universiteId)
+        ? (await db.execute("SELECT id FROM Universite WHERE nom = ?", [universiteId]))[0][0]?.id
+        : +universiteId;
+    }
+    if (structureType === "entreprise") {
+      if (!entrepriseId) {
+        return res.status(400).json({ error: "entrepriseId requis." });
+      }
+      entId = isNaN(entrepriseId)
+        ? (await db.execute("SELECT id FROM Entreprise WHERE nom = ?", [entrepriseId]))[0][0]?.id
+        : +entrepriseId;
+    }
 
     await db.execute(
-      `INSERT INTO TokenVerif (prenom, nom, email, role, signature, token, universiteId, entrepriseId, structureType)
+      `INSERT INTO TokenVerif
+         (prenom, nom, email, role, signature, token, universiteId, entrepriseId, structureType)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [prenom, nom, email, role, signature, token, universiteId || null, entrepriseId || null, structureType || null]
+      [prenom, nom, email, role, signature, token, uniId, entId, structureType]
     );
 
-    const lien = `http://localhost:3000/api/auth/verify/${token}`;
+    // Envoi du mail avec lien élégant
+    const linkUrl = `${process.env.BACKEND_URL}/api/auth/verify/${token}`;
     const html = `<h3>Bonjour ${prenom},</h3>
-                  <p>Merci pour votre inscription. Cliquez ici pour confirmer :</p>
-                  <a href="${lien}">Confirmer mon adresse</a>`;
-
+                  <p>Pour finaliser votre inscription, cliquez sur le lien ci-dessous :</p>
+                  <p><a href="${linkUrl}">Vérifier mon adresse e-mail</a></p>`;
     await sendEmail({ to: email, subject: "Confirmez votre inscription", html });
 
-    return res.json({ success: true, message: "Email de vérification envoyé." });
+    res.json({ success: true, message: "Email de vérification envoyé." });
   } catch (err) {
     console.error("register error:", err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
+// 2) Vérification du token + on-chain + insertion en base du token + on-chain + insertion en base
 exports.verifyEmailToken = async (req, res) => {
   try {
     const token = req.params.token;
-    const [rows] = await db.execute("SELECT * FROM TokenVerif WHERE token = ? AND utilisé = FALSE", [token]);
-    if (!rows.length) return res.status(400).send("Lien invalide ou déjà utilisé.");
+    const [tokens] = await db.execute(
+      "SELECT * FROM TokenVerif WHERE token = ? AND utilisé = FALSE", [token]
+    );
+    if (!tokens.length) {
+      return res.status(400).send("Lien invalide ou déjà utilisé.");
+    }
+    const rec = tokens[0];
+    const {
+      prenom, nom, email, role, signature,
+      universiteId, entrepriseId, structureType, id: tokenId
+    } = rec;
 
-    const { prenom, nom, email, role, signature, universiteId, entrepriseId, structureType } = rows[0];
+    // Vérif signature
     const message = `Inscription:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
 
-    const roleEnum = {
+    // Mapping rôle → enum
+    const mapEnum = {
       Etudiant: 1,
       EncadrantAcademique: 2,
       EncadrantProfessionnel: 3,
       ResponsableUniversite: 4,
       ResponsableEntreprise: 5,
       TierDebloqueur: 6
-    }[role];
-
-    const tx = await authContract.selfRegister(roleEnum);
-    await tx.wait();
-
-    let insertQuery = "";
-    let insertParams = [];
-
-    const identifiant = await genererIdentifiantActeur({ role, structureType, structureId: structureType === "entreprise" ? entrepriseId : universiteId });
-
-    if (role === "Etudiant") {
-      insertQuery = `INSERT INTO Etudiant (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
-    } else if (role === "EncadrantAcademique") {
-      insertQuery = `INSERT INTO EncadrantAcademique (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
-    } else if (role === "EncadrantProfessionnel") {
-      insertQuery = `INSERT INTO EncadrantProfessionnel (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, entrepriseId, recoveredAddr, role, identifiant];
-    } else if (role === "ResponsableUniversite") {
-      insertQuery = `INSERT INTO ResponsableUniversitaire (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
-    } else if (role === "ResponsableEntreprise") {
-      insertQuery = `INSERT INTO ResponsableEntreprise (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, entrepriseId, recoveredAddr, role, identifiant];
-    } else if (role === "TierDebloqueur") {
-      insertQuery = `INSERT INTO TierDebloqueur (prenom, nom, email, structureType, universiteId, entrepriseId, ethAddress, role, identifiant_unique)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-      insertParams = [prenom, nom, email, structureType, universiteId || null, entrepriseId || null, recoveredAddr, role, identifiant];
+    };
+    const roleEnum = mapEnum[role];
+    if (!roleEnum) {
+      throw new Error(`Rôle '${role}' non reconnu.`);
     }
 
-    await db.execute(insertQuery, insertParams);
-    await db.execute("UPDATE TokenVerif SET utilisé=TRUE WHERE token=?", [token]);
-    res.redirect("http://localhost:3001/login");
+    // selfRegister on-chain si nécessaire
+    try {
+      const existing = await authContract.getRole(recoveredAddr);
+      if (existing.toString() === "0") {
+        const tx = await authContract.selfRegister(roleEnum);
+        await tx.wait();
+      }
+    } catch (err) {
+      console.warn("On-chain registration bypassed:", err.reason || err);
+    }
+
+    // Génération identifiant
+    const structId = structureType === "entreprise" ? entrepriseId : universiteId;
+    const identifiant = await genererIdentifiantActeur({
+      role, structureType, structureId: structId
+    });
+
+    // Insertion en base selon rôle
+    let q, params;
+    switch (role) {
+      case "Etudiant":
+        q = `INSERT INTO Etudiant
+               (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        params = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
+        break;
+      case "EncadrantAcademique":
+        q = `INSERT INTO EncadrantAcademique
+               (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        params = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
+        break;
+      case "EncadrantProfessionnel":
+        q = `INSERT INTO EncadrantProfessionnel
+               (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        params = [prenom, nom, email, entrepriseId, recoveredAddr, role, identifiant];
+        break;
+      case "ResponsableUniversite":
+        q = `INSERT INTO ResponsableUniversitaire
+               (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        params = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
+        break;
+      case "ResponsableEntreprise":
+        q = `INSERT INTO ResponsableEntreprise
+               (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        params = [prenom, nom, email, entrepriseId, recoveredAddr, role, identifiant];
+        break;
+      case "TierDebloqueur":
+        q = `INSERT INTO TierDebloqueur
+               (prenom, nom, email, structureType, universiteId, entrepriseId, ethAddress, role, identifiant_unique)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        params = [
+          prenom, nom, email, structureType,
+          universiteId, entrepriseId, recoveredAddr, role, identifiant
+        ];
+        break;
+      default:
+        throw new Error(`Insertion non gérée pour le rôle ${role}`);
+    }
+    await db.execute(q, params);
+
+    // Marquer token utilisé
+    await db.execute(
+      "UPDATE TokenVerif SET utilisé = TRUE WHERE id = ?",
+      [tokenId]
+    );
+
+    // Redirection front-end
+    return res.redirect(`${process.env.FRONTEND_URL}/login`);
   } catch (err) {
     console.error("verifyEmailToken error:", err);
-    res.status(500).send("Erreur lors de la vérification.");
+    return res.status(500).json({ error: err.message });
   }
 };
 
+// 3) Connexion (signature → JWT)
 exports.login = async (req, res) => {
   try {
     const { email, role, signature } = req.body;
     const message = `Connexion:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
 
-    const table = role === "Etudiant" ? "Etudiant" :
-                  role === "EncadrantAcademique" ? "EncadrantAcademique" :
-                  role === "EncadrantProfessionnel" ? "EncadrantProfessionnel" :
-                  role === "ResponsableUniversite" ? "ResponsableUniversitaire" :
-                  role === "ResponsableEntreprise" ? "ResponsableEntreprise" :
-                  role === "TierDebloqueur" ? "TierDebloqueur" : null;
-    if (!table) return res.status(400).json({ error: "Rôle invalide" });
+    const mapTable = {
+      Etudiant: "Etudiant",
+      EncadrantAcademique: "EncadrantAcademique",
+      EncadrantProfessionnel: "EncadrantProfessionnel",
+      ResponsableUniversite: "ResponsableUniversitaire",
+      ResponsableEntreprise: "ResponsableEntreprise",
+      TierDebloqueur: "TierDebloqueur"
+    };    
+    const tbl = mapTable[role];
+    if (!tbl) return res.status(400).json({ error: "Rôle invalide." });
 
-    const [rows] = await db.execute(`SELECT ethAddress FROM ${table} WHERE email=? AND role=?`, [email, role]);
-    if (!rows.length) return res.status(404).json({ error: "Utilisateur introuvable" });
+    const [rows] = await db.execute(
+      `SELECT ethAddress FROM ${tbl} WHERE email = ? AND role = ?`,
+      [email, role]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Utilisateur introuvable." });
 
-    const dbAddress = rows[0].ethAddress.toLowerCase();
-    if (dbAddress !== recoveredAddr.toLowerCase()) {
-      return res.status(401).json({ error: "Signature invalide" });
+    if (rows[0].ethAddress.toLowerCase() !== recoveredAddr.toLowerCase()) {
+      return res.status(401).json({ error: "Signature invalide." });
     }
 
     const token = jwt.sign(
-      { email, role, ethAddress: dbAddress },
+      { email, role, ethAddress: rows[0].ethAddress },
       process.env.JWT_SECRET,
-      { expiresIn: "2h" }
+      { expiresIn: process.env.JWT_EXPIRES_IN }
     );
-
     return res.json({ success: true, token, role });
   } catch (err) {
     console.error("login error:", err);
@@ -158,14 +259,18 @@ exports.login = async (req, res) => {
   }
 };
 
+// 4) Récupération structureType pour TierDebloqueur
 exports.getTierInfo = async (req, res) => {
   try {
     const { email } = req.user;
-    const [[tier]] = await db.execute("SELECT structureType FROM TierDebloqueur WHERE email = ?", [email]);
-    if (!tier) return res.status(404).json({ error: "Tier non trouvé" });
-    res.json({ success: true, structureType: tier.structureType });
+    const [[tier]] = await db.execute(
+      "SELECT structureType FROM TierDebloqueur WHERE email = ?",
+      [email]
+    );
+    if (!tier) return res.status(404).json({ error: "Tier non trouvé." });
+    return res.json({ success: true, structureType: tier.structureType });
   } catch (err) {
     console.error("getTierInfo error:", err);
-    res.status(500).json({ error: "Erreur serveur" });
+    return res.status(500).json({ error: "Erreur serveur." });
   }
 };

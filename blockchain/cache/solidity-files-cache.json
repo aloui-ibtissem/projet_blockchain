@@ -710,10 +710,10 @@
         "Auth"
       ]
     },
-    "C:\\Users\\PC\\projet_blockchain\\blockchain\\contracts\\Attestation.sol": {
-      "lastModificationDate": 1746362328895,
-      "contentHash": "215a322c1750426d5a1b2820d02c2550",
-      "sourceName": "contracts/Attestation.sol",
+    "C:\\Users\\PC\\projet_blockchain\\blockchain\\contracts\\AttestationContract.sol": {
+      "lastModificationDate": 1746449370326,
+      "contentHash": "9a1270e7dd9eb495759ef4e673eab997",
+      "sourceName": "contracts/AttestationContract.sol",
       "solcConfig": {
         "version": "0.8.28",
         "settings": {
@@ -743,7 +743,7 @@
         "^0.8.28"
       ],
       "artifacts": [
-        "Attestation"
+        "AttestationContract"
       ]
     }
   }

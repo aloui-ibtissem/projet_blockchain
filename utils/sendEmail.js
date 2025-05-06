@@ -1,4 +1,4 @@
-// 📁 utils/sendEmail.js
+//  utils/sendEmail.js
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 

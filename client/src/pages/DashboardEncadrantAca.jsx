@@ -1,154 +1,262 @@
-// DashboardEncadrantAca.jsx
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
-import axios from "axios";
-import "./DashboardEncadrantAca.css";
+import React, { useEffect, useState } from 'react';
+import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Table,
+  Button,
+  Alert,
+  Spinner,
+  Form
+} from 'react-bootstrap';
+import './DashboardEncadrantAca.css';
+
+const API_URL = 'http://localhost:3000';
 
 function DashboardEncadrantAca() {
-  const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
   const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
 
   const [propositions, setPropositions] = useState([]);
-  const [encadrements, setEncadrements] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [rapports, setRapports] = useState([]);
-  const [commentaire, setCommentaire] = useState("");
-  const [selectedRapport, setSelectedRapport] = useState(null);
-  const [message, setMessage] = useState("");
+  const [commentaire, setCommentaire] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token || role !== "EncadrantAcademique") return navigate("/login");
-
+    if (!token || role !== 'EncadrantAcademique') {
+      navigate('/login');
+      return;
+    }
     const decoded = jwtDecode(token);
     if (decoded.exp < Date.now() / 1000) {
       localStorage.clear();
-      return navigate("/login");
+      navigate('/login');
+      return;
     }
-
-    fetchPropositions();
-    fetchEncadrements();
-    fetchNotifications();
-    fetchRapports();
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchPropositions = async () => {
-    const res = await axios.get("http://localhost:3000/api/stage/propositions/academique", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setPropositions(res.data);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [propRes, notifRes, rapRes] = await Promise.all([
+        axios.get(`${API_URL}/api/stage/propositions/aca`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_URL}/api/stage/notifications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_URL}/api/rapport/encadrant`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+      setPropositions(propRes.data);
+      setNotifications(notifRes.data);
+      setRapports(rapRes.data);
+    } catch (err) {
+      console.error(err);
+      setMessage('Erreur de chargement du dashboard.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const fetchEncadrements = async () => {
-    const res = await axios.get("http://localhost:3000/api/stage/encadrements/academique", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setEncadrements(res.data);
-  };
-
-  const fetchNotifications = async () => {
-    const res = await axios.get("http://localhost:3000/api/stage/notifications", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setNotifications(res.data);
-  };
-
-  const fetchRapports = async () => {
-    const res = await axios.get("http://localhost:3000/api/rapport/mes-rapports", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setRapports(res.data);
-  };
-
-  const commenterRapport = async () => {
-    if (!commentaire || !selectedRapport) return;
-    await axios.post("http://localhost:3000/api/rapport/commenter", {
-      rapportId: selectedRapport,
-      commentaire,
-    }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setMessage("Commentaire envoyé.");
-    setCommentaire("");
+  const commenterRapport = async (rapportId) => {
+    if (!commentaire.trim()) return;
+    try {
+      await axios.post(`${API_URL}/api/rapport/comment`, {
+        rapportId,
+        commentaire
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessage('Commentaire envoyé.');
+      setCommentaire('');
+      loadData();
+    } catch {
+      setMessage("Échec de l'envoi du commentaire.");
+    }
   };
 
   const validerRapport = async (rapportId) => {
-    await axios.post("http://localhost:3000/api/rapport/validate", {
-      rapportId
-    }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setMessage("Rapport validé.");
-    fetchRapports();
+    try {
+      await axios.post(`${API_URL}/api/rapport/validate`, {
+        rapportId
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessage('Rapport validé.');
+      loadData();
+    } catch {
+      setMessage('Échec de la validation.');
+    }
   };
 
   const handleDecision = async (id, action) => {
-    let commentaire = "";
-    if (action === "rejeter") commentaire = prompt("Motif du refus :") || "";
-
-    await axios.post("http://localhost:3000/api/stage/validate-sujet", {
-      sujetId: id,
-      action,
-      commentaire,
-    }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setMessage("Sujet traité.");
-    fetchPropositions();
+    try {
+      await axios.post(`${API_URL}/api/stage/valider`, {
+        sujetId: id,
+        action
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
+      loadData();
+    } catch {
+      setMessage("Erreur lors du traitement de la proposition.");
+    }
   };
 
+  if (loading) {
+    return (
+      <Container className="mt-5 text-center">
+        <Spinner animation="border" variant="primary" />
+      </Container>
+    );
+  }
+
   return (
-    <div className="dashboard-aca">
-      <h2>Encadrant Académique</h2>
-      {message && <div className="alert">{message}</div>}
+    <Container className="py-4">
+      <Row>
+        <Col>
+          <h2 className="text-center">Tableau de bord - Encadrant Académique</h2>
+          {message && <Alert variant="info">{message}</Alert>}
+        </Col>
+      </Row>
 
-      <section>
-        <h3>Notifications</h3>
-        <ul>
-          {notifications.map(n => (
-            <li key={n.id}>{n.message} - <small>{new Date(n.date_envoi).toLocaleDateString()}</small></li>
-          ))}
-        </ul>
-      </section>
+      <Row className="mb-4">
+        <Col md={4}>
+          <Card className="h-100 shadow-sm">
+            <Card.Header>Notifications</Card.Header>
+            <Card.Body style={{ maxHeight: 250, overflowY: 'auto' }}>
+              {notifications.length ? (
+                <ul className="list-unstyled mb-0">
+                  {notifications.map((n) => (
+                    <li key={n.id} className="mb-2">
+                      {n.message}
+                      <br />
+                      <small className="text-muted">
+                        {new Date(n.date_envoi).toLocaleString()}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted">Aucune notification</p>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
 
-      <section>
-        <h3>Propositions de Stage</h3>
-        {propositions.length === 0 ? <p>Aucune proposition.</p> : (
-          <ul className="proposition-list">
-            {propositions.map(p => (
-              <li key={p.id}>
-                <strong>{p.titre}</strong><br />
-                <em>{p.description}</em><br />
-                <span>{p.etudiantNomComplet}</span>
-                <div className="btn-group">
-                  <button onClick={() => handleDecision(p.id, "accepter")}>Accepter</button>
-                  <button onClick={() => handleDecision(p.id, "rejeter")}>Rejeter</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <Col md={8}>
+          <Card className="shadow-sm mb-4">
+            <Card.Header>Propositions de Stage</Card.Header>
+            <Card.Body>
+              {propositions.length === 0 ? (
+                <p className="text-muted">Aucune proposition en attente.</p>
+              ) : (
+                <Table striped bordered hover responsive>
+                  <thead>
+                    <tr>
+                      <th>Titre</th>
+                      <th>Dates</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {propositions.map((p) => (
+                      <tr key={p.id}>
+                        <td>{p.titre}</td>
+                        <td>
+                          Du {new Date(p.dateDebut).toLocaleDateString()} au{" "}
+                          {new Date(p.dateFin).toLocaleDateString()}
+                        </td>
+                        <td>
+                          <Button
+                            size="sm"
+                            variant="success"
+                            className="me-2"
+                            onClick={() => handleDecision(p.id, 'accepter')}
+                          >
+                            Accepter
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => handleDecision(p.id, 'rejeter')}
+                          >
+                            Rejeter
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </Card.Body>
+          </Card>
 
-      <section>
-        <h3>Rapports à Examiner</h3>
-        {rapports.length === 0 ? <p>Aucun rapport.</p> : (
-          <ul>
-            {rapports.map(r => (
-              <li key={r.id}>
-                <strong>{r.prenomEtudiant} {r.nomEtudiant}</strong> - {new Date(r.dateSoumission).toLocaleDateString()}
-                <a href={`http://localhost:3000${r.fichier}`} target="_blank" rel="noreferrer">Voir fichier</a>
-                <br />
-                <textarea placeholder="Commentaire" onChange={(e) => setCommentaire(e.target.value)} />
-                <button onClick={() => { setSelectedRapport(r.id); commenterRapport(); }}>Envoyer Commentaire</button>
-                <button onClick={() => validerRapport(r.id)}>Valider</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
+          <Card className="shadow-sm">
+            <Card.Header>Rapports à Valider</Card.Header>
+            <Card.Body>
+              {rapports.length === 0 ? (
+                <p className="text-muted">Aucun rapport à examiner.</p>
+              ) : (
+                rapports.map((r) => (
+                  <Card key={r.id} className="mb-3">
+                    <Card.Body>
+                      <strong>
+                        {r.prenomEtudiant} {r.nomEtudiant}
+                      </strong>
+                      <br />
+                      <a
+                        href={`${API_URL}${r.fichier}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Voir le rapport
+                      </a>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        placeholder="Votre commentaire"
+                        value={commentaire}
+                        className="mt-2"
+                        onChange={(e) => setCommentaire(e.target.value)}
+                      />
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="mt-2 me-2"
+                        onClick={() => commenterRapport(r.id)}
+                      >
+                        Commenter
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="success"
+                        className="mt-2"
+                        onClick={() => validerRapport(r.id)}
+                      >
+                        Valider
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                ))
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 }
 

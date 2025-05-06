@@ -1,27 +1,64 @@
+// services/stageService.js
 const db = require("../config/db");
 const { genererIdentifiantStage } = require("../utils/identifiantUtils");
-const sendEmail = require("../utils/sendEmail");
 const notificationService = require("./notificationService");
 
 exports.proposerSujet = async ({ sujet, objectifs, dateDebut, dateFin, encadrantAcademique, encadrantProfessionnel, etudiantEmail }) => {
-  const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email=?", [etudiantEmail]);
-  const [[aca]] = await db.execute("SELECT id FROM EncadrantAcademique WHERE email=?", [encadrantAcademique]);
-  const [[pro]] = await db.execute("SELECT id FROM EncadrantProfessionnel WHERE email=?", [encadrantProfessionnel]);
-
-  if (!etudiant || !aca || !pro) throw new Error("Identifiants invalides.");
+  const [[etudiant]] = await db.execute("SELECT id, prenom, nom, universiteId FROM Etudiant WHERE email=?", [etudiantEmail]);
+  const [[aca]] = await db.execute("SELECT id, prenom, nom, email FROM EncadrantAcademique WHERE email=?", [encadrantAcademique]);
+  const [[pro]] = await db.execute("SELECT id, prenom, nom, email, entrepriseId FROM EncadrantProfessionnel WHERE email=?", [encadrantProfessionnel]);
+  const [[entreprise]] = await db.execute("SELECT nom FROM Entreprise WHERE id=?", [pro.entrepriseId]);
+  const [[universite]] = await db.execute("SELECT nom FROM Universite WHERE id=?", [etudiant.universiteId]);
 
   const [result] = await db.execute(`
     INSERT INTO SujetStage (titre, description, dateDebut, dateFin, encadrantAcademiqueId, encadrantProfessionnelId, etudiantId, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, 'en attente')
   `, [sujet, objectifs, dateDebut, dateFin, aca.id, pro.id, etudiant.id]);
 
-  const sujetId = result.insertId;
+  // NOTIFY ACA
+  await notificationService.notifyUser({
+    toId: aca.id,
+    toRole: "EncadrantAcademique",
+    subject: "Nouvelle proposition de stage",
+    templateName: "stage_proposed",
+    templateData: {
+      encadrantPrenom: aca.prenom,
+      encadrantNom: aca.nom,
+      etudiantPrenom: etudiant.prenom,
+      etudiantNom: etudiant.nom,
+      universite: universite.nom,
+      entreprise: entreprise.nom,
+      sujet,
+      description: objectifs,
+      dateDebut,
+      dateFin
+    },
+    message: "Un nouvel étudiant vous propose un sujet de stage."
+  });
 
-  // Notifications et mails
-  await notificationService.notifyUser(aca.id, "encadrant_academique", `Nouvelle proposition de stage à valider.`, encadrantAcademique);
-  await notificationService.notifyUser(pro.id, "encadrant_professionnel", `Nouvelle proposition de stage à valider.`, encadrantProfessionnel);
+  // NOTIFY PRO
+  await notificationService.notifyUser({
+    toId: pro.id,
+    toRole: "EncadrantProfessionnel",
+    subject: "Nouvelle proposition de stage",
+    templateName: "stage_proposed",
+    templateData: {
+      encadrantPrenom: pro.prenom,
+      encadrantNom: pro.nom,
+      etudiantPrenom: etudiant.prenom,
+      etudiantNom: etudiant.nom,
+      universite: universite.nom,
+      entreprise: entreprise.nom,
+      sujet,
+      description: objectifs,
+      dateDebut,
+      dateFin
+    },
+    message: "Un nouvel étudiant vous propose un sujet de stage."
+  });
 };
 
+  
 exports.validerOuRejeterSujet = async ({ sujetId, action, commentaire, email, role }) => {
   const column = role === "EncadrantAcademique" ? "aca_validé" : "pro_validé";
   const refusCol = role === "EncadrantAcademique" ? "aca_refusé" : "pro_refusé";
@@ -34,16 +71,13 @@ exports.validerOuRejeterSujet = async ({ sujetId, action, commentaire, email, ro
   }
 
   const [[sujet]] = await db.execute("SELECT * FROM SujetStage WHERE id=?", [sujetId]);
-
   if (sujet.aca_validé && sujet.pro_validé) {
     await exports.creerStageDepuisSujet(sujet);
   }
-
-  await db.execute(`INSERT INTO CommentaireSujet (sujetId, commentaire, auteurEmail, date) VALUES (?, ?, ?, NOW())`, [sujetId, commentaire || "", email]);
 };
 
 exports.creerStageDepuisSujet = async (sujet) => {
-  const [[etudiant]] = await db.execute("SELECT universiteId FROM Etudiant WHERE id=?", [sujet.etudiantId]);
+  const [[etudiant]] = await db.execute("SELECT universiteId, email FROM Etudiant WHERE id=?", [sujet.etudiantId]);
   const [[pro]] = await db.execute("SELECT entrepriseId FROM EncadrantProfessionnel WHERE id=?", [sujet.encadrantProfessionnelId]);
 
   const identifiant = await genererIdentifiantStage(pro.entrepriseId, etudiant.universiteId);
@@ -53,42 +87,56 @@ exports.creerStageDepuisSujet = async (sujet) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, 10, ?)
   `, [sujet.etudiantId, sujet.encadrantAcademiqueId, sujet.encadrantProfessionnelId, pro.entrepriseId, sujet.titre, sujet.dateDebut, sujet.dateFin, identifiant]);
 
-  const stageId = result.insertId;
-  await db.execute("UPDATE SujetStage SET status='validé', stageId=? WHERE id=?", [stageId, sujet.id]);
+  await db.execute("UPDATE SujetStage SET status='validé', stageId=? WHERE id=?", [result.insertId, sujet.id]);
 
-  // Notification à l'étudiant
-  const [[etudiantMail]] = await db.execute("SELECT email FROM Etudiant WHERE id=?", [sujet.etudiantId]);
-  await notificationService.notifyUser(sujet.etudiantId, "etudiant", `Votre stage a été validé et créé. ID : ${identifiant}`, etudiantMail.email);
+  await notificationService.notifyUser({
+    toId: sujet.etudiantId,
+    toRole: "Etudiant",
+    subject: `Votre stage a été validé et créé : ${identifiant}`,
+    templateName: "stage_validated",
+    templateData: {
+      identifiant,
+      titre: sujet.titre,
+      dateDebut: sujet.dateDebut,
+      dateFin: sujet.dateFin
+    }
+  });
 };
 
 exports.getPropositionsEncadrant = async (type, email) => {
   const table = type === "academique" ? "EncadrantAcademique" : "EncadrantProfessionnel";
-  const [rows] = await db.execute(`SELECT id FROM ${table} WHERE email = ?`, [email]);
-  const encadrantId = rows[0].id;
-
   const col = type === "academique" ? "encadrantAcademiqueId" : "encadrantProfessionnelId";
 
-  const [propositions] = await db.execute(`
-    SELECT * FROM SujetStage WHERE ${col} = ? AND status = 'en attente'
+  const [[encadrant]] = await db.execute(`SELECT id FROM ${table} WHERE email = ?`, [email]);
+  const encadrantId = encadrant.id;
+
+  const [rows] = await db.execute(`
+    SELECT s.id, s.titre, s.description, s.dateDebut, s.dateFin,
+           e.prenom AS etudiantPrenom, e.nom AS etudiantNom
+    FROM SujetStage s
+    JOIN Etudiant e ON s.etudiantId = e.id
+    WHERE s.${col} = ? AND s.status = 'en attente'
   `, [encadrantId]);
 
-  return propositions;
+  return rows.map(r => ({
+    ...r,
+    etudiantNomComplet: `${r.etudiantPrenom} ${r.etudiantNom}`
+  }));
 };
 
 exports.getEncadrements = async (type, email) => {
   const table = type === "academique" ? "EncadrantAcademique" : "EncadrantProfessionnel";
-  const [rows] = await db.execute(`SELECT id FROM ${table} WHERE email = ?`, [email]);
-  const encadrantId = rows[0].id;
-
   const col = type === "academique" ? "encadrantAcademiqueId" : "encadrantProfessionnelId";
+  const [[user]] = await db.execute(`SELECT id FROM ${table} WHERE email = ?`, [email]);
 
-  const [stages] = await db.execute(`
-    SELECT S.*, E.nom AS entrepriseNom FROM Stage S
+  const [rows] = await db.execute(`
+    SELECT S.*, E.nom AS entrepriseNom
+    FROM Stage S
     JOIN Entreprise E ON S.entrepriseId = E.id
     WHERE S.${col} = ?
-  `, [encadrantId]);
+  `, [user.id]);
 
-  return stages;
+  return rows;
 };
 
 exports.getCurrentStageByEmail = async (email) => {
