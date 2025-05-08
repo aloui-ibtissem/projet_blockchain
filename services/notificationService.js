@@ -4,24 +4,28 @@ const db = require("../config/db");
 const sendEmail = require("../utils/sendEmail");
 
 /**
- * Rendu HTML depuis un template
+ * Charge et remplace dynamiquement les variables dans un template HTML
  */
 const renderTemplate = (templateName, data) => {
   const templatePath = path.join(__dirname, "../templates/emails", `${templateName}.html`);
-  if (!fs.existsSync(templatePath)) {
-    console.error(" Fichier de template introuvable :", templatePath);
-    throw new Error(`Template introuvable: ${templateName}`);
-  }
+  if (!fs.existsSync(templatePath)) throw new Error(`Template introuvable : ${templateName}`);
 
   let html = fs.readFileSync(templatePath, "utf-8");
   for (const key in data) {
-    html = html.replaceAll(`{{${key}}}`, data[key]);
+    html = html.replaceAll(`{{${key}}}`, data[key] || "");
   }
   return html;
 };
 
 /**
- * Envoi de notification + email
+ * Envoie une notification en base de données + email HTML
+ * @param {object} options
+ * @param {number} options.toId - ID du destinataire
+ * @param {string} options.toRole - Rôle exact (Etudiant, EncadrantAcademique, etc.)
+ * @param {string} options.subject - Sujet de l'email
+ * @param {string} options.templateName - Nom du fichier HTML (sans .html)
+ * @param {object} options.templateData - Données à injecter dans le template
+ * @param {string} [options.message] - Message visible dans le dashboard
  */
 exports.notifyUser = async ({
   toId,
@@ -32,56 +36,46 @@ exports.notifyUser = async ({
   message = null
 }) => {
   try {
-    // Map rôle -> nom de table de notifications (dashboard)
     const tableMap = {
       Etudiant: "etudiant",
       EncadrantAcademique: "encadrant_academique",
       EncadrantProfessionnel: "encadrant_professionnel",
       ResponsableUniversitaire: "universite",
       ResponsableEntreprise: "entreprise",
-      TierDebloqueur: "encadrant_academique" // ou "universite" si besoin
+      TierDebloqueur: "tier_debloqueur"
     };
 
-    const notificationType = tableMap[toRole];
-    if (!notificationType) throw new Error(`Rôle non supporté : ${toRole}`);
+    const table = tableMap[toRole];
+    if (!table) throw new Error(`Rôle non supporté : ${toRole}`);
 
-    // Récupération email utilisateur
-    const [[user]] = await db.execute(
-      `SELECT prenom, nom, email FROM ${toRole} WHERE id = ?`,
-      [toId]
-    );
-    if (!user || !user.email) throw new Error("Email introuvable pour l'utilisateur ciblé.");
+    // Récupérer le destinataire (nom, prénom, email)
+    const [[dest]] = await db.execute(`SELECT prenom, nom, email FROM ${toRole} WHERE id = ?`, [toId]);
+    if (!dest || !dest.email) throw new Error("Email destinataire introuvable");
 
-    //  Notification dashboard (base de données)
-    await db.execute(
-      `INSERT INTO notifications (destinataire_id, destinataire_type, message)
-       VALUES (?, ?, ?)`,
-      [toId, notificationType, message || subject]
+    // Enregistrement de la notification en base
+    await db.execute(`
+      INSERT INTO notifications (destinataire_id, destinataire_type, message)
+      VALUES (?, ?, ?)`,
+      [toId, table, message || subject]
     );
 
-    //  Envoi email si template HTML fourni
+    // Envoi email si un template est fourni
     if (templateName) {
-      try {
-        const fullTemplateData = {
-          ...templateData,
-          encadrantPrenom: user.prenom || "",
-          encadrantNom: user.nom || ""
-        };
+      const html = renderTemplate(templateName, {
+        ...templateData,
+        destinatairePrenom: dest.prenom,
+        destinataireNom: dest.nom
+      });
 
-        const html = renderTemplate(templateName, fullTemplateData);
+      await sendEmail({
+        to: dest.email,
+        subject,
+        html
+      });
 
-        await sendEmail({
-          to: user.email,
-          subject,
-          html
-        });
-
-        console.log(` Email envoyé à ${user.email} | Sujet : ${subject}`);
-      } catch (emailErr) {
-        console.error(` Échec du rendu ou envoi email à ${user.email}:`, emailErr.message);
-      }
+      console.log(` Email envoyé à ${dest.email} (${toRole})`);
     }
   } catch (err) {
-    console.error(" Erreur notificationService.notifyUser:", err.message);
+    console.error(" Erreur dans notifyUser:", err.message);
   }
 };

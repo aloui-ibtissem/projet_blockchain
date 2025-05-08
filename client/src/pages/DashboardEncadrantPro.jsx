@@ -42,14 +42,13 @@ function DashboardEncadrantPro() {
     }
     fetchPropositions();
     fetchNotifications();
-    fetchRaports();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchRapports();    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPropositions = async () => {
     try {
       const res = await axios.get(
-        `${API_URL}/api/stage/propositions/pro`,
+        `${API_URL}/api/stage/propositions`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setPropositions(res.data);
@@ -70,17 +69,17 @@ function DashboardEncadrantPro() {
     }
   };
 
-  const fetchRaports = async () => {
+  const fetchRapports = async () => {
     try {
-      const res = await axios.get(
-        `${API_URL}/api/rapport/mes-rapports`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.get(`${API_URL}/api/rapport/encadrant`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setRapports(res.data);
-    } catch {
-      setMessage('Erreur chargement rapports.');
+    } catch (err) {
+      console.error("Erreur récupération rapports à valider :", err);
     }
   };
+  
 
   const commenterRapport = async id => {
     if (!commentaire.trim()) {
@@ -95,7 +94,7 @@ function DashboardEncadrantPro() {
       );
       setMessage('Commentaire envoyé.');
       setCommentaire('');
-      fetchRaports();
+      fetchRapports();
     } catch {
       setMessage("Erreur envoi commentaire.");
     }
@@ -104,12 +103,12 @@ function DashboardEncadrantPro() {
   const validerRaport = async id => {
     try {
       await axios.post(
-        `${API_URL}/api/rapport/validate`,
+        `${API_URL}/api/rapport/valider`,
         { rapportId: id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessage('Rapport validé.');
-      fetchRaports();
+      fetchRapports();
     } catch {
       setMessage('Erreur validation.');
     }
@@ -237,12 +236,13 @@ function DashboardEncadrantPro() {
                       </strong>{' '}
                       –{' '}
                       <a
-                        href={`${API_URL}${r.fichier}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Voir le rapport
-                      </a>
+href={`${API_URL}/uploads/${r.fichier}`}
+target="_blank"
+  rel="noreferrer"
+>
+  Voir le rapport
+</a>
+
                       <Form.Control
                         as="textarea"
                         rows={2}

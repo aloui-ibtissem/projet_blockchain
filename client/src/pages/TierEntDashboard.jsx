@@ -62,7 +62,7 @@ function TierEntDashboard() {
   const validerRapport = async id => {
     try {
       await axios.post(
-        `${API_URL}/api/rapport/valider-par-tier`,
+        `${API_URL}/api/rapport/valider-tier`,
         { rapportId: id },
         { headers: { Authorization: `Bearer ${token}` } }
       );

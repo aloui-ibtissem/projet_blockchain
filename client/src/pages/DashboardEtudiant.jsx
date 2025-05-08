@@ -1,4 +1,3 @@
-// src/pages/DashboardEtudiant.jsx
 import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
@@ -48,11 +47,10 @@ function DashboardEtudiant() {
       return navigate('/login');
     }
     loadInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadInitialData = async () => {
-    await Promise.all([fetchStage(), fetchNotifications()]);
+    await Promise.all([fetchStage(), fetchNotifications(), fetchMesRapports()]);
     setLoading(false);
   };
 
@@ -80,7 +78,7 @@ function DashboardEtudiant() {
     formData.append('fichier', rapport);
     try {
       await axios.post(
-        `${API_URL}/api/rapport/submit`,
+        `${API_URL}/api/rapport/soumettre`,
         formData,
         {
           headers: {
@@ -95,6 +93,17 @@ function DashboardEtudiant() {
       setMessage('Erreur : ' + (err.response?.data?.error || err.message));
     }
   };
+  const fetchMesRapports = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/rapport/mes-rapports`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Optionnel : mettre les rapports dans un state si besoin
+    } catch (err) {
+      console.error("Erreur chargement des rapports étudiant :", err);
+    }
+  };
+  
 
   const fetchAttestation = async () => {
     try {
@@ -195,30 +204,12 @@ function DashboardEtudiant() {
         <Card className="mb-4 shadow-sm">
           <Card.Header>Stage Actuel</Card.Header>
           <Card.Body>
-            <p>
-              <strong>Identifiant :</strong> {currentStage.identifiant_unique}
-            </p>
-            <p>
-              <strong>Titre :</strong> {currentStage.titre}
-            </p>
-            <p>
-              <strong>Entreprise :</strong> {currentStage.entreprise}
-            </p>
-            <p>
-              <strong>Période :</strong>{' '}
-              {new Date(currentStage.dateDebut).toLocaleDateString()} →{' '}
-              {new Date(currentStage.dateFin).toLocaleDateString()}
-            </p>
-            <p>
-              <strong>Encadrant Académique :</strong>{' '}
-              {currentStage.acaPrenom} {currentStage.acaNom} (
-              {currentStage.acaEmail})
-            </p>
-            <p>
-              <strong>Encadrant Professionnel :</strong>{' '}
-              {currentStage.proPrenom} {currentStage.proNom} (
-              {currentStage.proEmail})
-            </p>
+            <p><strong>Identifiant :</strong> {currentStage.identifiant_unique}</p>
+            <p><strong>Titre :</strong> {currentStage.titre}</p>
+            <p><strong>Entreprise :</strong> {currentStage.entreprise}</p>
+            <p><strong>Période :</strong> {new Date(currentStage.dateDebut).toLocaleDateString()} → {new Date(currentStage.dateFin).toLocaleDateString()}</p>
+            <p><strong>Encadrant Académique :</strong> {currentStage.acaPrenom} {currentStage.acaNom} (<strong>{currentStage.acaEmail}</strong>)</p>
+            <p><strong>Encadrant Professionnel :</strong> {currentStage.proPrenom} {currentStage.proNom} (<strong>{currentStage.proEmail}</strong>)</p>
           </Card.Body>
         </Card>
       )}
@@ -291,6 +282,15 @@ function DashboardEtudiant() {
       <Card className="mb-4 shadow-sm">
         <Card.Header>Soumettre le Rapport</Card.Header>
         <Card.Body>
+          {currentStage && (
+            <>
+              <p>
+                <strong>Destinataires :</strong><br />
+                {currentStage.acaPrenom} {currentStage.acaNom} ({currentStage.acaEmail})<br />
+                {currentStage.proPrenom} {currentStage.proNom} ({currentStage.proEmail})
+              </p>
+            </>
+          )}
           <Form.Group className="mb-2">
             <Form.Control
               type="file"
@@ -310,10 +310,7 @@ function DashboardEtudiant() {
             <ul className="mb-0">
               {commentaires.map((c, i) => (
                 <li key={i}>
-                  <strong>
-                    {new Date(c.date_envoi).toLocaleString()}:
-                  </strong>{' '}
-                  {c.commentaire}
+                  <strong>{new Date(c.date_envoi).toLocaleString()}:</strong> {c.commentaire}
                 </li>
               ))}
             </ul>
@@ -332,11 +329,7 @@ function DashboardEtudiant() {
           </Button>
           {attestationUrl && (
             <p className="mt-2">
-              <a
-                href={attestationUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={attestationUrl} target="_blank" rel="noreferrer">
                 Voir l’attestation
               </a>
             </p>

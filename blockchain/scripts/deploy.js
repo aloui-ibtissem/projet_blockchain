@@ -1,25 +1,29 @@
 const hre = require("hardhat");
 const fs = require("fs");
+const path = require("path");
 
 async function main() {
-  // Déploiement du contrat Auth
   const Auth = await hre.ethers.getContractFactory("Auth");
   const auth = await Auth.deploy();
-
-  await auth.waitForDeployment(); // Compatible Ethers v6
+  await auth.waitForDeployment();
   const authAddress = await auth.getAddress();
 
-  console.log("Auth.sol déployé à l'adresse :", authAddress);
+  const Attestation = await hre.ethers.getContractFactory("AttestationContract");
+  const attestation = await Attestation.deploy();
+  await attestation.waitForDeployment();
+  const attestationAddress = await attestation.getAddress();
 
-  // Sauvegarde l'adresse dans un fichier
+  console.log("Déployé:");
+  console.log("Auth:", authAddress);
+  console.log("AttestationContract:", attestationAddress);
+
   fs.writeFileSync(
     "./contracts/addresses.json",
-    JSON.stringify({ auth: authAddress }, null, 2)
+    JSON.stringify({ auth: authAddress, attestation: attestationAddress }, null, 2)
   );
-  console.log("Adresse sauvegardée dans contracts/addresses.json");
 }
 
-main().catch((err) => {
-  console.error("Erreur lors du déploiement :", err);
+main().catch((error) => {
+  console.error(error);
   process.exitCode = 1;
 });

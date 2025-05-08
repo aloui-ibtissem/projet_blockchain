@@ -15,7 +15,7 @@ import {
 } from 'react-bootstrap';
 import './DashboardEncadrantAca.css';
 
-const API_URL = 'http://localhost:3000';
+const API_URL ="http://localhost:3000";
 
 function DashboardEncadrantAca() {
   const navigate = useNavigate();
@@ -41,6 +41,7 @@ function DashboardEncadrantAca() {
       return;
     }
     loadData();
+    fetchRapports();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -48,7 +49,7 @@ function DashboardEncadrantAca() {
     setLoading(true);
     try {
       const [propRes, notifRes, rapRes] = await Promise.all([
-        axios.get(`${API_URL}/api/stage/propositions/aca`, {
+        axios.get(`${API_URL}/api/stage/propositions`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${API_URL}/api/stage/notifications`, {
@@ -85,10 +86,21 @@ function DashboardEncadrantAca() {
       setMessage("Échec de l'envoi du commentaire.");
     }
   };
+  const fetchRapports = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/rapport/encadrant`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRapports(res.data);
+    } catch (err) {
+      console.error("Erreur récupération rapports à valider :", err);
+    }
+  };
+  
 
   const validerRapport = async (rapportId) => {
     try {
-      await axios.post(`${API_URL}/api/rapport/validate`, {
+      await axios.post(`${API_URL}/api/rapport/valider`, {
         rapportId
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -218,12 +230,13 @@ function DashboardEncadrantAca() {
                       </strong>
                       <br />
                       <a
-                        href={`${API_URL}${r.fichier}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Voir le rapport
-                      </a>
+href={`${API_URL}/uploads/${r.fichier}`}
+target="_blank"
+  rel="noreferrer"
+>
+  Voir le rapport
+</a>
+
                       <Form.Control
                         as="textarea"
                         rows={2}

@@ -8,7 +8,6 @@ if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath, { recursive: true });
 }
 
-// Type MIME autorisés
 const allowedTypes = [
   'application/pdf',
   'application/msword',
@@ -20,7 +19,9 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.originalname}`;
+    // Nettoyer les caractères spéciaux (y compris les accents)
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${originalName}`;
     cb(null, uniqueName);
   }
 });

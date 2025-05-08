@@ -3,31 +3,25 @@ const router = express.Router();
 const stageController = require("../controllers/stageController");
 const checkToken = require("../middlewares/checkToken");
 
-// Étudiant propose un sujet de stage
-router.post("/proposer", checkToken, stageController.proposeStage);
+//  Étudiant propose un sujet de stage
+router.post("/proposer", checkToken, stageController.proposerStage);
 
-// Encadrants valident ou refusent une proposition
-router.post("/valider", checkToken, stageController.validateSujet);
+//  Encadrant (académique ou professionnel) valide ou refuse
+router.post("/valider", checkToken, stageController.validerSujet);
 
-// Encadrant académique : voir les propositions
-router.get("/propositions/aca", checkToken, stageController.getPropositionsAca);
+//  Propositions à valider (pour ACA ou PRO selon rôle connecté)
+router.get("/propositions", checkToken, stageController.getPropositions);
 
-// Encadrant professionnel : voir les propositions
-router.get("/propositions/pro", checkToken, stageController.getPropositionsPro);
+//  Récupérer les stages encadrés
+router.get("/encadrements", checkToken, stageController.getEncadrements);
 
-// Encadrant académique : voir les stages encadrés
-router.get("/encadrements/aca", checkToken, stageController.getEncadrementsAca);
-
-// Encadrant professionnel : voir les stages encadrés
-router.get("/encadrements/pro", checkToken, stageController.getEncadrementsPro);
-
-// Étudiant : voir le stage en cours
+//  Récupérer le stage en cours d’un étudiant connecté
 router.get("/mon-stage", checkToken, stageController.getCurrentStage);
 
-// Notifications dashboard
-router.get("/notifications", checkToken, stageController.getNotifications);
+//  Rechercher un stage par identifiant unique (utile QR/public check)
+router.get("/rechercher/:identifiant", stageController.rechercherParIdentifiant);
 
-// Recherche de stage par identifiant (ex: pour les responsables ou affichage public)
-router.get("/recherche/:identifiant", checkToken, stageController.rechercherParIdentifiant);
+//  Notifications du tableau de bord
+router.get("/notifications", checkToken, stageController.getNotifications);
 
 module.exports = router;
