@@ -36,7 +36,8 @@
     "rate-limit": "^0.1.1",
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.2",
-    "web3": "^4.16.0"
+    "web3": "^4.16.0",
+    "web3.storage": "^4.5.5"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.2.3",

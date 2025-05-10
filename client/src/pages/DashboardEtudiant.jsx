@@ -3,15 +3,7 @@ import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-  Container,
-  Row,
-  Col,
-  Card,
-  Button,
-  Form,
-  Alert,
-  Collapse,
-  Spinner
+  Container, Row, Col, Card, Button, Form, Alert, Collapse, Spinner
 } from 'react-bootstrap';
 import './DashboardEtudiant.css';
 
@@ -31,6 +23,10 @@ function DashboardEtudiant() {
     encadrantProfessionnel: ''
   });
   const [rapport, setRapport] = useState(null);
+  const [cibles, setCibles] = useState({
+    EncadrantAcademique: false,
+    EncadrantProfessionnel: false
+  });
   const [message, setMessage] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
@@ -57,14 +53,15 @@ function DashboardEtudiant() {
   const handleChange = e =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
+  const handleCheckboxChange = e =>
+    setCibles({ ...cibles, [e.target.name]: e.target.checked });
+
   const proposeStage = async () => {
     try {
       setMessage('Envoi de la proposition...');
-      await axios.post(
-        `${API_URL}/api/stage/proposer`,
-        form,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.post(`${API_URL}/api/stage/proposer`, form, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setMessage('Proposition envoyée avec succès !');
       await fetchStage();
     } catch (err) {
@@ -74,43 +71,45 @@ function DashboardEtudiant() {
 
   const submitRapport = async () => {
     if (!rapport) return setMessage('Veuillez sélectionner un fichier.');
+
+    const destinataires = Object.keys(cibles).filter(k => cibles[k]);
+    if (destinataires.length === 0) {
+      return setMessage("Veuillez sélectionner au moins un encadrant.");
+    }
+
     const formData = new FormData();
     formData.append('fichier', rapport);
+    formData.append('cibles', JSON.stringify(destinataires));
+
     try {
-      await axios.post(
-        `${API_URL}/api/rapport/soumettre`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
+      await axios.post(`${API_URL}/api/rapport/soumettre`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
         }
-      );
+      });
       setMessage('Rapport soumis avec succès !');
       await fetchStage();
     } catch (err) {
       setMessage('Erreur : ' + (err.response?.data?.error || err.message));
     }
   };
+
   const fetchMesRapports = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/rapport/mes-rapports`, {
+      await axios.get(`${API_URL}/api/rapport/mes-rapports`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Optionnel : mettre les rapports dans un state si besoin
     } catch (err) {
       console.error("Erreur chargement des rapports étudiant :", err);
     }
   };
-  
 
   const fetchAttestation = async () => {
     try {
-      const res = await axios.get(
-        `${API_URL}/api/stage/attestation`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.get(`${API_URL}/api/stage/attestation`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setAttestationUrl(res.data.attestationUrl);
     } catch {
       setMessage('Aucune attestation disponible.');
@@ -119,10 +118,9 @@ function DashboardEtudiant() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await axios.get(
-        `${API_URL}/api/stage/notifications`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.get(`${API_URL}/api/stage/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setNotifications(res.data);
     } catch {
       console.error('Erreur chargement notifications');
@@ -131,10 +129,9 @@ function DashboardEtudiant() {
 
   const fetchStage = async () => {
     try {
-      const res = await axios.get(
-        `${API_URL}/api/stage/mon-stage`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.get(`${API_URL}/api/stage/mon-stage`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setCurrentStage(res.data);
       if (res.data?.rapportId) fetchCommentaires(res.data.rapportId);
     } catch {
@@ -144,10 +141,9 @@ function DashboardEtudiant() {
 
   const fetchCommentaires = async rapportId => {
     try {
-      const res = await axios.get(
-        `${API_URL}/api/rapport/commentaires/${rapportId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.get(`${API_URL}/api/rapport/commentaires/${rapportId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setCommentaires(res.data);
     } catch {
       setCommentaires([]);
@@ -282,15 +278,22 @@ function DashboardEtudiant() {
       <Card className="mb-4 shadow-sm">
         <Card.Header>Soumettre le Rapport</Card.Header>
         <Card.Body>
-          {currentStage && (
-            <>
-              <p>
-                <strong>Destinataires :</strong><br />
-                {currentStage.acaPrenom} {currentStage.acaNom} ({currentStage.acaEmail})<br />
-                {currentStage.proPrenom} {currentStage.proNom} ({currentStage.proEmail})
-              </p>
-            </>
-          )}
+          <Form.Group className="mb-2">
+            <Form.Check
+              type="checkbox"
+              label="Envoyer à l'encadrant académique"
+              name="EncadrantAcademique"
+              checked={cibles.EncadrantAcademique}
+              onChange={handleCheckboxChange}
+            />
+            <Form.Check
+              type="checkbox"
+              label="Envoyer à l'encadrant professionnel"
+              name="EncadrantProfessionnel"
+              checked={cibles.EncadrantProfessionnel}
+              onChange={handleCheckboxChange}
+            />
+          </Form.Group>
           <Form.Group className="mb-2">
             <Form.Control
               type="file"

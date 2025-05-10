@@ -3,11 +3,20 @@ const rapportService = require("../services/rapportService");
 //  Soumettre un rapport
 exports.submitRapport = async (req, res) => {
   try {
-    const { email } = req.user;
-    const fichier = req.file;
+    const email = req.user.email;
 
-    const result = await rapportService.soumettreRapport(email, fichier);
-    res.status(200).json({ message: "Rapport soumis avec succès." });
+    // Parser correctement les cibles envoyées depuis le frontend
+    let cibles = [];
+    if (req.body.cibles) {
+      try {
+        cibles = JSON.parse(req.body.cibles);
+      } catch (e) {
+        return res.status(400).json({ error: "Format de cibles invalide." });
+      }
+    }
+
+    const result = await rapportService.soumettreRapport(email, req.file, cibles);
+    res.status(200).json({ message: "Rapport soumis avec succès", result });
   } catch (err) {
     console.error("Erreur submitRapport:", err);
     res.status(500).json({ error: err.message });

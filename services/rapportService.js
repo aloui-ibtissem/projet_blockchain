@@ -1,9 +1,15 @@
+// services/rapportService.js
 const db = require("../config/db");
 const path = require("path");
 const notificationService = require("./notificationService");
-const { publishReportValidated, publishTimeoutValidated, publishDoubleValidation } = require("../utils/blockchainUtils");
+const {
+  validateAsEncadrant,
+  validateAsTier,
+  confirmDoubleValidation
+} = require("../utils/blockchainUtils");
 const { hashFile } = require("../utils/hashUtils");
 const { genererIdentifiantRapport } = require("../utils/identifiantUtils");
+
 const getUtilisateurNom = async (id, role) => {
   const table = {
     EncadrantAcademique: "EncadrantAcademique",
@@ -11,18 +17,16 @@ const getUtilisateurNom = async (id, role) => {
     ResponsableEntreprise: "ResponsableEntreprise",
     ResponsableUniversitaire: "ResponsableUniversitaire",
     Etudiant: "Etudiant",
-    TierDebloqueur: "TierDebloqueur"
+    TierDebloqueur: "TierDebloqueur",
   }[role];
-
   if (!table) throw new Error("Rôle non reconnu");
-
   const [[user]] = await db.execute(`SELECT prenom, nom FROM ${table} WHERE id = ?`, [id]);
   return user;
 };
 
-// Soumission ou mise à jour d’un rapport
-exports.soumettreRapport = async (email, fichier) => {
+exports.soumettreRapport = async (email, fichier, cibles = []) => {
   if (!fichier || !fichier.filename) throw new Error("Fichier non fourni.");
+  if (!Array.isArray(cibles) || cibles.length === 0) throw new Error("Aucun encadrant cible précisé.");
 
   const [[etudiant]] = await db.execute("SELECT id, prenom, nom FROM Etudiant WHERE email = ?", [email]);
   if (!etudiant) throw new Error("Étudiant introuvable.");
@@ -40,29 +44,31 @@ exports.soumettreRapport = async (email, fichier) => {
     identifiantRapport = existing[0].identifiantRapport;
     await db.execute(`
       UPDATE RapportStage 
-      SET fichier = ?, fichierHash = ?, dateSoumission = NOW(), statutAcademique = FALSE, statutProfessionnel = FALSE, attestationGeneree = FALSE
+      SET fichier = ?, fichierHash = ?, dateSoumission = NOW()
       WHERE stageId = ?
     `, [rapportPath, rapportHash, stage.id]);
   } else {
     identifiantRapport = await genererIdentifiantRapport(etudiant.id);
     await db.execute(`
-      INSERT INTO RapportStage (stageId, etudiantId, fichier, fichierHash, dateSoumission, statutAcademique, statutProfessionnel, attestationGeneree, identifiantRapport)
+      INSERT INTO RapportStage 
+      (stageId, etudiantId, fichier, fichierHash, dateSoumission, 
+       statutAcademique, statutProfessionnel, attestationGeneree, identifiantRapport)
       VALUES (?, ?, ?, ?, NOW(), FALSE, FALSE, FALSE, ?)
     `, [stage.id, etudiant.id, rapportPath, rapportHash, identifiantRapport]);
   }
 
-  const encadrants = [
-    { id: stage.encadrantAcademiqueId, role: "EncadrantAcademique" },
-    { id: stage.encadrantProfessionnelId, role: "EncadrantProfessionnel" }
-  ];
+  const allEncadrants = {
+    EncadrantAcademique: stage.encadrantAcademiqueId,
+    EncadrantProfessionnel: stage.encadrantProfessionnelId,
+  };
 
-  for (const enc of encadrants) {
-    const u = await getUtilisateurNom(enc.id, enc.role);
-
-    
+  for (const role of cibles) {
+    const id = allEncadrants[role];
+    if (!id) continue;
+    const u = await getUtilisateurNom(id, role);
     await notificationService.notifyUser({
-      toId: enc.id,
-      toRole: enc.role,
+      toId: id,
+      toRole: role,
       subject: "Rapport de stage soumis",
       templateName: "rapport_submitted",
       templateData: {
@@ -73,16 +79,18 @@ exports.soumettreRapport = async (email, fichier) => {
         identifiantStage: stage.identifiant_unique,
         identifiantRapport,
         dateSoumission: new Date().toLocaleDateString(),
-        lienRapport: `${process.env.BACKEND_URL || "http://localhost:3000"}/uploads/${rapportPath}`
+        lienRapport: `${process.env.BACKEND_URL || "http://localhost:3000"}/uploads/${rapportPath}`,
       },
-      message: `L'étudiant ${etudiant.prenom} ${etudiant.nom} a soumis son rapport de stage.`
+      message: `L'étudiant ${etudiant.prenom} ${etudiant.nom} a soumis son rapport de stage.`,
     });
   }
+
+  return { identifiantRapport };
 };
 
-// Validation du rapport (par encadrant)
 exports.validerRapport = async (email, role, rapportId) => {
   const champ = role === "EncadrantAcademique" ? "statutAcademique" : "statutProfessionnel";
+  const blockchainRole = role === "EncadrantAcademique" ? "ACA" : "PRO";
   const table = role;
 
   const [[encadrant]] = await db.execute(`SELECT id, prenom, nom FROM ${table} WHERE email = ?`, [email]);
@@ -90,74 +98,77 @@ exports.validerRapport = async (email, role, rapportId) => {
   const [[stage]] = await db.execute("SELECT * FROM Stage WHERE id = ?", [rapport.stageId]);
   const [[etudiant]] = await db.execute("SELECT prenom, nom FROM Etudiant WHERE id = ?", [rapport.etudiantId]);
 
-  await db.execute(`UPDATE RapportStage SET ${champ} = TRUE WHERE id = ?`, [rapportId]);
-
-// Recharger les nouveaux statuts
-const [[updatedRapport]] = await db.execute("SELECT statutAcademique, statutProfessionnel FROM RapportStage WHERE id = ?", [rapportId]);
-
-const isDoubleValidatedNow = updatedRapport.statutAcademique && updatedRapport.statutProfessionnel;
-
-
-await publishReportValidated(rapport.identifiantRapport, encadrant.id);
-
-await notificationService.notifyUser({
-  toId: rapport.etudiantId,
-  toRole: "Etudiant",
-  subject: "Rapport validé",
-  templateName: "rapport_validated",
-  templateData: {
-    etudiantPrenom: etudiant.prenom,
-    etudiantNom: etudiant.nom,
-    encadrantPrenom: encadrant.prenom,
-    encadrantNom: encadrant.nom,
-    encadrantType: role === "EncadrantAcademique" ? "encadrant académique" : "encadrant professionnel",
-    institution: stage.entrepriseId || "Structure"
-  },
-  message: "Votre rapport de stage a été validé."
-});
-
-if (isDoubleValidatedNow) {
-  await publishDoubleValidation(rapport.identifiantRapport);
-
-  await db.execute("UPDATE RapportStage SET attestationGeneree = FALSE WHERE id = ?", [rapportId]);
-
-  const [[responsable]] = await db.execute("SELECT id, prenom, nom FROM Utilisateur WHERE id = ?", [stage.responsableEntrepriseId]);
-
-  await notificationService.notifyUser({
-    toId: responsable.id,
-    toRole: "ResponsableEntreprise",
-    subject: "Attestation à générer",
-    templateName: "attestation_ready",
-    templateData: {
-      etudiantPrenom: etudiant.prenom,
-      etudiantNom: etudiant.nom,
-      identifiantStage: stage.identifiant_unique,
-      identifiantRapport: rapport.identifiantRapport
-    },
-    message: `L'attestation pour ${etudiant.prenom} ${etudiant.nom} est prête à être générée.`
-  });
-}
-
-
-// Validation par un tier
-exports.validerParTier = async (rapportId, tierId) => {
-  const [[rapport]] = await db.execute("SELECT * FROM RapportStage WHERE id = ?", [rapportId]);
-  const [[stage]] = await db.execute("SELECT * FROM Stage WHERE id = ?", [rapport.stageId]);
-  const [[tier]] = await db.execute("SELECT prenom, nom FROM Utilisateur WHERE id = ?", [tierId]);
-  const [[etudiant]] = await db.execute("SELECT prenom, nom FROM Etudiant WHERE id = ?", [rapport.etudiantId]);
-
-  if (!rapport.statutAcademique) {
-    await db.execute("UPDATE RapportStage SET statutAcademique = TRUE WHERE id = ?", [rapportId]);
-  } else if (!rapport.statutProfessionnel) {
-    await db.execute("UPDATE RapportStage SET statutProfessionnel = TRUE WHERE id = ?", [rapportId]);
+  if ((champ === "statutAcademique" && rapport.statutAcademique) ||
+      (champ === "statutProfessionnel" && rapport.statutProfessionnel)) {
+    throw new Error("Ce rapport est déjà validé par cet encadrant.");
   }
 
-  await publishTimeoutValidated(rapport.identifiantRapport, tierId);
+  await db.execute(`UPDATE RapportStage SET ${champ} = TRUE WHERE id = ?`, [rapportId]);
+  await validateAsEncadrant(rapport.identifiantRapport, blockchainRole);
 
   await notificationService.notifyUser({
     toId: rapport.etudiantId,
     toRole: "Etudiant",
-    subject: "Rapport validé par un tiers",
+    subject: "Rapport validé",
+    templateName: champ === "statutAcademique" ? "rapport_validated_academique" : "rapport_validated_professionnel",
+    templateData: {
+      etudiantPrenom: etudiant.prenom,
+      encadrantPrenom: encadrant.prenom,
+      encadrantNom: encadrant.nom,
+      lien: `${process.env.FRONTEND_URL || "http://localhost:3001"}/dashboard`
+    },
+    message: `Votre rapport a été validé par ${encadrant.prenom} ${encadrant.nom}.`
+  });
+
+  const [[updated]] = await db.execute("SELECT statutAcademique, statutProfessionnel FROM RapportStage WHERE id = ?", [rapportId]);
+  if (updated.statutAcademique && updated.statutProfessionnel && !rapport.attestationGeneree) {
+    await confirmDoubleValidation(rapport.identifiantRapport);
+    await db.execute("UPDATE RapportStage SET attestationGeneree = FALSE WHERE id = ?", [rapportId]);
+
+    const [[responsable]] = await db.execute(
+      `SELECT id, prenom, nom FROM ResponsableEntreprise WHERE entrepriseId = ? LIMIT 1`,
+      [stage.entrepriseId]
+    );
+
+    if (responsable) {
+      await notificationService.notifyUser({
+        toId: responsable.id,
+        toRole: "ResponsableEntreprise",
+        subject: "Attestation à générer",
+        templateName: "attestation_ready",
+        templateData: {
+          etudiantPrenom: etudiant.prenom,
+          etudiantNom: etudiant.nom,
+          identifiantStage: stage.identifiant_unique,
+          identifiantRapport: rapport.identifiantRapport
+        },
+        message: `L'attestation de ${etudiant.prenom} ${etudiant.nom} est prête à être générée.`
+      });
+    }
+  }
+};
+
+
+
+// Validation par un tier
+exports.validerParTier = async (rapportId, tierId, structureType) => {
+  const [[rapport]] = await db.execute("SELECT * FROM RapportStage WHERE id = ?", [rapportId]);
+  const [[stage]] = await db.execute("SELECT * FROM Stage WHERE id = ?", [rapport.stageId]);
+  const [[tier]] = await db.execute("SELECT prenom, nom FROM TierDebloqueur WHERE id = ?", [tierId]);
+  const [[etudiant]] = await db.execute("SELECT prenom, nom FROM Etudiant WHERE id = ?", [rapport.etudiantId]);
+
+  let champ;
+  if (!rapport.statutAcademique) champ = "statutAcademique";
+  else if (!rapport.statutProfessionnel) champ = "statutProfessionnel";
+  else throw new Error("Les deux validations ont déjà été faites.");
+
+  await db.execute(`UPDATE RapportStage SET ${champ} = TRUE WHERE id = ?`, [rapportId]);
+  await validateAsTier(rapport.identifiantRapport, structureType);
+
+  await notificationService.notifyUser({
+    toId: rapport.etudiantId,
+    toRole: "Etudiant",
+    subject: "Validation par un tiers",
     templateName: "timeout_validated",
     templateData: {
       etudiantPrenom: etudiant.prenom,
@@ -165,9 +176,37 @@ exports.validerParTier = async (rapportId, tierId) => {
       tierPrenom: tier.prenom,
       tierNom: tier.nom
     },
-    message: "Votre rapport a été validé par un tiers autorisé (délai dépassé)."
+    message: "Votre rapport a été validé par un tiers suite à un dépassement de délai."
   });
+
+  const [[updated]] = await db.execute("SELECT statutAcademique, statutProfessionnel FROM RapportStage WHERE id = ?", [rapportId]);
+  if (updated.statutAcademique && updated.statutProfessionnel && !rapport.attestationGeneree) {
+    await confirmDoubleValidation(rapport.identifiantRapport);
+    await db.execute("UPDATE RapportStage SET attestationGeneree = FALSE WHERE id = ?", [rapportId]);
+
+    const [[responsable]] = await db.execute(
+      `SELECT id, prenom, nom FROM ResponsableEntreprise WHERE entrepriseId = ? LIMIT 1`,
+      [stage.entrepriseId]
+    );
+
+    if (responsable) {
+      await notificationService.notifyUser({
+        toId: responsable.id,
+        toRole: "ResponsableEntreprise",
+        subject: "Attestation à générer",
+        templateName: "attestation_ready",
+        templateData: {
+          etudiantPrenom: etudiant.prenom,
+          etudiantNom: etudiant.nom,
+          identifiantStage: stage.identifiant_unique,
+          identifiantRapport: rapport.identifiantRapport
+        },
+        message: `L'attestation de ${etudiant.prenom} ${etudiant.nom} est prête à être générée.`
+      });
+    }
+  }
 };
+
 
 // Commentaire sur rapport avant validation
 exports.commenterRapport = async (email, rapportId, commentaire) => {
@@ -243,5 +282,5 @@ exports.getMesRapports = async (email) => {
 
   return rows;
 };
-}
+
 

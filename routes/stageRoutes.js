@@ -23,5 +23,9 @@ router.get("/rechercher/:identifiant", stageController.rechercherParIdentifiant)
 
 //  Notifications du tableau de bord
 router.get("/notifications", checkToken, stageController.getNotifications);
+//
+// Détails complets d’un stage (utilisé pour préremplir formulaire attestation)
+router.get("/details/:stageId", checkToken, stageController.getStageDetails);
+
 
 module.exports = router;

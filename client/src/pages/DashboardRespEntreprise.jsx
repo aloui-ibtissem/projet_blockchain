@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   Container, Card, Button, Alert, Row, Col,
-  ListGroup, Spinner, Form, Modal
+  ListGroup, Form, Modal
 } from 'react-bootstrap';
 import './DashboardRespEntreprise.css';
 
@@ -21,7 +21,18 @@ function DashboardRespEntreprise() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState(null);
-  const [formData, setFormData] = useState({ appreciation: '', responsableNom: '' });
+  const [formData, setFormData] = useState({
+    appreciation: '',
+    responsableNom: '',
+    etudiant: '',
+    titre: '',
+    encadrants: '',
+    dates: '',
+    lieu: '',
+    headerText: '',
+    logoPath: '',
+    signature: ''
+  });
 
   useEffect(() => {
     if (!token || role !== 'ResponsableEntreprise') {
@@ -42,7 +53,7 @@ function DashboardRespEntreprise() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/api/entreprise/dashboard`, {
+      const res = await axios.get(`${API_URL}/entreprises/dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStagiaires(res.data.stagiaires || []);
@@ -55,10 +66,30 @@ function DashboardRespEntreprise() {
     }
   };
 
-  const openForm = (stageId) => {
+  const openForm = async (stageId) => {
     setSelectedStageId(stageId);
-    setFormData({ appreciation: '', responsableNom: '' });
-    setShowModal(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/stage/details/${stageId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const stage = res.data;
+      setFormData({
+        appreciation: '',
+        responsableNom: '',
+        etudiant: `${stage.etudiantPrenom} ${stage.etudiantNom}`,
+        titre: stage.titre,
+        encadrants: `${stage.acaPrenom} ${stage.acaNom} / ${stage.proPrenom} ${stage.proNom}`,
+        dates: `${new Date(stage.dateDebut).toLocaleDateString()} - ${new Date(stage.dateFin).toLocaleDateString()}`,
+        lieu: '',
+        headerText: '',
+        logoPath: '',
+        signature: ''
+      });
+      setShowModal(true);
+    } catch (error) {
+      console.error("Erreur chargement détails stage:", error);
+      alert("Impossible de charger les détails du stage.");
+    }
   };
 
   const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -68,12 +99,12 @@ function DashboardRespEntreprise() {
       const res = await axios.post(`${API_URL}/api/attestation/generer/${selectedStageId}`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert(` Attestation générée avec succès !\nHash: ${res.data.hash}`);
+      alert(`Attestation générée avec succès !\nHash: ${res.data.hash}`);
       setShowModal(false);
       fetchData();
     } catch (err) {
       console.error(err);
-      alert(" Erreur lors de la génération");
+      alert("Erreur lors de la génération de l'attestation.");
     }
   };
 
@@ -126,25 +157,44 @@ function DashboardRespEntreprise() {
         <Modal.Body>
           <Form>
             <Form.Group className="mb-2">
+              <Form.Label>Étudiant</Form.Label>
+              <Form.Control type="text" value={formData.etudiant} readOnly />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>Titre</Form.Label>
+              <Form.Control type="text" value={formData.titre} readOnly />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>Encadrants</Form.Label>
+              <Form.Control type="text" value={formData.encadrants} readOnly />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>Dates</Form.Label>
+              <Form.Control type="text" value={formData.dates} readOnly />
+            </Form.Group>
+            <Form.Group className="mb-2">
               <Form.Label>Nom du Responsable</Form.Label>
-              <Form.Control
-                type="text"
-                name="responsableNom"
-                value={formData.responsableNom}
-                onChange={handleChange}
-                placeholder="Nom du signataire"
-              />
+              <Form.Control type="text" name="responsableNom" value={formData.responsableNom} onChange={handleChange} />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>Lieu</Form.Label>
+              <Form.Control type="text" name="lieu" value={formData.lieu} onChange={handleChange} />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>En-tête personnalisé</Form.Label>
+              <Form.Control type="text" name="headerText" value={formData.headerText} onChange={handleChange} />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>Logo (chemin local)</Form.Label>
+              <Form.Control type="text" name="logoPath" value={formData.logoPath} onChange={handleChange} />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>Signature numérique</Form.Label>
+              <Form.Control type="text" name="signature" value={formData.signature} onChange={handleChange} />
             </Form.Group>
             <Form.Group>
               <Form.Label>Appréciation</Form.Label>
-              <Form.Control
-                as="textarea"
-                name="appreciation"
-                rows={3}
-                value={formData.appreciation}
-                onChange={handleChange}
-                placeholder="Ajouter une appréciation personnelle sur le stage"
-              />
+              <Form.Control as="textarea" name="appreciation" rows={3} value={formData.appreciation} onChange={handleChange} />
             </Form.Group>
           </Form>
         </Modal.Body>

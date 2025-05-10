@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Attestation à générer</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+  <table style="max-width: 600px; margin: auto; background-color: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
+    <tr>
+      <td>
+        <h2 style="color: #2c3e50;">Attestation à générer</h2>
+        <p>Bonjour,</p>
+
+        <p>
+          Le rapport de stage de <strong>{{etudiantPrenom}} {{etudiantNom}}</strong> a été validé par les deux encadrants.
+        </p>
+
+        <p>
+          Vous êtes invité à <strong>générer l’attestation</strong> correspondante à partir de votre tableau de bord.
+        </p>
+
+        <ul>
+          <li><strong>Identifiant du stage :</strong> {{identifiantStage}}</li>
+          <li><strong>Identifiant du rapport :</strong> {{identifiantRapport}}</li>
+        </ul>
+
+        <p style="margin-top: 20px;">
+           accéder à votre espace :
+        </p>
+
+        <p>
+          <a href="{{lien}}" style="background-color: #2980b9; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">
+            Accéder au tableau de bord
+          </a>
+        </p>
+
+        <p style="margin-top: 30px;">Cordialement,<br>L’équipe de gestion des stages</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -103,15 +103,17 @@ exports.creerStageDepuisSujet = async (sujet) => {
   await notificationService.notifyUser({
     toId: sujet.etudiantId,
     toRole: "Etudiant",
-    subject: `Votre stage a été validé et créé : ${identifiant}`,
+    subject: `Votre proposition a été accepté  et votre stage est officiellement crée en plateforme s : ${identifiant}`,
     templateName: "stage_validated",
     templateData: {
-      identifiant,
-      titre: sujet.titre,
+      etudiantPrenom: etudiant.prenom,
+      etudiantNom: etudiant.nom,
+      identifiantStage: identifiant,
+      titreStage: sujet.titre,
       dateDebut: sujet.dateDebut,
       dateFin: sujet.dateFin
     },
-    message: `Votre stage a été validé avec l'identifiant ${identifiant}.`
+    message: `Votre stage a été crée avec l'identifiant ${identifiant}.`
   });
 };
 

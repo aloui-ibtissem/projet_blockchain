@@ -4,9 +4,22 @@ const { generatePDFWithQR } = require("../utils/pdfUtils");
 const { hashFile } = require("../utils/hashUtils");
 const { publishAttestation } = require("../utils/blockchainUtils");
 const notificationService = require("./notificationService");
-const path = require("path");
+const { genererIdentifiantAttestation } = require("../utils/identifiantUtils");
 
 exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, responsableId }) => {
+  const [[existing]] = await db.execute(
+    "SELECT fileHash, ipfsUrl, identifiant FROM Attestation WHERE stageId = ?",
+    [stageId]
+  );
+
+  if (existing) {
+    return {
+      hash: existing.fileHash,
+      ipfsUrl: existing.ipfsUrl,
+      identifiant: existing.identifiant
+    };
+  }
+
   const [[stage]] = await db.execute(`
     SELECT S.*, 
       E.id AS etudiantId, E.prenom AS etudiantPrenom, E.nom AS etudiantNom,
@@ -14,7 +27,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
       EP.prenom AS proPrenom, EP.nom AS proNom,
       ENT.nom AS entreprise,
       U.nom AS universite,
-      R.identifiantRapport
+      R.identifiantRapport, R.statutAcademique, R.statutProfessionnel
     FROM Stage S
     JOIN Etudiant E ON S.etudiantId = E.id
     JOIN EncadrantAcademique EA ON S.encadrantAcademiqueId = EA.id
@@ -26,45 +39,45 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   `, [stageId]);
 
   if (!stage) throw new Error("Stage introuvable");
+  if (!stage.statutAcademique || !stage.statutProfessionnel) {
+    throw new Error("Le rapport n'est pas encore validé par les deux encadrants");
+  }
+
+  const attestationId = await genererIdentifiantAttestation(stage.etudiantId);
 
   const data = {
     ...stage,
     ...modifs,
     appreciation,
+    identifiantStage: stage.identifiant_unique,
+    attestationId,
     responsableNom: modifs.responsableNom || "Responsable Entreprise",
     dateGeneration: new Date().toLocaleDateString(),
   };
 
-  // Génération du PDF avec QR
   const pdfPath = await generatePDFWithQR(data);
-
-  // Hash du fichier
   const fileHash = hashFile(pdfPath);
-
-  // Upload sur IPFS
   const ipfsUrl = await uploadToIPFS(pdfPath);
 
-  // Sauvegarde en base
   await db.execute(`
-    INSERT INTO Attestation (stageId, fileHash, ipfsUrl, responsableId)
-    VALUES (?, ?, ?, ?)
-  `, [stageId, fileHash, ipfsUrl, responsableId]);
+    INSERT INTO Attestation (stageId, identifiant, fileHash, ipfsUrl, responsableId)
+    VALUES (?, ?, ?, ?, ?)
+  `, [stageId, attestationId, fileHash, ipfsUrl, responsableId]);
 
-  // Publication sur la blockchain
-  await publishAttestation(stage.identifiant_unique, stage.identifiantRapport, fileHash);
+  await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, fileHash);
 
-  // Notifications à l'étudiant et au responsable université
-  const [[respUni]] = await db.execute(`
-    SELECT id FROM Utilisateur
-    WHERE role = 'ResponsableUniversite' AND universiteId = (
-      SELECT universiteId FROM Etudiant WHERE id = ?
-    ) LIMIT 1
-  `, [stage.etudiantId]);
+  const [[respUni]] = await db.execute(
+    "SELECT id FROM ResponsableUniversitaire WHERE universiteId = (SELECT universiteId FROM Etudiant WHERE id = ?) LIMIT 1",
+    [stage.etudiantId]
+  );
 
-  for (const target of [
+  const targets = [
     { id: stage.etudiantId, role: "Etudiant" },
-    { id: respUni?.id, role: "ResponsableUniversite" }
-  ]) {
+    { id: respUni?.id, role: "ResponsableUniversitaire" },
+    { id: responsableId, role: "ResponsableEntreprise" }
+  ];
+
+  for (const target of targets) {
     if (!target?.id) continue;
     await notificationService.notifyUser({
       toId: target.id,
@@ -81,5 +94,5 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     });
   }
 
-  return { hash: fileHash, ipfsUrl };
+  return { hash: fileHash, ipfsUrl, identifiant: attestationId };
 };

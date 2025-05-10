@@ -34,7 +34,7 @@ async function getCodeEntite(tableName, id) {
 }
 
 /**
- * Génère un identifiant unique structuré pour un stage
+ * Génère un identifiant structuré pour un stage
  * Format : [Année]_[ENTREPRISE]_[UNIVERSITE]_[XXX]
  */
 async function genererIdentifiantStage(entrepriseId, universiteId) {
@@ -48,6 +48,7 @@ async function genererIdentifiantStage(entrepriseId, universiteId) {
   `, [annee, entrepriseId, universiteId]);
 
   let num = row ? row.dernierNumero + 1 : 1;
+
   if (row) {
     await db.execute(`
       UPDATE CompteurStage SET dernierNumero = ?
@@ -104,9 +105,26 @@ async function genererIdentifiantRapport(etudiantId) {
   return `RPT_${codeUni}_${annee}_${String(num).padStart(3, "0")}_${timestamp}`;
 }
 
+/**
+ * Génère un identifiant unique pour une attestation
+ * Format : ATT_2025_001_8 (année + compteur + id étudiant)
+ */
+async function genererIdentifiantAttestation(etudiantId) {
+  const annee = new Date().getFullYear();
+  const prefix = `ATT_${annee}`;
+  const [rows] = await db.execute(
+    "SELECT COUNT(*) as total FROM Attestation WHERE identifiant LIKE ?",
+    [`${prefix}%`]
+  );
+  const compteur = rows[0].total + 1;
+  const suffix = compteur.toString().padStart(3, "0");
+  return `${prefix}_${suffix}_${etudiantId}`;
+}
+
 module.exports = {
   genererAnneeUniversitaire,
   genererIdentifiantStage,
   genererIdentifiantActeur,
-  genererIdentifiantRapport
+  genererIdentifiantRapport,
+  genererIdentifiantAttestation
 };

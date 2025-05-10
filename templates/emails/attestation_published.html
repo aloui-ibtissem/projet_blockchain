@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Attestation publiée</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #333;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      padding: 1em;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .button {
+      background-color: #007bff;
+      color: white;
+      padding: 0.5em 1em;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+    .info {
+      margin: 1em 0;
+    }
+    .footer {
+      margin-top: 2em;
+      font-size: 0.9em;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Attestation de stage publiée</h2>
+
+    <p>Bonjour,</p>
+
+    <p>L’attestation de stage de <strong>{{etudiantNom}}</strong> est désormais disponible et vérifiable.</p>
+
+    <div class="info">
+      <p><strong>Identifiant du stage :</strong> {{identifiantStage}}</p>
+      <p><strong>Hash du fichier (SHA-256) :</strong> {{hash}}</p>
+      <p><strong>Lien de téléchargement IPFS :</strong><br>
+        <a href="{{lienIPFS}}" target="_blank">{{lienIPFS}}</a>
+      </p>
+    </div>
+
+    <p>Vous pouvez vérifier l’authenticité du document à tout moment grâce à ce lien IPFS ou via le QR code intégré dans le PDF.</p>
+
+    <p>
+      <a href="{{lienIPFS}}" target="_blank" class="button">Consulter l’attestation</a>
+    </p>
+
+    <div class="footer">
+      <p>Ce message vous a été envoyé automatiquement par la plateforme de gestion des stages.</p>
+    </div>
+  </div>
+</body>
+</html>

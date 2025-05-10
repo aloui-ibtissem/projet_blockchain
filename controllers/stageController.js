@@ -1,3 +1,4 @@
+// stageController.js
 const stageService = require("../services/stageService");
 const db = require("../config/db");
 
@@ -116,5 +117,32 @@ exports.getNotifications = async (req, res) => {
   } catch (err) {
     console.error("Erreur getNotifications :", err);
     res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getStageDetails = async (req, res) => {
+const stageId = req.params.stageId;
+
+  try {
+    const [[stage]] = await db.execute(`
+      SELECT S.id, S.identifiant_unique, S.dateDebut, S.dateFin, S.titre,
+        E.prenom AS etudiantPrenom, E.nom AS etudiantNom, E.email AS etudiantEmail,
+        EA.prenom AS acaPrenom, EA.nom AS acaNom,
+        EP.prenom AS proPrenom, EP.nom AS proNom,
+        ENT.nom AS entreprise
+      FROM Stage S
+      JOIN Etudiant E ON S.etudiantId = E.id
+      JOIN EncadrantAcademique EA ON S.encadrantAcademiqueId = EA.id
+      JOIN EncadrantProfessionnel EP ON S.encadrantProfessionnelId = EP.id
+      JOIN Entreprise ENT ON S.entrepriseId = ENT.id
+      WHERE S.id = ?
+    `, [stageId]);
+
+    if (!stage) return res.status(404).json({ error: "Stage non trouvé." });
+
+    res.json(stage);
+  } catch (err) {
+    console.error("Erreur récupération stage:", err);
+    res.status(500).json({ error: "Erreur interne serveur." });
   }
 };
