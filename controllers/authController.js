@@ -1,6 +1,8 @@
 const { ethers } = require("ethers");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 const db = require("../config/db");
 const sendEmail = require("../utils/sendEmail");
 const { genererIdentifiantActeur } = require("../utils/identifiantUtils");
@@ -17,7 +19,7 @@ const authContract = new ethers.Contract(
 
 console.log("AuthController chargé");
 
-// 1) Envoi du mail de confirmation
+// 1) Enregistrement + Envoi du mail de vérification
 exports.register = async (req, res) => {
   try {
     const {
@@ -25,16 +27,13 @@ exports.register = async (req, res) => {
       universiteId, entrepriseId, structureType: rawType
     } = req.body;
 
-    // Détermination du type de structure selon le rôle
     let structureType;
-    if (["Etudiant", "EncadrantAcademique", "ResponsableUniversite"].includes(role)) {
+    if (["Etudiant", "EncadrantAcademique", "ResponsableUniversitaire"].includes(role)) {
       structureType = "universite";
     } else if (["EncadrantProfessionnel", "ResponsableEntreprise"].includes(role)) {
       structureType = "entreprise";
     } else if (role === "TierDebloqueur") {
-      if (!rawType) {
-        return res.status(400).json({ error: "structureType requis pour TierDebloqueur." });
-      }
+      if (!rawType) return res.status(400).json({ error: "structureType requis pour TierDebloqueur." });
       structureType = rawType.toLowerCase();
       if (!["universite", "entreprise"].includes(structureType)) {
         return res.status(400).json({ error: "structureType invalide." });
@@ -43,9 +42,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: `Rôle inconnu : ${role}` });
     }
 
-    // Vérification signature et unicité en base
     const message = `Inscription:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
+
     const tables = [
       "Etudiant", "EncadrantAcademique", "EncadrantProfessionnel",
       "ResponsableUniversitaire", "ResponsableEntreprise", "TierDebloqueur"
@@ -60,27 +59,21 @@ exports.register = async (req, res) => {
       }
     }
 
-    // Unicité on-chain
     const onChainRole = await authContract.getRole(recoveredAddr);
     if (onChainRole.toString() !== "0") {
       return res.status(400).json({ error: "Déjà enregistré sur la blockchain." });
     }
 
-    // Création du token
     const token = crypto.randomBytes(24).toString("hex");
     let uniId = null, entId = null;
     if (structureType === "universite") {
-      if (!universiteId) {
-        return res.status(400).json({ error: "universiteId requis." });
-      }
+      if (!universiteId) return res.status(400).json({ error: "universiteId requis." });
       uniId = isNaN(universiteId)
         ? (await db.execute("SELECT id FROM Universite WHERE nom = ?", [universiteId]))[0][0]?.id
         : +universiteId;
     }
     if (structureType === "entreprise") {
-      if (!entrepriseId) {
-        return res.status(400).json({ error: "entrepriseId requis." });
-      }
+      if (!entrepriseId) return res.status(400).json({ error: "entrepriseId requis." });
       entId = isNaN(entrepriseId)
         ? (await db.execute("SELECT id FROM Entreprise WHERE nom = ?", [entrepriseId]))[0][0]?.id
         : +entrepriseId;
@@ -93,12 +86,25 @@ exports.register = async (req, res) => {
       [prenom, nom, email, role, signature, token, uniId, entId, structureType]
     );
 
-    // Envoi du mail avec lien élégant
-    const linkUrl = `${process.env.BACKEND_URL}/api/auth/verify/${token}`;
-    const html = `<h3>Bonjour ${prenom},</h3>
-                  <p>Pour finaliser votre inscription, cliquez sur le lien ci-dessous :</p>
-                  <p><a href="${linkUrl}">Vérifier mon adresse e-mail</a></p>`;
-    await sendEmail({ to: email, subject: "Confirmez votre inscription", html });
+    // Choisir l’URL (public ou local)
+    const confirmationUrl = `${process.env.PUBLIC_URL}/api/auth/verify-email/${token}`;
+
+
+    // Lecture et personnalisation du template
+    const templatePath = path.join(__dirname, "../templates/emails/verification_email.html");
+    let htmlTemplate = fs.readFileSync(templatePath, "utf8");
+   htmlTemplate = htmlTemplate
+  .replace(/{{prenom}}/g, prenom)
+  .replace(/{{verificationUrl}}/g, confirmationUrl)
+  .replace(/{{year}}/g, new Date().getFullYear());
+
+await sendEmail({
+  to: email,
+  subject: "Confirmez votre adresse email sur StageChain",
+  html: htmlTemplate,
+  text: `Bonjour ${prenom},\n\nMerci pour votre inscription sur StageChain.\nVeuillez confirmer votre email en cliquant sur ce lien : ${confirmationUrl}\n\nCe lien est valide pour une durée limitée.\n\nL’équipe StageChain`
+});
+
 
     res.json({ success: true, message: "Email de vérification envoyé." });
   } catch (err) {
@@ -107,41 +113,35 @@ exports.register = async (req, res) => {
   }
 };
 
-// 2) Vérification du token + on-chain + insertion en base du token + on-chain + insertion en base
+// 2) Vérification de l'email via token
 exports.verifyEmailToken = async (req, res) => {
   try {
     const token = req.params.token;
     const [tokens] = await db.execute(
       "SELECT * FROM TokenVerif WHERE token = ? AND utilisé = FALSE", [token]
     );
-    if (!tokens.length) {
-      return res.status(400).send("Lien invalide ou déjà utilisé.");
-    }
+    if (!tokens.length) return res.status(400).send("Lien invalide ou déjà utilisé.");
+
     const rec = tokens[0];
     const {
       prenom, nom, email, role, signature,
       universiteId, entrepriseId, structureType, id: tokenId
     } = rec;
 
-    // Vérif signature
     const message = `Inscription:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
 
-    // Mapping rôle → enum
     const mapEnum = {
       Etudiant: 1,
       EncadrantAcademique: 2,
       EncadrantProfessionnel: 3,
-      ResponsableUniversite: 4,
+      ResponsableUniversitaire: 4,
       ResponsableEntreprise: 5,
       TierDebloqueur: 6
     };
     const roleEnum = mapEnum[role];
-    if (!roleEnum) {
-      throw new Error(`Rôle '${role}' non reconnu.`);
-    }
+    if (!roleEnum) throw new Error(`Rôle '${role}' non reconnu.`);
 
-    // selfRegister on-chain si nécessaire
     try {
       const existing = await authContract.getRole(recoveredAddr);
       if (existing.toString() === "0") {
@@ -149,51 +149,49 @@ exports.verifyEmailToken = async (req, res) => {
         await tx.wait();
       }
     } catch (err) {
-      console.warn("On-chain registration bypassed:", err.reason || err);
+      console.warn("On-chain registration skipped:", err.reason || err);
     }
 
-    // Génération identifiant
     const structId = structureType === "entreprise" ? entrepriseId : universiteId;
     const identifiant = await genererIdentifiantActeur({
       role, structureType, structureId: structId
     });
 
-    // Insertion en base selon rôle
     let q, params;
     switch (role) {
       case "Etudiant":
         q = `INSERT INTO Etudiant
-               (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
+             (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
              VALUES (?, ?, ?, ?, ?, ?, ?)`;
         params = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
         break;
       case "EncadrantAcademique":
         q = `INSERT INTO EncadrantAcademique
-               (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
+             (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
              VALUES (?, ?, ?, ?, ?, ?, ?)`;
         params = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
         break;
       case "EncadrantProfessionnel":
         q = `INSERT INTO EncadrantProfessionnel
-               (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
+             (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
              VALUES (?, ?, ?, ?, ?, ?, ?)`;
         params = [prenom, nom, email, entrepriseId, recoveredAddr, role, identifiant];
         break;
-      case "ResponsableUniversite":
+      case "ResponsableUniversitaire":
         q = `INSERT INTO ResponsableUniversitaire
-               (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
+             (prenom, nom, email, universiteId, ethAddress, role, identifiant_unique)
              VALUES (?, ?, ?, ?, ?, ?, ?)`;
         params = [prenom, nom, email, universiteId, recoveredAddr, role, identifiant];
         break;
       case "ResponsableEntreprise":
         q = `INSERT INTO ResponsableEntreprise
-               (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
+             (prenom, nom, email, entrepriseId, ethAddress, role, identifiant_unique)
              VALUES (?, ?, ?, ?, ?, ?, ?)`;
         params = [prenom, nom, email, entrepriseId, recoveredAddr, role, identifiant];
         break;
       case "TierDebloqueur":
         q = `INSERT INTO TierDebloqueur
-               (prenom, nom, email, structureType, universiteId, entrepriseId, ethAddress, role, identifiant_unique)
+             (prenom, nom, email, structureType, universiteId, entrepriseId, ethAddress, role, identifiant_unique)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         params = [
           prenom, nom, email, structureType,
@@ -203,38 +201,35 @@ exports.verifyEmailToken = async (req, res) => {
       default:
         throw new Error(`Insertion non gérée pour le rôle ${role}`);
     }
+
     await db.execute(q, params);
-
-    // Marquer token utilisé
-    await db.execute(
-      "UPDATE TokenVerif SET utilisé = TRUE WHERE id = ?",
-      [tokenId]
-    );
-
-    // Redirection front-end
-    return res.redirect(`${process.env.FRONTEND_URL}/login`);
+    await db.execute("UPDATE TokenVerif SET utilisé = TRUE WHERE id = ?", [tokenId]);
+    //
+    const frontend = process.env.PUBLIC_FRONTEND_URL || process.env.FRONTEND_URL;
+    //
+     return res.redirect(`${frontend}/verified`);
   } catch (err) {
     console.error("verifyEmailToken error:", err);
     return res.status(500).json({ error: err.message });
   }
 };
 
-// 3) Connexion (signature → JWT)
+// 3) Connexion avec JWT
 exports.login = async (req, res) => {
   try {
     const { email, role, signature } = req.body;
     const message = `Connexion:${email}:${role}:123456`;
     const recoveredAddr = ethers.utils.verifyMessage(message, signature);
 
-    const mapTable = {
+    const tbl = {
       Etudiant: "Etudiant",
       EncadrantAcademique: "EncadrantAcademique",
       EncadrantProfessionnel: "EncadrantProfessionnel",
-      ResponsableUniversite: "ResponsableUniversitaire",
+      ResponsableUniversitaire: "ResponsableUniversitaire",
       ResponsableEntreprise: "ResponsableEntreprise",
       TierDebloqueur: "TierDebloqueur"
-    };    
-    const tbl = mapTable[role];
+    }[role];
+
     if (!tbl) return res.status(400).json({ error: "Rôle invalide." });
 
     const [rows] = await db.execute(
@@ -252,6 +247,7 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
+
     return res.json({ success: true, token, role });
   } catch (err) {
     console.error("login error:", err);
@@ -259,7 +255,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// 4) Récupération structureType pour TierDebloqueur
+// 4) Récupération structureType du TierDébloqueur
 exports.getTierInfo = async (req, res) => {
   try {
     const { email } = req.user;

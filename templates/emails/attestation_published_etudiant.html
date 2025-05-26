@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';">
+  <title>Attestation Générée</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      background-color: #f1f5f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      animation: fadeIn 1s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .header {
+      background: linear-gradient(90deg, #0f172a, #1d4ed8);
+      padding: 24px;
+      text-align: center;
+      border-radius: 12px 12px 0 0;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .content {
+      padding: 24px;
+      text-align: center;
+    }
+    .greeting {
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+    .info-box {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      padding: 16px;
+      margin: 20px auto;
+      border-radius: 8px;
+      max-width: 400px;
+      text-align: left;
+    }
+    .info-box p { margin: 8px 0; font-size: 14px; }
+    .info-box strong { color: #1d4ed8; }
+    .button {
+      display: block;
+      margin: 20px auto;
+      background: #2563eb;
+      color: #ffffff;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    .footer {
+      text-align: center;
+      padding: 16px;
+      font-size: 12px;
+      color: #64748b;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Attestation de Stage Disponible</h2>
+    </div>
+    <div class="content">
+      <p class="greeting">Bonjour {{etudiantPrenom}},</p>
+      <p>Votre attestation de stage est désormais disponible et sécurisée via la blockchain.</p>
+      <div class="info-box">
+        <p><strong>Titre du stage :</strong> {{titreStage}}</p>
+        <p><strong>Entreprise :</strong> {{nomEntreprise}}</p>
+        <p><strong>Encadrants :</strong> {{encadrantAcaPrenom}} {{encadrantAcaNom}}, {{encadrantProPrenom}} {{encadrantProNom}}</p>
+        <p><strong>Période :</strong> {{dateDebut}} au {{dateFin}}</p>
+        <p><strong>Identifiant :</strong> {{identifiantAttestation}}</p>
+        <p><strong>Hash :</strong> {{hash}}</p>
+      </div>
+      <a href="{{attestationUrl}}" class="button">Télécharger l’attestation</a>
+      <p class="note">Document vérifiable via QR Code intégré.</p>
+    </div>
+    <div class="footer" style="text-align: center; padding: 16px; font-size: 12px; color: #64748b; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+  <p style="margin: 4px 0;">
+    <strong>{{appName}}</strong>
+  </p>
+  <p style="margin: 4px 0;">
+    © {{year}} – Tous droits réservés
+  </p>
+  <p style="margin: 4px 0;">
+    <a href="{{homeUrl}}" style="color: #3b82f6; text-decoration: none;">Accueil</a> |
+    <a href="{{loginUrl}}" style="color: #3b82f6; text-decoration: none;">Connexion</a>
+  </p>
+</div>
+
+  </div>
+</body>
+</html>

@@ -1,19 +1,11 @@
-// src/pages/DashboardEncadrantPro.jsx
 import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {
-  Container,
-  Row,
-  Col,
-  Card,
-  Button,
-  Form,
-  Alert,
-  Spinner,
-  Table
-} from 'react-bootstrap';
+import Sidebar from '../components/Sidebar';
+import Header from '../components/Header';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { Alert, Card, Button, Form, Table } from 'react-bootstrap';
 import './DashboardEncadrantAca.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
@@ -22,12 +14,12 @@ function DashboardEncadrantPro() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
-
   const [propositions, setPropositions] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [rapports, setRapports] = useState([]);
   const [commentaire, setCommentaire] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token || role !== 'EncadrantProfessionnel') {
@@ -40,10 +32,9 @@ function DashboardEncadrantPro() {
       navigate('/login');
       return;
     }
-    fetchPropositions();
-    fetchNotifications();
-    fetchRapports();    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    Promise.all([fetchPropositions(), fetchNotifications(), fetchRapports()])
+      .finally(() => setLoading(false));
+  }, [navigate, token, role]);
 
   const fetchPropositions = async () => {
     try {
@@ -79,9 +70,8 @@ function DashboardEncadrantPro() {
       console.error("Erreur récupération rapports à valider :", err);
     }
   };
-  
 
-  const commenterRapport = async id => {
+  const commenterRapport = async (id) => {
     if (!commentaire.trim()) {
       alert('Commentaire vide');
       return;
@@ -100,7 +90,7 @@ function DashboardEncadrantPro() {
     }
   };
 
-  const validerRaport = async id => {
+  const validerRaport = async (id) => {
     try {
       await axios.post(
         `${API_URL}/api/rapport/valider`,
@@ -117,16 +107,10 @@ function DashboardEncadrantPro() {
   const handleDecision = async (id, action) => {
     try {
       const commentaireRej =
-        action === 'rejeter'
-          ? prompt('Motif du refus (facultatif) :') || ''
-          : '';
+        action === 'rejeter' ? prompt('Motif du refus (facultatif) :') || '' : '';
       await axios.post(
         `${API_URL}/api/stage/valider`,
-        {
-          sujetId: id,
-          action,
-          commentaire: commentaireRej
-        },
+        { sujetId: id, action, commentaire: commentaireRej },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessage(
@@ -139,146 +123,133 @@ function DashboardEncadrantPro() {
   };
 
   return (
-    <Container className="py-4">
-      <h2 className="text-center mb-4">
-        Encadrant Professionnel
-      </h2>
-      {message && <Alert variant="info">{message}</Alert>}
+    <div className="dashboard-layout">
+      <Sidebar role={role} />
+      <div className="dashboard-content">
+        <Header title="Encadrant Professionnel" />
+        <main className="main-content">
+          {message && <Alert variant="info">{message}</Alert>}
+          {loading ? (
+            <SkeletonLoader />
+          ) : (
+            <div className="dashboard-grid">
+              <Card className="dashboard-card">
+                <Card.Header>Notifications</Card.Header>
+                <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  {notifications.length ? (
+                    <ul className="notification-list">
+                      {notifications.map(n => (
+                        <li key={n.id}>
+                          {n.message}
+                          <span className="notification-date">
+                            {new Date(n.date_envoi).toLocaleDateString()}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted">Aucune notification</p>
+                  )}
+                </Card.Body>
+              </Card>
 
-      <Row>
-        <Col md={4}>
-          <Card className="mb-4 shadow-sm">
-            <Card.Header>Notifications</Card.Header>
-            <Card.Body style={{ maxHeight: 200, overflowY: 'auto' }}>
-              {notifications.length ? (
-                <ul className="list-unstyled mb-0">
-                  {notifications.map(n => (
-                    <li key={n.id} className="mb-2">
-                      {n.message} <br />
-                      <small className="text-muted">
-                        {new Date(n.date_envoi).toLocaleDateString()}
-                      </small>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted">
-                  Aucune notification
-                </p>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
+              <Card className="dashboard-card">
+                <Card.Header>Propositions de Stage</Card.Header>
+                <Card.Body>
+                  {propositions.length === 0 ? (
+                    <p className="text-muted">Aucune proposition en attente.</p>
+                  ) : (
+                    <Table striped bordered hover responsive>
+                      <thead>
+                        <tr>
+                          <th>Titre</th>
+                          <th>Étudiant</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {propositions.map(p => (
+                          <tr key={p.id}>
+                            <td>{p.titre}</td>
+                            <td>{p.etudiantNomComplet}</td>
+                            <td>
+                              <Button
+                                size="sm"
+                                className="btn-accept"
+                                onClick={() => handleDecision(p.id, 'accepter')}
+                              >
+                                Accepter
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="btn-reject"
+                                onClick={() => handleDecision(p.id, 'rejeter')}
+                              >
+                                Rejeter
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </Card.Body>
+              </Card>
 
-        <Col md={8}>
-          <Card className="mb-4 shadow-sm">
-            <Card.Header>Propositions de Stage</Card.Header>
-            <Card.Body>
-              {propositions.length === 0 ? (
-                <p className="text-muted">
-                  Aucune proposition en attente.
-                </p>
-              ) : (
-                <Table striped bordered hover responsive>
-                  <thead>
-                    <tr>
-                      <th>Titre</th>
-                      <th>Étudiant</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {propositions.map(p => (
-                      <tr key={p.id}>
-                        <td>{p.titre}</td>
-                        <td>{p.etudiantNomComplet}</td>
-                        <td>
-                          <Button
-                            size="sm"
-                            variant="success"
-                            onClick={() =>
-                              handleDecision(p.id, 'accepter')
-                            }
+              <Card className="dashboard-card">
+                <Card.Header>Rapports à Examiner</Card.Header>
+                <Card.Body>
+                  {rapports.length === 0 ? (
+                    <p className="text-muted">Aucun rapport à valider.</p>
+                  ) : (
+                    rapports.map(r => (
+                      <Card key={r.id} className="inner-card">
+                        <Card.Body>
+                          <strong>
+                            {r.prenomEtudiant} {r.nomEtudiant}
+                          </strong>{' '}
+                          –{' '}
+                          <a
+                            href={`${API_URL}/uploads/${r.fichier}`}
+                            target="_blank"
+                            rel="noreferrer"
                           >
-                            Accepter
-                          </Button>{' '}
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() =>
-                              handleDecision(p.id, 'rejeter')
-                            }
-                          >
-                            Rejeter
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </Card.Body>
-          </Card>
-
-          <Card className="shadow-sm">
-            <Card.Header>Rapports à Examiner</Card.Header>
-            <Card.Body>
-              {rapports.length === 0 ? (
-                <p className="text-muted">
-                  Aucun rapport à valider.
-                </p>
-              ) : (
-                rapports.map(r => (
-                  <Card key={r.id} className="mb-3">
-                    <Card.Body>
-                      <strong>
-                        {r.prenomEtudiant} {r.nomEtudiant}
-                      </strong>{' '}
-                      –{' '}
-                      <a
-href={`${API_URL}/uploads/${r.fichier}`}
-target="_blank"
-  rel="noreferrer"
->
-  Voir le rapport
-</a>
-
-                      <Form.Control
-                        as="textarea"
-                        rows={2}
-                        className="mt-2"
-                        placeholder="Ajouter un commentaire..."
-                        value={commentaire}
-                        onChange={e =>
-                          setCommentaire(e.target.value)
-                        }
-                      />
-                      <div className="mt-2">
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            commenterRapport(r.id)
-                          }
-                        >
-                          Commenter
-                        </Button>{' '}
-                        <Button
-                          size="sm"
-                          variant="success"
-                          onClick={() => validerRaport(r.id)}
-                        >
-                          Valider
-                        </Button>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                ))
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+                            Voir le rapport
+                          </a>
+                          <Form.Control
+                            as="textarea"
+                            rows={2}
+                            className="mt-2"
+                            placeholder="Ajouter un commentaire..."
+                            value={commentaire}
+                            onChange={e => setCommentaire(e.target.value)}
+                          />
+                          <div className="mt-2">
+                            <Button
+                              size="sm"
+                              onClick={() => commenterRapport(r.id)}
+                            >
+                              Commenter
+                            </Button>{' '}
+                            <Button
+                              size="sm"
+                              className="btn-accept"
+                              onClick={() => validerRaport(r.id)}
+                            >
+                              Valider
+                            </Button>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    ))
+                  )}
+                </Card.Body>
+              </Card>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }
 

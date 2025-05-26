@@ -9,10 +9,11 @@ import LoginPage from './pages/LoginPage';
 import DashboardEtudiant from './pages/DashboardEtudiant';
 import DashboardEncadrantAca from './pages/DashboardEncadrantAca';
 import DashboardEncadrantPro from './pages/DashboardEncadrantPro';
-import DashboardRespUniversite from './pages/DashboardRespUniversite';
+import DashboardRespUniversitaire from './pages/DashboardRespUniversitaire';
 import DashboardRespEntreprise from './pages/DashboardRespEntreprise';
 import DashboardTierUni from './pages/TierUniDashboard';  
 import DashboardTierEnt from './pages/TierEntDashboard';  
+import VerifiedPage from './pages/VerifiedPage';
 
 
 import Navigation from './components/Navigation';
@@ -21,7 +22,6 @@ import Footer from './components/Footer';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import './App.css';
-import VerifyEmailPage from "./pages/VerifyEmailPage";
 import Notifications from "./pages/Notifications";
 
 function App() {
@@ -51,15 +51,18 @@ function App() {
               <Route path="/etudiant" element={<DashboardEtudiant token={token} />} />
               <Route path="/encAca" element={<DashboardEncadrantAca token={token} />} />
               <Route path="/encPro" element={<DashboardEncadrantPro token={token} />} />
-              <Route path="/respUniv" element={<DashboardRespUniversite token={token} />} />
+              <Route path="/respUniv" element={<DashboardRespUniversitaire token={token} />} />
               <Route path="/respEnt" element={<DashboardRespEntreprise token={token} />} />
               <Route path="/tierUni" element={<DashboardTierUni token={token} />} /> 
               <Route path="/tierEnt" element={<DashboardTierEnt token={token} />} /> 
 
 
               <Route path="*" element={<Navigate to="/" replace />} />
-              <Route path="/verify/:token" element={<VerifyEmailPage />} />
+              <Route path="/verified" element={<VerifiedPage />} />
+
+              
               <Route path="/notifications" element={<Notifications token={token} />} />
+
 
             </Routes>
           </Container>

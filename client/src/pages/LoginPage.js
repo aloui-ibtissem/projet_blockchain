@@ -73,7 +73,7 @@ function LoginPage({ onLogin }) {
               Etudiant: "/etudiant",
               EncadrantAcademique: "/encAca",
               EncadrantProfessionnel: "/encPro",
-              ResponsableUniversite: "/respUniv",
+              ResponsableUniversitaire: "/respUniv",
               ResponsableEntreprise: "/respEnt",
             };
             navigate(paths[userRole] || "/");
@@ -115,7 +115,7 @@ function LoginPage({ onLogin }) {
                   <option>Etudiant</option>
                   <option>EncadrantAcademique</option>
                   <option>EncadrantProfessionnel</option>
-                  <option>ResponsableUniversite</option>
+                  <option>ResponsableUniversitaire</option>
                   <option>ResponsableEntreprise</option>
                   <option>TierDebloqueur</option>
                 </Form.Select>

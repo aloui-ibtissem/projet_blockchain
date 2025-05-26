@@ -13,7 +13,6 @@ module.exports = async (req, res, next) => {
     const email = decoded.email;
     const role = decoded.role;
 
-    let idQuery = null;
     const table = role === 'EncadrantAcademique' ? 'EncadrantAcademique'
                 : role === 'EncadrantProfessionnel' ? 'EncadrantProfessionnel'
                 : role === 'Etudiant' ? 'Etudiant'

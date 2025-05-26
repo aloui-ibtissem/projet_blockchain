@@ -1,0 +1,41 @@
+/* src/components/Layout.css */
+.layout-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.custom-sidebar {
+  width: 220px;
+  background: linear-gradient(180deg, #e6f0fa 0%, #d9e4f5 100%);
+  padding: 1rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-header {
+  font-weight: bold;
+  font-size: 1.3rem;
+  margin-bottom: 2rem;
+  color: #1e293b;
+  text-align: center;
+}
+
+.custom-sidebar .nav-link {
+  margin-bottom: 1rem;
+  color: #1e293b;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.custom-sidebar .nav-link:hover {
+  background: #c3dafe;
+  color: #111827;
+}
+
+.layout-content {
+  flex: 1;
+  background-color: #f8fafc;
+}

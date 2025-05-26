@@ -1,3 +1,100 @@
-<p>Bonjour {{etudiantPrenom}},</p>
-<p>Votre rapport a été validé par votre <strong>encadrant académique</strong> : {{encadrantPrenom}} {{encadrantNom}}.</p>
-<p><a href="{{lien}}">Accéder au tableau de bord</a></p>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';"/>
+  <title>Rapport validé par l'encadrant académique</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+      background-color: #f1f5f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+    .header {
+      background: linear-gradient(90deg, #0f172a, #1d4ed8);
+      padding: 24px;
+      text-align: center;
+      border-radius: 12px 12px 0 0;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+    .content {
+      padding: 24px;
+      text-align: center;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .button {
+      display: inline-block;
+      margin: 12px auto;
+      background: #2563eb;
+      color: white;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+      transition: background 0.3s ease;
+    }
+    .button:hover {
+      background: #1e40af;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 16px;
+      border-radius: 0 0 12px 12px;
+    }
+    .footer a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Rapport validé par l'encadrant académique</h2>
+    </div>
+    <div class="content">
+      <p>Bonjour {{etudiantPrenom}} {{etudiantNom}},</p>
+      <p>Votre encadrant académique <strong>{{encadrantPrenom}} {{encadrantNom}}</strong> a validé le rapport que vous avez soumis.</p>
+      <p><strong>Titre du stage :</strong> {{titreStage}}</p>
+
+      <a href="{{rapportUrl}}" class="button" target="_blank">Télécharger le rapport</a><br />
+      <a href="{{dashboardUrl}}" class="button" target="_blank">Accéder au tableau de bord</a>
+    </div>
+    <div class="footer">
+      <p><strong>{{appName}}</strong></p>
+      <p>© {{year}} – Tous droits réservés</p>
+      <p>
+        <a href="{{homeUrl}}">Accueil</a> |
+        <a href="{{loginUrl}}">Connexion</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

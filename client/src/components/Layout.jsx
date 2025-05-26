@@ -1,6 +1,8 @@
+// src/components/Layout.jsx
 import React from "react";
 import { Container, Row, Col, Nav, Navbar, Badge } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
+import Footer from "./Footer";
 import './Layout.css';
 
 export default function Layout({ children, notifications = [], role }) {
@@ -13,32 +15,30 @@ export default function Layout({ children, notifications = [], role }) {
   };
 
   return (
-    <Container fluid className="p-0">
-      <Navbar bg="light" expand="lg" className="shadow-sm px-3">
-        <Navbar.Brand as={Link} to="/">MonApp</Navbar.Brand>
-        <Navbar.Toggle aria-controls="nav" />
-        <Navbar.Collapse id="nav">
-          <Nav className="ms-auto">
-            <Nav.Link onClick={() => navigate('/notifications')}>
-              Notifications <Badge bg="primary">{unreadCount}</Badge>
-            </Nav.Link>
-            <Nav.Link onClick={handleLogout}>Déconnexion</Nav.Link>
-          </Nav>
-        </Navbar.Collapse>
-      </Navbar>
-      <Row className="gx-0">
-        <Col xs={2} className="bg-white sidebar shadow-sm">
-          <Nav className="flex-column mt-4">
-            <Nav.Link as={Link} to="/dashboard">Tableau de bord</Nav.Link>
-            {role === 'Etudiant' && <Nav.Link as={Link} to="/dashboard/stage">Mon Stage</Nav.Link>}
-            {(role === 'EncadrantAcademique') && <Nav.Link as={Link} to="/dashboard/propositions">Propositions</Nav.Link>}
-            {/* Ajouter d'autres liens selon role */}
-          </Nav>
-        </Col>
-        <Col xs={10} className="p-4 main-content">
+    <div className="layout-container d-flex">
+      {/* Sidebar Fixe à gauche */}
+      <div className="custom-sidebar">
+        <div className="sidebar-header">StageChain</div>
+        <Nav className="flex-column">
+          <Nav.Link as={Link} to="/">Accueil</Nav.Link>
+          {role === 'Etudiant' && <Nav.Link as={Link} to="/etudiant">Mon Stage</Nav.Link>}
+          {role === 'EncadrantAcademique' && <Nav.Link as={Link} to="/encAca">Propositions</Nav.Link>}
+          {role === 'EncadrantProfessionnel' && <Nav.Link as={Link} to="/encPro">Évaluations</Nav.Link>}
+          <Nav.Link as={Link} to="/notifications">Notifications <Badge bg="primary">{unreadCount}</Badge></Nav.Link>
+          <Nav.Link onClick={handleLogout}>Déconnexion</Nav.Link>
+        </Nav>
+      </div>
+
+      {/* Contenu Principal */}
+      <div className="layout-content flex-grow-1">
+        <Navbar bg="light" expand="lg" className="shadow-sm px-4 mb-3">
+          <Navbar.Brand>Bienvenue, {role}</Navbar.Brand>
+        </Navbar>
+        <Container fluid className="p-4">
           {children}
-        </Col>
-      </Row>
-    </Container>
+        </Container>
+        <Footer />
+      </div>
+    </div>
   );
 }

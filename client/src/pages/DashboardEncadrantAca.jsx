@@ -2,26 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {
-  Container,
-  Row,
-  Col,
-  Card,
-  Table,
-  Button,
-  Alert,
-  Spinner,
-  Form
-} from 'react-bootstrap';
+import Sidebar from '../components/Sidebar';
+import Header from '../components/Header';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { Alert, Card, Button, Form, Table } from 'react-bootstrap';
 import './DashboardEncadrantAca.css';
 
-const API_URL ="http://localhost:3000";
+const API_URL = 'http://localhost:3000';
 
 function DashboardEncadrantAca() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
-
   const [propositions, setPropositions] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [rapports, setRapports] = useState([]);
@@ -41,9 +33,8 @@ function DashboardEncadrantAca() {
       return;
     }
     loadData();
-    fetchRapports();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token, role, navigate]);
 
   const loadData = async () => {
     setLoading(true);
@@ -64,7 +55,7 @@ function DashboardEncadrantAca() {
       setRapports(rapRes.data);
     } catch (err) {
       console.error(err);
-      setMessage('Erreur de chargement du dashboard.');
+      setMessage('Erreur de chargement du tableau de bord.');
     } finally {
       setLoading(false);
     }
@@ -86,17 +77,6 @@ function DashboardEncadrantAca() {
       setMessage("Échec de l'envoi du commentaire.");
     }
   };
-  const fetchRapports = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/rapport/encadrant`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setRapports(res.data);
-    } catch (err) {
-      console.error("Erreur récupération rapports à valider :", err);
-    }
-  };
-  
 
   const validerRapport = async (rapportId) => {
     try {
@@ -127,149 +107,137 @@ function DashboardEncadrantAca() {
     }
   };
 
-  if (loading) {
-    return (
-      <Container className="mt-5 text-center">
-        <Spinner animation="border" variant="primary" />
-      </Container>
-    );
-  }
-
   return (
-    <Container className="py-4">
-      <Row>
-        <Col>
-          <h2 className="text-center">Tableau de bord - Encadrant Académique</h2>
+    <div className="dashboard-layout">
+      <Sidebar role={role} />
+      <div className="dashboard-content">
+        <Header title="Encadrant Académique" />
+        <main className="main-content">
           {message && <Alert variant="info">{message}</Alert>}
-        </Col>
-      </Row>
+          {loading ? (
+            <SkeletonLoader />
+          ) : (
+            <div className="dashboard-grid">
+              <Card className="dashboard-card">
+                <Card.Header>Notifications</Card.Header>
+                <Card.Body style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                  {notifications.length ? (
+                    <ul className="notification-list">
+                      {notifications.map(n => (
+                        <li key={n.id}>
+                          {n.message}
+                          <span className="notification-date">
+                            {new Date(n.date_envoi).toLocaleString()}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted">Aucune notification</p>
+                  )}
+                </Card.Body>
+              </Card>
 
-      <Row className="mb-4">
-        <Col md={4}>
-          <Card className="h-100 shadow-sm">
-            <Card.Header>Notifications</Card.Header>
-            <Card.Body style={{ maxHeight: 250, overflowY: 'auto' }}>
-              {notifications.length ? (
-                <ul className="list-unstyled mb-0">
-                  {notifications.map((n) => (
-                    <li key={n.id} className="mb-2">
-                      {n.message}
-                      <br />
-                      <small className="text-muted">
-                        {new Date(n.date_envoi).toLocaleString()}
-                      </small>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted">Aucune notification</p>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
+              <Card className="dashboard-card">
+                <Card.Header>Propositions de Stage</Card.Header>
+                <Card.Body>
+                  {propositions.length === 0 ? (
+                    <p className="text-muted">Aucune proposition en attente.</p>
+                  ) : (
+                    <Table striped bordered hover responsive>
+                      <thead>
+                        <tr>
+                          <th>Titre</th>
+                          <th>Dates</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {propositions.map(p => (
+                          <tr key={p.id}>
+                            <td>{p.titre}</td>
+                            <td>
+                              Du {new Date(p.dateDebut).toLocaleDateString()} au{' '}
+                              {new Date(p.dateFin).toLocaleDateString()}
+                            </td>
+                            <td>
+                              <Button
+                                size="sm"
+                                className="btn-accept"
+                                onClick={() => handleDecision(p.id, 'accepter')}
+                              >
+                                Accepter
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="btn-reject"
+                                onClick={() => handleDecision(p.id, 'rejeter')}
+                              >
+                                Rejeter
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </Card.Body>
+              </Card>
 
-        <Col md={8}>
-          <Card className="shadow-sm mb-4">
-            <Card.Header>Propositions de Stage</Card.Header>
-            <Card.Body>
-              {propositions.length === 0 ? (
-                <p className="text-muted">Aucune proposition en attente.</p>
-              ) : (
-                <Table striped bordered hover responsive>
-                  <thead>
-                    <tr>
-                      <th>Titre</th>
-                      <th>Dates</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {propositions.map((p) => (
-                      <tr key={p.id}>
-                        <td>{p.titre}</td>
-                        <td>
-                          Du {new Date(p.dateDebut).toLocaleDateString()} au{" "}
-                          {new Date(p.dateFin).toLocaleDateString()}
-                        </td>
-                        <td>
-                          <Button
-                            size="sm"
-                            variant="success"
-                            className="me-2"
-                            onClick={() => handleDecision(p.id, 'accepter')}
+              <Card className="dashboard-card">
+                <Card.Header>Rapports à Valider</Card.Header>
+                <Card.Body>
+                  {rapports.length === 0 ? (
+                    <p className="text-muted">Aucun rapport à examiner.</p>
+                  ) : (
+                    rapports.map(r => (
+                      <Card key={r.id} className="inner-card">
+                        <Card.Body>
+                          <strong>
+                            {r.prenomEtudiant} {r.nomEtudiant}
+                          </strong>
+                          <br />
+                          <a
+                            href={`${API_URL}/uploads/${r.fichier}`}
+                            target="_blank"
+                            rel="noreferrer"
                           >
-                            Accepter
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => handleDecision(p.id, 'rejeter')}
-                          >
-                            Rejeter
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </Card.Body>
-          </Card>
-
-          <Card className="shadow-sm">
-            <Card.Header>Rapports à Valider</Card.Header>
-            <Card.Body>
-              {rapports.length === 0 ? (
-                <p className="text-muted">Aucun rapport à examiner.</p>
-              ) : (
-                rapports.map((r) => (
-                  <Card key={r.id} className="mb-3">
-                    <Card.Body>
-                      <strong>
-                        {r.prenomEtudiant} {r.nomEtudiant}
-                      </strong>
-                      <br />
-                      <a
-href={`${API_URL}/uploads/${r.fichier}`}
-target="_blank"
-  rel="noreferrer"
->
-  Voir le rapport
-</a>
-
-                      <Form.Control
-                        as="textarea"
-                        rows={2}
-                        placeholder="Votre commentaire"
-                        value={commentaire}
-                        className="mt-2"
-                        onChange={(e) => setCommentaire(e.target.value)}
-                      />
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="mt-2 me-2"
-                        onClick={() => commenterRapport(r.id)}
-                      >
-                        Commenter
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="success"
-                        className="mt-2"
-                        onClick={() => validerRapport(r.id)}
-                      >
-                        Valider
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                ))
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+                            Voir le rapport
+                          </a>
+                          <Form.Control
+                            as="textarea"
+                            rows={2}
+                            placeholder="Votre commentaire"
+                            value={commentaire}
+                            className="mt-2"
+                            onChange={e => setCommentaire(e.target.value)}
+                          />
+                          <div className="mt-2">
+                            <Button
+                              size="sm"
+                              onClick={() => commenterRapport(r.id)}
+                            >
+                              Commenter
+                            </Button>{' '}
+                            <Button
+                              size="sm"
+                              className="btn-accept"
+                              onClick={() => validerRapport(r.id)}
+                            >
+                              Valider
+                            </Button>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    ))
+                  )}
+                </Card.Body>
+              </Card>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }
 

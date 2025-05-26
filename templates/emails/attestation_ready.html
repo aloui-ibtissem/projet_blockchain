@@ -2,41 +2,44 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Attestation à générer</title>
+  <title>Attestation prête à être générée</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    table { max-width: 600px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+    h2 { color: #2c3e50; }
+    a.button { background: #17a2b8; color: white; padding: 12px 20px; border-radius: 5px; text-decoration: none; display: inline-block; }
+    a.button:hover { background: #138496; }
+    .footer { font-size: 12px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+  </style>
 </head>
-<body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
-  <table style="max-width: 600px; margin: auto; background-color: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
-    <tr>
-      <td>
-        <h2 style="color: #2c3e50;">Attestation à générer</h2>
-        <p>Bonjour,</p>
+<body>
+  <table>
+    <tr><td>
+      <h2>Attestation prête à être générée</h2>
+      <p>Bonjour {{destinatairePrenom}},</p>
+      <p>
+        Le rapport est validé par les deux encadrants pour le stage <strong>"{{titreStage}}"</strong> réalisé par l’étudiant <strong>{{etudiantPrenom}} {{etudiantNom}}</strong>.
+      </p>
+      <p>
+        Vous êtes invité à compléter et générer l’attestation officielle depuis votre espace personnel.
+      </p>
+      <p style="text-align:center;">
+        <a class="button" href="{{dashboardUrl}}" target="_blank">Accéder à mon espace</a>
+      </p>
 
-        <p>
-          Le rapport de stage de <strong>{{etudiantPrenom}} {{etudiantNom}}</strong> a été validé par les deux encadrants.
+      <div class="footer" style="text-align: center; padding: 16px; font-size: 12px; color: #64748b; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+        <p style="margin: 4px 0;">
+          <strong>{{appName}}</strong>
         </p>
-
-        <p>
-          Vous êtes invité à <strong>générer l’attestation</strong> correspondante à partir de votre tableau de bord.
+        <p style="margin: 4px 0;">
+          © {{year}} – Tous droits réservés
         </p>
-
-        <ul>
-          <li><strong>Identifiant du stage :</strong> {{identifiantStage}}</li>
-          <li><strong>Identifiant du rapport :</strong> {{identifiantRapport}}</li>
-        </ul>
-
-        <p style="margin-top: 20px;">
-           accéder à votre espace :
+        <p style="margin: 4px 0;">
+          <a href="{{homeUrl}}" style="color: #3b82f6; text-decoration: none;">Accueil</a> |
+          <a href="{{loginUrl}}" style="color: #3b82f6; text-decoration: none;">Connexion</a>
         </p>
-
-        <p>
-          <a href="{{lien}}" style="background-color: #2980b9; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">
-            Accéder au tableau de bord
-          </a>
-        </p>
-
-        <p style="margin-top: 30px;">Cordialement,<br>L’équipe de gestion des stages</p>
-      </td>
-    </tr>
+      </div>
+    </td></tr>
   </table>
 </body>
 </html>

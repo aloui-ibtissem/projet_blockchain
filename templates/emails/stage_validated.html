@@ -1,12 +1,116 @@
-<p>Bonjour {{etudiantPrenom}} {{etudiantNom}},</p>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>Stage validé</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;
+      color: #1e293b;
+      background-color: #f1f5f9;
+      margin: 0;
+      padding: 0;
+    }
 
-<p>Votre proposition de stage a été <strong>acceptée</strong> par les deux encadrants et votre stage a été officiellement créé.</p>
+    table.container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
 
-<p><strong>Identifiant du stage :</strong> {{identifiantStage}}</p>
-<p><strong>Titre du stage :</strong> {{titreStage}}</p>
-<p><strong>Dates :</strong> Du {{dateDebut}} au {{dateFin}}</p>
+    td.header {
+      background: linear-gradient(90deg, #0f172a, #1d4ed8);
+      padding: 24px;
+      text-align: center;
+      border-radius: 12px 12px 0 0;
+    }
 
-<p>Vous pouvez suivre l’évolution de votre stage sur votre tableau de bord.</p>
+    .header h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: bold;
+      color: #ffffff;
+    }
 
-<p>Cordialement,<br>
-L’équipe de gestion des stages</p>
+    td.content {
+      padding: 24px;
+      text-align: center;
+    }
+
+    p {
+      font-size: 15px;
+      line-height: 1.6;
+      margin: 0 0 16px;
+    }
+
+    a.button {
+      background: #2563eb;
+      color: #ffffff !important;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      display: inline-block;
+      margin-top: 16px;
+    }
+
+    .button:hover {
+      background: #1e40af;
+    }
+
+    td.footer {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 16px;
+      border-radius: 0 0 12px 12px;
+    }
+
+    .footer a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <table class="container" role="presentation" cellpadding="0" cellspacing="0">
+    <tr>
+      <td class="header">
+        <h2>Sujet de Stage officiellement validé</h2>
+      </td>
+    </tr>
+    <tr>
+      <td class="content">
+        <p>Bonjour {{etudiantPrenom}},</p>
+        <p>Votre sujet <strong>{{titreStage}}</strong> a été validé par les deux encadrants.</p>
+        <p>Le stage a été officiellement créé avec l’identifiant : <strong>{{identifiantStage}}</strong>.</p>
+        <a class="button" href="{{dashboardUrl}}" target="_blank">Accéder à votre tableau de bord</a>
+      </td>
+    </tr>
+    <tr>
+      <td class="footer">
+        <p><strong>{{appName}}</strong></p>
+        <p>© {{year}} – Tous droits réservés</p>
+        <p>
+          <a href="{{homeUrl}}">Accueil</a> |
+          <a href="{{loginUrl}}">Connexion</a>
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

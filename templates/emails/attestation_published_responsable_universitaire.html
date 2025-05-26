@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Attestation à valider sur votre espace</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    table {
+      max-width: 600px;
+      margin: auto;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    h2 {
+      color: #1d4ed8;
+    }
+    a.button {
+      background: #1d4ed8;
+      color: #ffffff;
+      padding: 12px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: bold;
+    }
+    a.button:hover {
+      background: #1e40af;
+    }
+    .footer {
+      font-size: 12px;
+      color: #64748b;
+      text-align: center;
+      margin-top: 30px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <table>
+    <tr><td>
+      <h2>Nouvelle attestation générée à valider</h2>
+      <p>Bonjour {{destinatairePrenom}} {{destinataireNom}},</p>
+      <p>
+        Une attestation a été générée pour l’étudiant <strong>{{etudiantPrenom}} {{etudiantNom}}</strong> concernant le stage intitulé&nbsp;:
+        <br><strong>{{titreStage}}</strong>
+      </p>
+      <p>
+        Vous êtes invité à consulter cette attestation depuis votre tableau de bord afin de procéder à sa validation officielle.
+      </p>
+      <p style="text-align:center; margin: 24px 0;">
+        <a class="button" href="{{dashboardUrl}}" target="_blank">Accéder à mon espace</a>
+      </p>
+      <div class="footer">
+        <p><strong>{{appName}}</strong></p>
+        <p>© {{year}} – Tous droits réservés</p>
+        <p>
+          <a href="{{homeUrl}}" style="color:#3b82f6; text-decoration:none;">Accueil</a> |
+          <a href="{{loginUrl}}" style="color:#3b82f6; text-decoration:none;">Connexion</a>
+        </p>
+      </div>
+    </td></tr>
+  </table>
+</body>
+</html>

@@ -1,8 +1,5 @@
 const db = require("../config/db");
 
-/**
- * Normalise une chaîne pour l'utiliser dans un identifiant
- */
 function slugify(str) {
   return str
     .toUpperCase()
@@ -11,9 +8,6 @@ function slugify(str) {
     .replace(/^_+|_+$/g, "");
 }
 
-/**
- * Génère l'année universitaire en cours, ex : 2024-2025
- */
 function genererAnneeUniversitaire() {
   const today = new Date();
   const year = today.getFullYear();
@@ -22,21 +16,13 @@ function genererAnneeUniversitaire() {
   return today.getMonth() + 1 >= 9 ? `${year}-${next}` : `${prev}-${year}`;
 }
 
-/**
- * Récupère le nom normalisé d'une entité selon son ID
- */
 async function getCodeEntite(tableName, id) {
-  const [rows] = await db.execute(
-    `SELECT nom FROM ${tableName} WHERE id = ?`, [id]
-  );
-  if (rows.length === 0) throw new Error(`ID introuvable dans ${tableName}`);
+  const [rows] = await db.execute(`SELECT nom FROM ${tableName} WHERE id = ?`, [id]);
+  if (!rows || rows.length === 0) throw new Error(`ID introuvable dans ${tableName}`);
   return slugify(rows[0].nom);
 }
 
-/**
- * Génère un identifiant structuré pour un stage
- * Format : [Année]_[ENTREPRISE]_[UNIVERSITE]_[XXX]
- */
+// STAGE
 async function genererIdentifiantStage(entrepriseId, universiteId) {
   const annee = genererAnneeUniversitaire();
   const codeEnt = await getCodeEntite("Entreprise", entrepriseId);
@@ -47,7 +33,7 @@ async function genererIdentifiantStage(entrepriseId, universiteId) {
     WHERE annee = ? AND entrepriseId = ? AND universiteId = ?
   `, [annee, entrepriseId, universiteId]);
 
-  let num = row ? row.dernierNumero + 1 : 1;
+  const num = row ? row.dernierNumero + 1 : 1;
 
   if (row) {
     await db.execute(`
@@ -64,16 +50,25 @@ async function genererIdentifiantStage(entrepriseId, universiteId) {
   return `${annee}_${codeEnt}_${codeUni}_${String(num).padStart(3, "0")}`;
 }
 
-/**
- * Génère un identifiant structuré pour un acteur
- * Format : ROLE_ENTITE_XXX
- */
+// ACTEUR
 async function genererIdentifiantActeur({ role, structureType, structureId }) {
   const table = structureType.toLowerCase() === "entreprise" ? "Entreprise" : "Universite";
   const codeEntite = await getCodeEntite(table, structureId);
 
+  const validRoles = {
+    ResponsableUniversitaire: "ResponsableUniversitaire",
+    ResponsableEntreprise: "ResponsableEntreprise",
+    EncadrantAcademique: "EncadrantAcademique",
+    EncadrantProfessionnel: "EncadrantProfessionnel",
+    Etudiant: "Etudiant",
+    TierDebloqueur: "TierDebloqueur"
+  };
+
+  const tableName = validRoles[role];
+  if (!tableName) throw new Error("Rôle invalide dans identifiantActeur");
+
   const [rows] = await db.execute(`
-    SELECT COUNT(*) AS total FROM ${role}
+    SELECT COUNT(*) AS total FROM ${tableName}
     WHERE identifiant_unique LIKE ?
   `, [`${role.toUpperCase()}_${codeEntite}_%`]);
 
@@ -81,44 +76,40 @@ async function genererIdentifiantActeur({ role, structureType, structureId }) {
   return `${role.toUpperCase()}_${codeEntite}_${String(next).padStart(3, "0")}`;
 }
 
-/**
- * Génère un identifiant structuré pour un rapport
- * Format : RPT_UNI_2024-2025_001_TIMESTAMP
- */
+// RAPPORT
 async function genererIdentifiantRapport(etudiantId) {
   const annee = genererAnneeUniversitaire();
 
   const [[etudiant]] = await db.execute(`
-    SELECT u.nom as universite FROM Etudiant e
+    SELECT u.nom AS universite FROM Etudiant e
     JOIN Universite u ON e.universiteId = u.id
     WHERE e.id = ?
   `, [etudiantId]);
+
+  if (!etudiant) throw new Error("Étudiant introuvable pour identifiantRapport");
 
   const codeUni = slugify(etudiant.universite);
   const timestamp = Date.now();
 
   const [rows] = await db.execute(`
-    SELECT COUNT(*) as total FROM RapportStage WHERE etudiantId = ?
+    SELECT COUNT(*) AS total FROM RapportStage WHERE etudiantId = ?
   `, [etudiantId]);
 
   const num = rows[0].total + 1;
   return `RPT_${codeUni}_${annee}_${String(num).padStart(3, "0")}_${timestamp}`;
 }
 
-/**
- * Génère un identifiant unique pour une attestation
- * Format : ATT_2025_001_8 (année + compteur + id étudiant)
- */
-async function genererIdentifiantAttestation(etudiantId) {
+// ATTESTATION
+async function genererIdentifiantAttestation(universiteId, entrepriseId) {
   const annee = new Date().getFullYear();
-  const prefix = `ATT_${annee}`;
-  const [rows] = await db.execute(
-    "SELECT COUNT(*) as total FROM Attestation WHERE identifiant LIKE ?",
-    [`${prefix}%`]
-  );
-  const compteur = rows[0].total + 1;
-  const suffix = compteur.toString().padStart(3, "0");
-  return `${prefix}_${suffix}_${etudiantId}`;
+  const idConcat = `${universiteId}${entrepriseId}`;
+
+  const [[{ total }]] = await db.execute(`
+    SELECT COUNT(*) AS total FROM Attestation WHERE identifiant LIKE ?
+  `, [`ATT_${annee}_${idConcat}_%`]);
+
+  const compteur = String(total + 1).padStart(2, "0");
+  return `ATT_${annee}_${idConcat}_${compteur}`;
 }
 
 module.exports = {

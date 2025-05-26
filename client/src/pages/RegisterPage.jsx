@@ -97,7 +97,7 @@ function RegisterPage() {
 
   const showStructureType = form.role === "TierDebloqueur";
   const showUniversite =
-    ["Etudiant", "EncadrantAcademique", "ResponsableUniversite"].includes(
+    ["Etudiant", "EncadrantAcademique", "ResponsableUniversitaire"].includes(
       form.role
     ) ||
     (form.role === "TierDebloqueur" &&
@@ -160,7 +160,7 @@ function RegisterPage() {
                   <option>Etudiant</option>
                   <option>EncadrantAcademique</option>
                   <option>EncadrantProfessionnel</option>
-                  <option>ResponsableUniversite</option>
+                  <option>ResponsableUniversitaire</option>
                   <option>ResponsableEntreprise</option>
                   <option>TierDebloqueur</option>
                 </Form.Select>

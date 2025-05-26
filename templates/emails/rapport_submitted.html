@@ -1,8 +1,92 @@
-<p>L'étudiant {{etudiantPrenom}} {{etudiantNom}} a soumis son rapport de stage.</p>
-<p>Identifiant du stage : <strong>{{identifiantStage}}</strong></p>
-<p>Date de soumission : {{dateSoumission}}</p>
-<p>Lien vers le rapport : 
-  <a href="{{lienRapport}}" target="_blank">Télécharger le rapport</a>
-  
-  </p>
-<p>Merci de le consulter et valider si conforme.</p>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rapport de stage soumis</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(90deg, #0f172a, #1d4ed8);
+      color: #fff;
+      text-align: center;
+      padding: 24px;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+    .content {
+      padding: 24px;
+      text-align: center;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .button {
+      background-color: #2563eb;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 24px;
+      margin: 10px auto;
+      display: inline-block;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    .footer {
+      background: #f1f5f9;
+      color: #64748b;
+      text-align: center;
+      font-size: 12px;
+      padding: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .footer a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Rapport de stage soumis</h2>
+    </div>
+    <div class="content">
+      <p>Bonjour {{encadrantPrenom}} {{encadrantNom}},</p>
+      <p>L’étudiant <strong>{{etudiantPrenom}} {{etudiantNom}}</strong> a soumis son rapport de stage pour le sujet suivant :</p>
+      <p><strong>{{titreStage}}</strong></p>
+      <p>Date de soumission : {{dateSoumission}}</p>
+      <a class="button" href="{{rapportUrl}}" target="_blank">Télécharger le rapport</a>
+      <br />
+      <a class="button" href="{{dashboardUrl}}" target="_blank">Accéder à votre tableau de bord</a>
+    </div>
+    <div class="footer">
+      <p><strong>{{appName}}</strong></p>
+      <p>© {{year}} – Tous droits réservés</p>
+      <p>
+        <a href="{{homeUrl}}">Accueil</a> |
+        <a href="{{loginUrl}}">Connexion</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

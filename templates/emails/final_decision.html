@@ -1,5 +1,75 @@
-<p>Bonjour {{etudiantPrenom}},</p>
-<p>Votre attestation a été examinée par votre université.</p>
-<p>Statut final de votre stage : <strong>{{statutFinal}}</strong></p>
-<p>Vous pouvez consulter ou télécharger votre attestation depuis le tableau de bord ou ce mail.</p>
-<p>Cordialement,<br>Plateforme de gestion de stage</p>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Décision finale sur le stage</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    table {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    h2 {
+      color: #34495e;
+    }
+    a.button {
+      background: #2c3e50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    a.button:hover {
+      background: #1a252f;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      background: #f8fafc;
+      padding: 16px;
+      border-top: 1px solid #e2e8f0;
+      margin-top: 30px;
+    }
+    a.link {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    a.link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <table>
+    <tr><td>
+      <h2>Statut final du stage</h2>
+      <p>Bonjour {{etudiantPrenom}} {{etudiantNom}},</p>
+      <p>
+        Le responsable universitaire a pris une décision concernant votre stage <strong>"{{titreStage}}"</strong>.
+      </p>
+      <p style="text-align:center;">
+        <a class="button" href="{{dashboardUrl}}" target="_blank">Consulter la décision</a>
+      </p>
+
+      <div class="footer">
+        <p><strong>{{appName}}</strong></p>
+        <p>© {{year}} – Tous droits réservés</p>
+        <p>
+          <a href="{{homeUrl}}" class="link">Accueil</a> |
+          <a href="{{loginUrl}}" class="link">Connexion</a>
+        </p>
+      </div>
+    </td></tr>
+  </table>
+</body>
+</html>

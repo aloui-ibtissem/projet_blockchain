@@ -7,7 +7,8 @@ import {
 } from 'react-bootstrap';
 import './DashboardEtudiant.css';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+const BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+const API_URL = BASE.includes('/api') ? BASE : `${BASE}/api`;
 
 function DashboardEtudiant() {
   const navigate = useNavigate();
@@ -15,18 +16,15 @@ function DashboardEtudiant() {
   const role = localStorage.getItem('role');
 
   const [form, setForm] = useState({
-    sujet: '',
-    objectifs: '',
-    dateDebut: '',
-    dateFin: '',
-    encadrantAcademique: '',
-    encadrantProfessionnel: ''
+    sujet: '', objectifs: '', dateDebut: '', dateFin: '',
+    encadrantAcademique: '', encadrantProfessionnel: ''
   });
+
   const [rapport, setRapport] = useState(null);
   const [cibles, setCibles] = useState({
-    EncadrantAcademique: false,
-    EncadrantProfessionnel: false
+    EncadrantAcademique: false, EncadrantProfessionnel: false
   });
+
   const [message, setMessage] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
@@ -46,90 +44,66 @@ function DashboardEtudiant() {
   }, []);
 
   const loadInitialData = async () => {
-    await Promise.all([fetchStage(), fetchNotifications(), fetchMesRapports()]);
-    setLoading(false);
+    try {
+      await Promise.all([
+        fetchStage(),
+        fetchNotifications(),
+        fetchMesRapports()
+      ]);
+    } catch (err) {
+      console.error("Erreur initiale :", err);
+      setMessage("Erreur lors du chargement des données.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleChange = e =>
+  const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleCheckboxChange = e =>
+  const handleCheckboxChange = (e) =>
     setCibles({ ...cibles, [e.target.name]: e.target.checked });
 
   const proposeStage = async () => {
     try {
       setMessage('Envoi de la proposition...');
-      await axios.post(`${API_URL}/api/stage/proposer`, form, {
+      await axios.post(`${API_URL}/stage/proposer`, form, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setMessage('Proposition envoyée avec succès !');
+      setMessage('Stage proposé avec succès.');
       await fetchStage();
     } catch (err) {
-      setMessage('Erreur : ' + (err.response?.data?.error || err.message));
+      setMessage("Erreur lors de la proposition du stage.");
     }
   };
 
   const submitRapport = async () => {
-    if (!rapport) return setMessage('Veuillez sélectionner un fichier.');
-
+    if (!rapport) return setMessage("Veuillez sélectionner un fichier.");
     const destinataires = Object.keys(cibles).filter(k => cibles[k]);
-    if (destinataires.length === 0) {
-      return setMessage("Veuillez sélectionner au moins un encadrant.");
-    }
+    if (destinataires.length === 0)
+      return setMessage("Veuillez cocher au moins un encadrant.");
 
     const formData = new FormData();
-    formData.append('fichier', rapport);
-    formData.append('cibles', JSON.stringify(destinataires));
+    formData.append("fichier", rapport);
+    formData.append("cibles", JSON.stringify(destinataires));
 
     try {
-      await axios.post(`${API_URL}/api/rapport/soumettre`, formData, {
+      await axios.post(`${API_URL}/rapport/soumettre`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       });
-      setMessage('Rapport soumis avec succès !');
+      setMessage("Rapport soumis avec succès.");
       await fetchStage();
     } catch (err) {
-      setMessage('Erreur : ' + (err.response?.data?.error || err.message));
-    }
-  };
-
-  const fetchMesRapports = async () => {
-    try {
-      await axios.get(`${API_URL}/api/rapport/mes-rapports`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-    } catch (err) {
-      console.error("Erreur chargement des rapports étudiant :", err);
-    }
-  };
-
-  const fetchAttestation = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/stage/attestation`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAttestationUrl(res.data.attestationUrl);
-    } catch {
-      setMessage('Aucune attestation disponible.');
-    }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/stage/notifications`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNotifications(res.data);
-    } catch {
-      console.error('Erreur chargement notifications');
+      setMessage("Erreur lors de la soumission du rapport.");
     }
   };
 
   const fetchStage = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/stage/mon-stage`, {
+      const res = await axios.get(`${API_URL}/stage/mon-stage`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCurrentStage(res.data);
@@ -139,52 +113,97 @@ function DashboardEtudiant() {
     }
   };
 
-  const fetchCommentaires = async rapportId => {
+  const fetchCommentaires = async (rapportId) => {
     try {
-      const res = await axios.get(`${API_URL}/api/rapport/commentaires/${rapportId}`, {
+      const res = await axios.get(`${API_URL}/rapport/commentaires/${rapportId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setCommentaires(res.data);
+      setCommentaires(Array.isArray(res.data) ? res.data : []);
     } catch {
       setCommentaires([]);
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/stage/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setNotifications([]);
+    }
+  };
+
+  const fetchMesRapports = async () => {
+    try {
+      await axios.get(`${API_URL}/rapport/mes-rapports`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch {
+      // No action, silent failure
+    }
+  };
+
+  const fetchAttestation = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/attestation/etudiant/ma-attestation`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAttestationUrl(res.data.attestationUrl || '');
+    } catch {
+      setMessage("Aucune attestation disponible.");
+    }
+  };
+
+  const downloadAttestation = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/attestation/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'attestation.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch {
+      setMessage("Erreur lors du téléchargement.");
+    }
+  };
+
   if (loading) {
     return (
-      <Container className="mt-5 text-center">
-        <Spinner animation="border" variant="primary" />
+      <Container className="text-center mt-5">
+        <Spinner animation="border" />
       </Container>
     );
   }
 
   return (
     <Container className="mt-4">
-      <h2 className="mb-4 text-center">Espace Étudiant</h2>
+      <h2 className="text-center mb-4">Espace Étudiant</h2>
       {message && <Alert variant="info">{message}</Alert>}
 
       {/* Notifications */}
       <Card className="mb-4 shadow-sm">
-        <Card.Header className="d-flex justify-content-between align-items-center">
-          <span>Notifications</span>
-          <Button
-            variant="outline-primary"
-            size="sm"
-            onClick={() => setShowNotif(!showNotif)}
-          >
-            {showNotif ? 'Masquer' : 'Afficher'}
+        <Card.Header className="d-flex justify-content-between">
+          Notifications
+          <Button size="sm" onClick={() => setShowNotif(!showNotif)} variant="outline-primary">
+            {showNotif ? "Masquer" : "Afficher"}
           </Button>
         </Card.Header>
         <Collapse in={showNotif}>
-          <Card.Body style={{ maxHeight: 200, overflowY: 'auto' }}>
+          <Card.Body style={{ maxHeight: 180, overflowY: 'auto' }}>
             {notifications.length > 0 ? (
               <ul className="mb-0">
                 {notifications.map(n => (
                   <li key={n.id}>
                     {n.message}{' '}
-                    <small className="text-muted">
-                      ({new Date(n.date_envoi).toLocaleDateString()})
-                    </small>
+                    <small className="text-muted">({new Date(n.date_envoi).toLocaleDateString()})</small>
                   </li>
                 ))}
               </ul>
@@ -200,117 +219,69 @@ function DashboardEtudiant() {
         <Card className="mb-4 shadow-sm">
           <Card.Header>Stage Actuel</Card.Header>
           <Card.Body>
-            <p><strong>Identifiant :</strong> {currentStage.identifiant_unique}</p>
+            <p><strong>ID :</strong> {currentStage.identifiant_unique}</p>
             <p><strong>Titre :</strong> {currentStage.titre}</p>
             <p><strong>Entreprise :</strong> {currentStage.entreprise}</p>
             <p><strong>Période :</strong> {new Date(currentStage.dateDebut).toLocaleDateString()} → {new Date(currentStage.dateFin).toLocaleDateString()}</p>
-            <p><strong>Encadrant Académique :</strong> {currentStage.acaPrenom} {currentStage.acaNom} (<strong>{currentStage.acaEmail}</strong>)</p>
-            <p><strong>Encadrant Professionnel :</strong> {currentStage.proPrenom} {currentStage.proNom} (<strong>{currentStage.proEmail}</strong>)</p>
+            <p><strong>Encadrant Académique :</strong> {currentStage.acaPrenom} {currentStage.acaNom} ({currentStage.acaEmail})</p>
+            <p><strong>Encadrant Professionnel :</strong> {currentStage.proPrenom} {currentStage.proNom} ({currentStage.proEmail})</p>
           </Card.Body>
         </Card>
       )}
 
-      {/* Proposition de Stage */}
+      {/* Proposition de stage */}
       <Card className="mb-4 shadow-sm">
         <Card.Header>Proposition de Stage</Card.Header>
         <Card.Body>
           <Form>
             <Form.Group className="mb-2">
-              <Form.Control
-                name="sujet"
-                placeholder="Sujet du stage"
-                value={form.sujet}
-                onChange={handleChange}
-              />
+              <Form.Control placeholder="Sujet" name="sujet" value={form.sujet} onChange={handleChange} />
             </Form.Group>
             <Form.Group className="mb-2">
-              <Form.Control
-                name="objectifs"
-                placeholder="Objectifs"
-                value={form.objectifs}
-                onChange={handleChange}
-              />
+              <Form.Control placeholder="Objectifs" name="objectifs" value={form.objectifs} onChange={handleChange} />
             </Form.Group>
             <Row className="mb-2">
-              <Col>
-                <Form.Control
-                  type="date"
-                  name="dateDebut"
-                  value={form.dateDebut}
-                  onChange={handleChange}
-                />
-              </Col>
-              <Col>
-                <Form.Control
-                  type="date"
-                  name="dateFin"
-                  value={form.dateFin}
-                  onChange={handleChange}
-                />
-              </Col>
+              <Col><Form.Control type="date" name="dateDebut" value={form.dateDebut} onChange={handleChange} /></Col>
+              <Col><Form.Control type="date" name="dateFin" value={form.dateFin} onChange={handleChange} /></Col>
             </Row>
             <Row className="mb-2">
-              <Col>
-                <Form.Control
-                  name="encadrantAcademique"
-                  placeholder="Email Encadrant Académique"
-                  value={form.encadrantAcademique}
-                  onChange={handleChange}
-                />
-              </Col>
-              <Col>
-                <Form.Control
-                  name="encadrantProfessionnel"
-                  placeholder="Email Encadrant Professionnel"
-                  value={form.encadrantProfessionnel}
-                  onChange={handleChange}
-                />
-              </Col>
+              <Col><Form.Control placeholder="Email Encadrant Académique" name="encadrantAcademique" value={form.encadrantAcademique} onChange={handleChange} /></Col>
+              <Col><Form.Control placeholder="Email Encadrant Professionnel" name="encadrantProfessionnel" value={form.encadrantProfessionnel} onChange={handleChange} /></Col>
             </Row>
-            <Button variant="primary" onClick={proposeStage}>
-              Soumettre
-            </Button>
+            <Button variant="primary" onClick={proposeStage}>Soumettre</Button>
           </Form>
         </Card.Body>
       </Card>
 
-      {/* Soumission du rapport */}
+      {/* Soumettre rapport */}
       <Card className="mb-4 shadow-sm">
         <Card.Header>Soumettre le Rapport</Card.Header>
         <Card.Body>
           <Form.Group className="mb-2">
-            <Form.Check
-              type="checkbox"
-              label="Envoyer à l'encadrant académique"
-              name="EncadrantAcademique"
-              checked={cibles.EncadrantAcademique}
-              onChange={handleCheckboxChange}
-            />
-            <Form.Check
-              type="checkbox"
-              label="Envoyer à l'encadrant professionnel"
-              name="EncadrantProfessionnel"
-              checked={cibles.EncadrantProfessionnel}
-              onChange={handleCheckboxChange}
-            />
+            {Object.keys(cibles).map(name => (
+              <Form.Check
+                key={name}
+                type="checkbox"
+                label={`Envoyer à l'${name.toLowerCase()}`}
+                name={name}
+                checked={cibles[name]}
+                onChange={handleCheckboxChange}
+              />
+            ))}
           </Form.Group>
           <Form.Group className="mb-2">
-            <Form.Control
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={e => setRapport(e.target.files[0])}
-            />
+            <Form.Control type="file" accept=".pdf,.doc,.docx" onChange={e => setRapport(e.target.files[0])} />
           </Form.Group>
-          <Button onClick={submitRapport}>Envoyer</Button>
+          <Button variant="primary" onClick={submitRapport}>Envoyer</Button>
         </Card.Body>
       </Card>
 
       {/* Commentaires */}
       <Card className="mb-4 shadow-sm">
-        <Card.Header>Commentaires sur le Rapport</Card.Header>
+        <Card.Header>Commentaires</Card.Header>
         <Card.Body>
           {commentaires.length > 0 ? (
-            <ul className="mb-0">
+            <ul>
               {commentaires.map((c, i) => (
                 <li key={i}>
                   <strong>{new Date(c.date_envoi).toLocaleString()}:</strong> {c.commentaire}
@@ -325,16 +296,13 @@ function DashboardEtudiant() {
 
       {/* Attestation */}
       <Card className="mb-4 shadow-sm">
-        <Card.Header>Attestation de stage</Card.Header>
+        <Card.Header>Attestation de Stage</Card.Header>
         <Card.Body>
-          <Button variant="success" onClick={fetchAttestation}>
-            Vérifier l’attestation
-          </Button>
+          <Button variant="success" className="me-2" onClick={fetchAttestation}>Vérifier</Button>
+          <Button variant="outline-primary" onClick={downloadAttestation}>Télécharger</Button>
           {attestationUrl && (
-            <p className="mt-2">
-              <a href={attestationUrl} target="_blank" rel="noreferrer">
-                Voir l’attestation
-              </a>
+            <p className="mt-3">
+              <a href={attestationUrl} target="_blank" rel="noreferrer">Voir l’attestation en ligne</a>
             </p>
           )}
         </Card.Body>

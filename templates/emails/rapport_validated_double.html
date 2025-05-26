@@ -1,4 +1,89 @@
-<p>Bonjour {{etudiantPrenom}},</p>
-<p>Votre rapport a été <strong>validé par les deux encadrants</strong>.</p>
-<p>Une attestation pourra bientôt être générée par le responsable entreprise.</p>
-<p><a href="{{lien}}">Accéder au tableau de bord</a></p>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Rapport validé par les deux encadrants</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    table {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    h2 {
+      color: #2c3e50;
+    }
+    ul {
+      text-align: left;
+      padding-left: 20px;
+      font-size: 14px;
+      margin: 10px 0 20px;
+    }
+    a.button {
+      background: #007BFF;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    a.button:hover {
+      background: #0056b3;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 16px;
+      margin-top: 30px;
+    }
+    .footer a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <table>
+    <tr><td>
+      <h2>Double validation obtenue</h2>
+      <p>Bonjour {{etudiantPrenom}} {{etudiantNom}},</p>
+      <p>
+        Félicitations ! Votre rapport de stage a été validé par les deux encadrants :
+      </p>
+      <ul>
+        <li><strong>Encadrant académique :</strong> {{encadrantAcaPrenom}} {{encadrantAcaNom}}</li>
+        <li><strong>Encadrant professionnel :</strong> {{encadrantProPrenom}} {{encadrantProNom}}</li>
+      </ul>
+      <p>Vous pouvez maintenant générer votre attestation de stage officielle.</p>
+      <p style="text-align:center;">
+        <a class="button" href="{{generationUrl}}" target="_blank">Générer mon attestation</a>
+      </p>
+      <p style="font-size: 12px; text-align: center; color: #6b7280;">
+        La génération de l’attestation déclenchera son enregistrement sécurisé sur la blockchain.
+      </p>
+
+      <div class="footer">
+        <p><strong>{{appName}}</strong></p>
+        <p>© {{year}} – Tous droits réservés</p>
+        <p>
+          <a href="{{homeUrl}}">Accueil</a> |
+          <a href="{{loginUrl}}">Connexion</a>
+        </p>
+      </div>
+    </td></tr>
+  </table>
+</body>
+</html>

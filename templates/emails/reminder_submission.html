@@ -1,5 +1,79 @@
-<p>Bonjour {{prenom}},</p>
-<p>Nous vous rappelons que vous devez soumettre votre rapport de stage avant le <strong>{{dateLimite}}</strong>.</p>
-<p>Ce rapport sera évalué par vos encadrants académique et professionnel.</p>
-<p>Vous pouvez effectuer cette action depuis votre <strong>tableau de bord</strong> ou via les liens disponibles dans ce <strong>mail</strong>.</p>
-<p>Cordialement,<br>Plateforme de gestion de stage</p>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Rappel : soumission du rapport</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    table {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    h2 {
+      color: #d35400;
+    }
+    a.button {
+      background: #e67e22;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    a.button:hover {
+      background: #ca6f1e;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 16px;
+      margin-top: 30px;
+    }
+    .footer a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <table>
+    <tr><td>
+      <h2>Rappel : soumission attendue</h2>
+      <p>Bonjour {{etudiantPrenom}} {{etudiantNom}},</p>
+      <p>
+        Vous n’avez pas encore soumis votre rapport pour le stage <strong>{{titreStage}}</strong>.<br>
+        Merci de le déposer avant la date limite convenue avec vos encadrants.
+      </p>
+      <p style="text-align:center;">
+        <a class="button" href="{{soumissionUrl}}" target="_blank">Soumettre mon rapport</a>
+      </p>
+      <p style="font-size: 12px; text-align: center; color: #6b7280;">
+        Ce rappel vous est envoyé automatiquement par le système. Pensez à informer vos encadrants après soumission.
+      </p>
+
+      <div class="footer">
+        <p><strong>{{appName}}</strong></p>
+        <p>© {{year}} – Tous droits réservés</p>
+        <p>
+          <a href="{{homeUrl}}">Accueil</a> |
+          <a href="{{loginUrl}}">Connexion</a>
+        </p>
+      </div>
+    </td></tr>
+  </table>
+</body>
+</html>

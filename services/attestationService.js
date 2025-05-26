@@ -5,94 +5,166 @@ const { hashFile } = require("../utils/hashUtils");
 const { publishAttestation } = require("../utils/blockchainUtils");
 const notificationService = require("./notificationService");
 const { genererIdentifiantAttestation } = require("../utils/identifiantUtils");
+require("dotenv").config();
 
 exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, responsableId }) => {
-  const [[existing]] = await db.execute(
-    "SELECT fileHash, ipfsUrl, identifiant FROM Attestation WHERE stageId = ?",
+  const [existingRows] = await db.execute(
+    "SELECT fileHash AS hash, ipfsUrl, identifiant FROM Attestation WHERE stageId = ?",
     [stageId]
   );
+  if (existingRows.length) return existingRows[0];
 
-  if (existing) {
-    return {
-      hash: existing.fileHash,
-      ipfsUrl: existing.ipfsUrl,
-      identifiant: existing.identifiant
-    };
-  }
-
-  const [[stage]] = await db.execute(`
-    SELECT S.*, 
-      E.id AS etudiantId, E.prenom AS etudiantPrenom, E.nom AS etudiantNom,
-      EA.prenom AS acaPrenom, EA.nom AS acaNom,
-      EP.prenom AS proPrenom, EP.nom AS proNom,
-      ENT.nom AS entreprise,
-      U.nom AS universite,
-      R.identifiantRapport, R.statutAcademique, R.statutProfessionnel
+  const [stageRows] = await db.execute(`
+    SELECT S.identifiant_unique, S.dateDebut, S.dateFin, S.titre, S.etat,
+           E.id AS etudiantId, E.prenom AS etudiantPrenom, E.nom AS etudiantNom, E.email AS etudiantEmail,
+           EA.prenom AS acaPrenom, EA.nom AS acaNom,
+           EP.prenom AS proPrenom, EP.nom AS proNom,
+           U.id AS universiteId, ENT.id AS entrepriseId,
+           ENT.nom AS nomEntreprise,
+           R.identifiantRapport
     FROM Stage S
     JOIN Etudiant E ON S.etudiantId = E.id
     JOIN EncadrantAcademique EA ON S.encadrantAcademiqueId = EA.id
     JOIN EncadrantProfessionnel EP ON S.encadrantProfessionnelId = EP.id
-    JOIN Entreprise ENT ON S.entrepriseId = ENT.id
     JOIN Universite U ON E.universiteId = U.id
+    JOIN Entreprise ENT ON S.entrepriseId = ENT.id
     JOIN RapportStage R ON R.stageId = S.id
-    WHERE S.id = ?
+    WHERE S.id = ? AND R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE
   `, [stageId]);
 
-  if (!stage) throw new Error("Stage introuvable");
-  if (!stage.statutAcademique || !stage.statutProfessionnel) {
-    throw new Error("Le rapport n'est pas encore validé par les deux encadrants");
-  }
+  if (!stageRows.length) throw new Error("Rapport non validé par les deux encadrants");
+  const stage = stageRows[0];
+  const attestationId = await genererIdentifiantAttestation(stage.universiteId, stage.entrepriseId);
+  const verificationUrl = `${process.env.PUBLIC_URL}/verify/${attestationId}`;
 
-  const attestationId = await genererIdentifiantAttestation(stage.etudiantId);
-
-  const data = {
+  const pdfData = {
     ...stage,
     ...modifs,
     appreciation,
     identifiantStage: stage.identifiant_unique,
     attestationId,
-    responsableNom: modifs.responsableNom || "Responsable Entreprise",
     dateGeneration: new Date().toLocaleDateString(),
+    verificationUrl,
+    responsableNom: modifs.responsableNom || "Responsable Entreprise"
   };
 
-  const pdfPath = await generatePDFWithQR(data);
+  const pdfPath = await generatePDFWithQR(pdfData);
   const fileHash = hashFile(pdfPath);
   const ipfsUrl = await uploadToIPFS(pdfPath);
 
   await db.execute(`
-    INSERT INTO Attestation (stageId, identifiant, fileHash, ipfsUrl, responsableId)
-    VALUES (?, ?, ?, ?, ?)
-  `, [stageId, attestationId, fileHash, ipfsUrl, responsableId]);
+    INSERT INTO Attestation
+      (stageId, identifiant, fileHash, ipfsUrl, responsableId, etudiantId, dateCreation, publishedOnChain)
+    VALUES (?, ?, ?, ?, ?, ?, NOW(), TRUE)
+  `, [stageId, attestationId, fileHash, ipfsUrl, responsableId, stage.etudiantId]);
+
+  await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
 
   await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, fileHash);
 
-  const [[respUni]] = await db.execute(
-    "SELECT id FROM ResponsableUniversitaire WHERE universiteId = (SELECT universiteId FROM Etudiant WHERE id = ?) LIMIT 1",
-    [stage.etudiantId]
+  const [respUniRows] = await db.execute(
+    "SELECT id, email, prenom, nom FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
+    [stage.universiteId]
   );
 
-  const targets = [
-    { id: stage.etudiantId, role: "Etudiant" },
-    { id: respUni?.id, role: "ResponsableUniversitaire" },
-    { id: responsableId, role: "ResponsableEntreprise" }
-  ];
+  const respUni = respUniRows[0];
 
-  for (const target of targets) {
-    if (!target?.id) continue;
+  await notificationService.notifyUser({
+    toId: stage.etudiantId,
+    toRole: "Etudiant",
+    subject: "Votre attestation est disponible",
+    templateName: "attestation_published_etudiant",
+    templateData: {
+      etudiantPrenom: stage.etudiantPrenom,
+      etudiantNom: stage.etudiantNom,
+      titreStage: stage.titre,
+      nomEntreprise: stage.nomEntreprise,
+      dateDebut: stage.dateDebut,
+      dateFin: stage.dateFin,
+      encadrantAcaPrenom: stage.acaPrenom,
+      encadrantAcaNom: stage.acaNom,
+      encadrantProPrenom: stage.proPrenom,
+      encadrantProNom: stage.proNom,
+      identifiantAttestation: attestationId,
+      hash: fileHash,
+      attestationUrl: verificationUrl,
+      year: new Date().getFullYear()
+    },
+    message: "Votre attestation de stage est prête."
+  });
+
+  if (respUni?.id) {
     await notificationService.notifyUser({
-      toId: target.id,
-      toRole: target.role,
-      subject: "Attestation disponible",
-      templateName: "attestation_published",
+      toId: respUni.id,
+      toRole: "ResponsableUniversitaire",
+      subject: `Attestation générée pour ${stage.etudiantPrenom} ${stage.etudiantNom}`,
+      templateName: "attestation_published_responsable_universitaire",
       templateData: {
+        etudiantPrenom: stage.etudiantPrenom,
         etudiantNom: stage.etudiantNom,
-        identifiantStage: stage.identifiant_unique,
-        hash: fileHash,
-        lienIPFS: ipfsUrl
+        titreStage: stage.titre,
+        identifiantAttestation: attestationId,
+        dashboardUrl: `${process.env.APP_URL}/login`
       },
-      message: "Une attestation a été publiée et peut être vérifiée en ligne."
+      message: `Une attestation est prête à être consultée et validée.`
     });
   }
 
-  return { hash: fileHash, ipfsUrl, identifiant: attestationId };
+  return {
+    hash: fileHash,
+    ipfsUrl,
+    identifiant: attestationId
+  };
+};
+
+exports.validerParUniversite = async (stageId, responsableId) => {
+  const [[stage]] = await db.execute("SELECT * FROM Stage WHERE id = ?", [stageId]);
+  if (!stage) throw new Error("Stage introuvable");
+  if (stage.etat === "validé") return; // éviter erreur si déjà validé
+
+  await db.execute("UPDATE Stage SET etat = 'validé' WHERE id = ?", [stageId]);
+
+  const [[etudiant]] = await db.execute(
+    "SELECT id, prenom, nom FROM Etudiant WHERE id = ?",
+    [stage.etudiantId]
+  );
+
+  await notificationService.notifyUser({
+    toId: etudiant.id,
+    toRole: "Etudiant",
+    subject: "Stage validé par l’université",
+    templateName: "stage_validated_universite",
+    templateData: {
+      etudiantPrenom: etudiant.prenom,
+      etudiantNom: etudiant.nom,
+      titreStage: stage.titre,
+      dateValidation: new Date().toLocaleDateString("fr-FR"),
+      dashboardUrl: `${process.env.APP_URL || 'http://localhost:3001'}/etudiant`
+    },
+    message: "Votre stage a été validé par le responsable universitaire."
+  });
+};
+
+exports.getAttestationsByUniversite = async (responsableId) => {
+  const [[resp]] = await db.execute(
+    "SELECT universiteId FROM ResponsableUniversitaire WHERE id = ?",
+    [responsableId]
+  );
+
+  const [rows] = await db.execute(`
+    SELECT A.id, A.identifiant, A.stageId, A.dateCreation, A.ipfsUrl,
+           S.identifiant_unique, S.etat,
+           E.prenom AS etudiantPrenom, E.nom AS etudiantNom
+    FROM Attestation A
+    JOIN Stage S ON A.stageId = S.id
+    JOIN Etudiant E ON A.etudiantId = E.id
+    WHERE S.id IN (
+      SELECT id FROM Stage WHERE etudiantId IN (
+        SELECT id FROM Etudiant WHERE universiteId = ?
+      )
+    )
+    ORDER BY A.dateCreation DESC
+  `, [resp.universiteId]);
+
+  return rows;
 };

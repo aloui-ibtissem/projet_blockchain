@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {
-  Container, Card, Button, Alert, Row, Col,
-  ListGroup, Form, Modal
-} from 'react-bootstrap';
+import Sidebar from '../components/Sidebar';
+import Header from '../components/Header';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { Alert, Card, Button, ListGroup, Form, Modal } from 'react-bootstrap';
 import './DashboardRespEntreprise.css';
 
 const API_URL = 'http://localhost:3000';
@@ -14,7 +14,6 @@ function DashboardRespEntreprise() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
-
   const [stagiaires, setStagiaires] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [message, setMessage] = useState('');
@@ -39,16 +38,14 @@ function DashboardRespEntreprise() {
       navigate('/login');
       return;
     }
-
     const decoded = jwtDecode(token);
     if (decoded.exp < Date.now() / 1000) {
       localStorage.clear();
       navigate('/login');
       return;
     }
-
     fetchData();
-  }, []);
+  }, [navigate, token, role]);
 
   const fetchData = async () => {
     try {
@@ -93,7 +90,6 @@ function DashboardRespEntreprise() {
   };
 
   const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
-
   const handleSubmit = async () => {
     try {
       const res = await axios.post(`${API_URL}/api/attestation/generer/${selectedStageId}`, formData, {
@@ -109,46 +105,54 @@ function DashboardRespEntreprise() {
   };
 
   return (
-    <Container className="py-4">
-      <h2 className="text-center mb-4">Tableau de bord Responsable Entreprise</h2>
-      {message && <Alert variant="danger">{message}</Alert>}
+    <div className="dashboard-layout">
+      <Sidebar role={role} />
+      <div className="dashboard-content">
+        <Header title="Responsable Entreprise" />
+        <main className="main-content">
+          {message && <Alert variant="danger">{message}</Alert>}
+          {loading ? (
+            <SkeletonLoader />
+          ) : (
+            <div className="dashboard-grid">
+              <Card className="dashboard-card">
+                <Card.Header>Stagiaires validés</Card.Header>
+                <Card.Body>
+                  <ListGroup variant="flush">
+                    {stagiaires.length > 0 ? stagiaires.map(stag => (
+                      <ListGroup.Item key={stag.stageId}>
+                        <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}
+                        <Button
+                          variant="success"
+                          className="float-end"
+                          size="sm"
+                          onClick={() => openForm(stag.stageId)}
+                        >
+                          Générer Attestation
+                        </Button>
+                      </ListGroup.Item>
+                    )) : <ListGroup.Item>Aucun stagiaire à traiter.</ListGroup.Item>}
+                  </ListGroup>
+                </Card.Body>
+              </Card>
 
-      <Row>
-        <Col md={8}>
-          <Card className="shadow-sm mb-4">
-            <Card.Header>Stagiaires validés</Card.Header>
-            <ListGroup variant="flush">
-              {stagiaires.length > 0 ? stagiaires.map(stag => (
-                <ListGroup.Item key={stag.stageId}>
-                  <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}
-                  <Button
-                    variant="success"
-                    className="float-end"
-                    size="sm"
-                    onClick={() => openForm(stag.stageId)}
-                  >
-                    Générer Attestation
-                  </Button>
-                </ListGroup.Item>
-              )) : <ListGroup.Item>Aucun stagiaire à traiter.</ListGroup.Item>}
-            </ListGroup>
-          </Card>
-        </Col>
-
-        <Col md={4}>
-          <Card className="shadow-sm">
-            <Card.Header>Notifications</Card.Header>
-            <ListGroup variant="flush">
-              {notifications.length > 0 ? notifications.map(n => (
-                <ListGroup.Item key={n.id}>
-                  {n.message}<br />
-                  <small className="text-muted">{new Date(n.date_envoi).toLocaleString()}</small>
-                </ListGroup.Item>
-              )) : <ListGroup.Item>Aucune notification</ListGroup.Item>}
-            </ListGroup>
-          </Card>
-        </Col>
-      </Row>
+              <Card className="dashboard-card">
+                <Card.Header>Notifications</Card.Header>
+                <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  {notifications.length > 0 ? notifications.map(n => (
+                    <div key={n.id}>
+                      {n.message}
+                      <span className="notification-date">
+                        {new Date(n.date_envoi).toLocaleString()}
+                      </span>
+                    </div>
+                  )) : <p className="text-muted">Aucune notification</p>}
+                </Card.Body>
+              </Card>
+            </div>
+          )}
+        </main>
+      </div>
 
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
@@ -203,7 +207,7 @@ function DashboardRespEntreprise() {
           <Button variant="primary" onClick={handleSubmit}>Générer</Button>
         </Modal.Footer>
       </Modal>
-    </Container>
+    </div>
   );
 }
 

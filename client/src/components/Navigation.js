@@ -31,7 +31,7 @@ function Navigation() {
                 {role === "Etudiant" && <Nav.Link as={Link} to="/etudiant">Mon Espace</Nav.Link>}
                 {role === "EncadrantAcademique" && <Nav.Link as={Link} to="/encAca">Mon Espace</Nav.Link>}
                 {role === "EncadrantProfessionnel" && <Nav.Link as={Link} to="/encPro">Mon Espace</Nav.Link>}
-                {role === "ResponsableUniversite" && <Nav.Link as={Link} to="/respUniv">Mon Espace</Nav.Link>}
+                {role === "ResponsableUniversitaire" && <Nav.Link as={Link} to="/respUniv">Mon Espace</Nav.Link>}
                 {role === "ResponsableEntreprise" && <Nav.Link as={Link} to="/respEnt">Mon Espace</Nav.Link>}
               </>
             )}

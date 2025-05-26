@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 const addresses = require("../contracts/addresses.json");
 
 async function main() {
-  const user = "0x37d80F9aFd09b2de59d6628d109cf5b7a6ACB49f";
+  const user = "0x6Fd2654cc0f04F42D2Ff3D12beDbaB7d320Bb283";
   const auth = await ethers.getContractAt("Auth", addresses.auth);
 
   const role = await auth.getRole(user);

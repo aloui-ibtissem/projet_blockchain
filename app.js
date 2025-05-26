@@ -5,6 +5,25 @@ const db = require('./config/db');
 const app = express();
 const path = require('path');
 
+
+//
+app.use(cors({
+  origin: ['http://localhost:3001', 'https://ffab-102-107-10-247.ngrok-free.app'], // ton frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}));
+//
+app.options('*', cors()); // pour gérer toutes les requêtes OPTIONS
+//
+// éviter /désactiver la page de warning ngrok
+app.use((req, res, next) => {
+  res.setHeader('ngrok-skip-browser-warning', 'true');
+  next();
+});
+
 // Import des routes
 const authRoutes = require("./routes/authRoutes");
 const stageRoutes = require("./routes/stageRoutes");
@@ -36,9 +55,24 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Dossier pour les attestations générées
 app.use('/attestations', express.static(path.join(__dirname, 'attestations')));
+//
+const verifyRoute = require("./routes/verify");
+app.use("/verify", verifyRoute); 
+
+// === Servir le frontend React build (client/build)
+app.use(express.static(path.join(__dirname, "client/build")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "client/build/index.html"));
+});
+
+
 
 // Lancement du serveur
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(` Serveur lancé sur http://localhost:${PORT}`));
+app.listen(PORT,"0.0.0.0",  () => {
+  console.log(` Serveur accessible via ngrok ou local : http://localhost:${PORT}`);
+});
 
 module.exports = app;
+
