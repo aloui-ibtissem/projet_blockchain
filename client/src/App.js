@@ -14,6 +14,7 @@ import DashboardRespEntreprise from './pages/DashboardRespEntreprise';
 import DashboardTierUni from './pages/TierUniDashboard';  
 import DashboardTierEnt from './pages/TierEntDashboard';  
 import VerifiedPage from './pages/VerifiedPage';
+import VerifyAttestation from './pages/VerifyAttestation';
 
 
 import Navigation from './components/Navigation';
@@ -59,6 +60,9 @@ function App() {
 
               <Route path="*" element={<Navigate to="/" replace />} />
               <Route path="/verified" element={<VerifiedPage />} />
+              <Route path="/verify/:id" element={<VerifyAttestation />} />
+
+
 
               
               <Route path="/notifications" element={<Notifications token={token} />} />

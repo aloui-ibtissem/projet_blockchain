@@ -8,7 +8,7 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import { Alert, Card, Button, Form, Table } from 'react-bootstrap';
 import './DashboardEncadrantAca.css';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+const API_URL = 'http://localhost:3000';
 
 function DashboardEncadrantPro() {
   const navigate = useNavigate();
@@ -32,93 +32,78 @@ function DashboardEncadrantPro() {
       navigate('/login');
       return;
     }
-    Promise.all([fetchPropositions(), fetchNotifications(), fetchRapports()])
-      .finally(() => setLoading(false));
-  }, [navigate, token, role]);
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, role, navigate]);
 
-  const fetchPropositions = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      const res = await axios.get(
-        `${API_URL}/api/stage/propositions`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setPropositions(res.data);
-    } catch {
-      setMessage('Erreur chargement propositions.');
+      const [propRes, notifRes, rapRes] = await Promise.all([
+        axios.get(`${API_URL}/api/stage/propositions`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_URL}/api/stage/notifications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_URL}/api/rapport/encadrant`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+      setPropositions(propRes.data);
+      setNotifications(notifRes.data);
+      setRapports(rapRes.data);
+    } catch (err) {
+      console.error(err);
+      setMessage('Erreur de chargement du tableau de bord.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchNotifications = async () => {
+  const commenterRapport = async (rapportId) => {
+    if (!commentaire.trim()) return;
     try {
-      const res = await axios.get(
-        `${API_URL}/api/stage/notifications`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setNotifications(res.data);
-    } catch {
-      console.error('Erreur notifications');
-    }
-  };
-
-  const fetchRapports = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/rapport/encadrant`, {
+      await axios.post(`${API_URL}/api/rapport/comment`, {
+        rapportId,
+        commentaire
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setRapports(res.data);
-    } catch (err) {
-      console.error("Erreur récupération rapports à valider :", err);
-    }
-  };
-
-  const commenterRapport = async (id) => {
-    if (!commentaire.trim()) {
-      alert('Commentaire vide');
-      return;
-    }
-    try {
-      await axios.post(
-        `${API_URL}/api/rapport/comment`,
-        { rapportId: id, commentaire },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
       setMessage('Commentaire envoyé.');
       setCommentaire('');
-      fetchRapports();
+      loadData();
     } catch {
-      setMessage("Erreur envoi commentaire.");
+      setMessage("Échec de l'envoi du commentaire.");
     }
   };
 
-  const validerRaport = async (id) => {
+  const validerRapport = async (rapportId) => {
     try {
-      await axios.post(
-        `${API_URL}/api/rapport/valider`,
-        { rapportId: id },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.post(`${API_URL}/api/rapport/valider`, {
+        rapportId
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setMessage('Rapport validé.');
-      fetchRapports();
+      loadData();
     } catch {
-      setMessage('Erreur validation.');
+      setMessage('Échec de la validation.');
     }
   };
 
   const handleDecision = async (id, action) => {
     try {
-      const commentaireRej =
-        action === 'rejeter' ? prompt('Motif du refus (facultatif) :') || '' : '';
-      await axios.post(
-        `${API_URL}/api/stage/valider`,
-        { sujetId: id, action, commentaire: commentaireRej },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage(
-        `Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`
-      );
-      fetchPropositions();
+      await axios.post(`${API_URL}/api/stage/valider`, {
+        sujetId: id,
+        action
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
+      loadData();
     } catch {
-      setMessage('Erreur action sujet.');
+      setMessage("Erreur lors du traitement de la proposition.");
     }
   };
 
@@ -126,7 +111,7 @@ function DashboardEncadrantPro() {
     <div className="dashboard-layout">
       <Sidebar role={role} />
       <div className="dashboard-content">
-        <Header title="Encadrant Professionnel" />
+        <Header title="Encadrant Académique" />
         <main className="main-content">
           {message && <Alert variant="info">{message}</Alert>}
           {loading ? (
@@ -135,14 +120,14 @@ function DashboardEncadrantPro() {
             <div className="dashboard-grid">
               <Card className="dashboard-card">
                 <Card.Header>Notifications</Card.Header>
-                <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                <Card.Body style={{ maxHeight: '250px', overflowY: 'auto' }}>
                   {notifications.length ? (
                     <ul className="notification-list">
                       {notifications.map(n => (
                         <li key={n.id}>
                           {n.message}
                           <span className="notification-date">
-                            {new Date(n.date_envoi).toLocaleDateString()}
+                            {new Date(n.date_envoi).toLocaleString()}
                           </span>
                         </li>
                       ))}
@@ -163,7 +148,7 @@ function DashboardEncadrantPro() {
                       <thead>
                         <tr>
                           <th>Titre</th>
-                          <th>Étudiant</th>
+                          <th>Dates</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -171,7 +156,10 @@ function DashboardEncadrantPro() {
                         {propositions.map(p => (
                           <tr key={p.id}>
                             <td>{p.titre}</td>
-                            <td>{p.etudiantNomComplet}</td>
+                            <td>
+                              Du {new Date(p.dateDebut).toLocaleDateString()} au{' '}
+                              {new Date(p.dateFin).toLocaleDateString()}
+                            </td>
                             <td>
                               <Button
                                 size="sm"
@@ -197,18 +185,18 @@ function DashboardEncadrantPro() {
               </Card>
 
               <Card className="dashboard-card">
-                <Card.Header>Rapports à Examiner</Card.Header>
+                <Card.Header>Rapports à Valider</Card.Header>
                 <Card.Body>
                   {rapports.length === 0 ? (
-                    <p className="text-muted">Aucun rapport à valider.</p>
+                    <p className="text-muted">Aucun rapport à examiner.</p>
                   ) : (
                     rapports.map(r => (
                       <Card key={r.id} className="inner-card">
                         <Card.Body>
                           <strong>
                             {r.prenomEtudiant} {r.nomEtudiant}
-                          </strong>{' '}
-                          –{' '}
+                          </strong>
+                          <br />
                           <a
                             href={`${API_URL}/uploads/${r.fichier}`}
                             target="_blank"
@@ -219,9 +207,9 @@ function DashboardEncadrantPro() {
                           <Form.Control
                             as="textarea"
                             rows={2}
-                            className="mt-2"
-                            placeholder="Ajouter un commentaire..."
+                            placeholder="Votre commentaire"
                             value={commentaire}
+                            className="mt-2"
                             onChange={e => setCommentaire(e.target.value)}
                           />
                           <div className="mt-2">
@@ -234,7 +222,7 @@ function DashboardEncadrantPro() {
                             <Button
                               size="sm"
                               className="btn-accept"
-                              onClick={() => validerRaport(r.id)}
+                              onClick={() => validerRapport(r.id)}
                             >
                               Valider
                             </Button>

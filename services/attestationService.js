@@ -35,7 +35,9 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   if (!stageRows.length) throw new Error("Rapport non validé par les deux encadrants");
   const stage = stageRows[0];
   const attestationId = await genererIdentifiantAttestation(stage.universiteId, stage.entrepriseId);
-  const verificationUrl = `${process.env.PUBLIC_URL}/verify/${attestationId}`;
+  //lien de verification de attestation
+const verificationUrl = `https://projet-blockchain-blush.vercel.app/verify/${attestationId}`;
+
 
   const pdfData = {
     ...stage,
@@ -50,7 +52,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
 
   const pdfPath = await generatePDFWithQR(pdfData);
   const fileHash = hashFile(pdfPath);
-  const ipfsUrl = await uploadToIPFS(pdfPath);
+const ipfsUrl = await uploadToIPFS(pdfPath); //  ipfs://Qm...
 
   await db.execute(`
     INSERT INTO Attestation
