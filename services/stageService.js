@@ -48,7 +48,7 @@ exports.proposerSujet = async ({
   const sujetUrl = buildUrl(`/encadrant/proposition/${result.insertId}`); // 
 
   
-  const baseUrl = process.env.PUBLIC_URL || process.env.FRONTEND_URL;
+const baseUrl = process.env.PUBLIC_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 
 const baseData = {
   etudiantPrenom: etudiant.prenom,

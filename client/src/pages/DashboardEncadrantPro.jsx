@@ -8,7 +8,8 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import { Alert, Card, Button, Form, Table } from 'react-bootstrap';
 import './DashboardEncadrantAca.css';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+
 
 function DashboardEncadrantPro() {
   const navigate = useNavigate();
@@ -111,7 +112,7 @@ function DashboardEncadrantPro() {
     <div className="dashboard-layout">
       <Sidebar role={role} />
       <div className="dashboard-content">
-        <Header title="Encadrant Académique" />
+        <Header title="Encadrant Professionnel" />
         <main className="main-content">
           {message && <Alert variant="info">{message}</Alert>}
           {loading ? (

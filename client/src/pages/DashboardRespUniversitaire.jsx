@@ -8,7 +8,8 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import { Alert, Card, Button, ListGroup, Badge } from 'react-bootstrap';
 import './DashboardRespUniversite.css';
 
-const API_URL = window.location.origin.replace(':3001', ':3000');
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+
 
 function DashboardRespUniversitaire() {
   const navigate = useNavigate();

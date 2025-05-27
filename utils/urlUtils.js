@@ -1,5 +1,5 @@
 require("dotenv").config();
-let BASE_URL = process.env.PUBLIC_URL || process.env.FRONTEND_URL || "http://localhost:3000";
+const BASE_URL = process.env.PUBLIC_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Permet de changer dynamiquement l'URL de base (utile pour tests/ngrok)
 function setBaseUrl(newUrl) {

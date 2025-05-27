@@ -6,10 +6,11 @@ const {
   validateAsTier,
   confirmDoubleValidation
 } = require("../utils/blockchainUtils");
+
 const { hashFile } = require("../utils/hashUtils");
 const { genererIdentifiantRapport } = require("../utils/identifiantUtils");
 
-const baseUrl = process.env.PUBLIC_URL || "http://localhost:3000";
+const baseUrl = process.env.PUBLIC_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 const { buildUrl } = require("../utils/urlUtils");
 
 
@@ -35,7 +36,16 @@ exports.soumettreRapport = async (email, fichier, cibles = []) => {
   const [[stage]] = await db.execute("SELECT * FROM Stage WHERE etudiantId = ?", [etudiant.id]);
 
   const rapportPath = fichier.filename;
-  const rapportHash = hashFile(path.join(__dirname, "../uploads", rapportPath));
+  //
+  const fs = require("fs");
+const fullPath = path.join(__dirname, "../uploads", rapportPath);
+if (!fs.existsSync(fullPath)) {
+  throw new Error(`Fichier non trouvé à l’emplacement : ${fullPath}`);
+}
+const rapportHash = await hashFile(fullPath);
+
+  
+
 
   const [existing] = await db.execute("SELECT id, identifiantRapport FROM RapportStage WHERE stageId = ?", [stage.id]);
 

@@ -8,7 +8,8 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import { Alert, Card, Button, ListGroup, Form, Modal } from 'react-bootstrap';
 import './DashboardRespEntreprise.css';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+
 
 function DashboardRespEntreprise() {
   const navigate = useNavigate();

@@ -68,7 +68,9 @@ function DashboardEtudiant() {
     try {
       setMessage('Envoi de la proposition...');
       await axios.post(`${API_URL}/stage/proposer`, form, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}`,
+        withCredentials: true
+ }
       });
       setMessage('Stage proposé avec succès.');
       await fetchStage();
@@ -91,6 +93,8 @@ function DashboardEtudiant() {
       await axios.post(`${API_URL}/rapport/soumettre`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
+            withCredentials: true,
+
           'Content-Type': 'multipart/form-data'
         }
       });
@@ -104,7 +108,9 @@ function DashboardEtudiant() {
   const fetchStage = async () => {
     try {
       const res = await axios.get(`${API_URL}/stage/mon-stage`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}`,
+        withCredentials: true
+ }
       });
       setCurrentStage(res.data);
       if (res.data?.rapportId) fetchCommentaires(res.data.rapportId);
@@ -116,7 +122,9 @@ function DashboardEtudiant() {
   const fetchCommentaires = async (rapportId) => {
     try {
       const res = await axios.get(`${API_URL}/rapport/commentaires/${rapportId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}`,
+        withCredentials: true
+ }
       });
       setCommentaires(Array.isArray(res.data) ? res.data : []);
     } catch {
@@ -127,7 +135,9 @@ function DashboardEtudiant() {
   const fetchNotifications = async () => {
     try {
       const res = await axios.get(`${API_URL}/stage/notifications`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}`,
+        withCredentials: true
+ }
       });
       setNotifications(Array.isArray(res.data) ? res.data : []);
     } catch {
@@ -138,7 +148,9 @@ function DashboardEtudiant() {
   const fetchMesRapports = async () => {
     try {
       await axios.get(`${API_URL}/rapport/mes-rapports`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}`,
+        withCredentials: true
+ }
       });
     } catch {
       // No action, silent failure
@@ -148,7 +160,9 @@ function DashboardEtudiant() {
   const fetchAttestation = async () => {
     try {
       const res = await axios.get(`${API_URL}/attestation/etudiant/ma-attestation`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}`,
+        withCredentials: true
+ }
       });
       setAttestationUrl(res.data.attestationUrl || '');
     } catch {
@@ -159,7 +173,9 @@ function DashboardEtudiant() {
   const downloadAttestation = async () => {
     try {
       const res = await axios.get(`${API_URL}/attestation/download`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`,
+        withCredentials: true
+ },
         responseType: 'blob'
       });
 

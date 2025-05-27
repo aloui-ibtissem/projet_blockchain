@@ -1,15 +1,13 @@
 // utils/hashUtils.js
-const fs = require("fs");
+const fs = require("fs").promises;
 const crypto = require("crypto");
 
 /**
  * Calcule le hash SHA-256 d’un fichier local (PDF, rapport, etc.)
  * @param {string} filePath - Chemin du fichier à hasher
- * @returns {string} hash hexadécimal
+ * @returns {Promise<string>} hash hexadécimal
  */
-exports.hashFile = (filePath) => {
-  const fileBuffer = fs.readFileSync(filePath);
-  const hash = crypto.createHash("sha256");
-  hash.update(fileBuffer);
-  return hash.digest("hex");
+exports.hashFile = async (filePath) => {
+  const fileBuffer = await fs.readFile(filePath);
+  return crypto.createHash("sha256").update(fileBuffer).digest("hex");
 };
