@@ -69,8 +69,13 @@ function DashboardRespUniversitaire() {
       <Sidebar role={role} />
       <div className="dashboard-content flex-grow-1">
         <Header title="Responsable Universitaire">
-          <Button variant="outline-secondary" onClick={() => setShowNotif(!showNotif)} className="ms-auto">
-            <FaBell /> {showNotif ? 'Masquer' : 'Afficher'} Notifications
+          <Button
+            variant={showNotif ? "secondary" : "outline-secondary"}
+            onClick={() => setShowNotif(!showNotif)}
+            className="ms-auto"
+          >
+            <FaBell className="me-2" />
+            {showNotif ? 'Masquer' : 'Afficher'} Notifications
           </Button>
         </Header>
 
@@ -80,7 +85,8 @@ function DashboardRespUniversitaire() {
             <SkeletonLoader />
           ) : (
             <Row className="g-4">
-              <Col lg={8}>
+              {/* Attestations */}
+              <Col lg={showNotif ? 9 : 12}>
                 <Card className="shadow-sm border-0">
                   <Card.Header className="bg-primary text-white fw-bold">Attestations Générées</Card.Header>
                   <Card.Body>
@@ -103,7 +109,12 @@ function DashboardRespUniversitaire() {
                               )}
                             </p>
                             <div className="d-flex justify-content-between mt-3">
-                              <a href={att.ipfsUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
+                              <a
+                                href={att.ipfsUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-sm btn-outline-primary"
+                              >
                                 Voir le PDF
                               </a>
                               {att.etat !== 'validé' && (
@@ -120,29 +131,34 @@ function DashboardRespUniversitaire() {
                 </Card>
               </Col>
 
-              <Col lg={4}>
-                <Collapse in={showNotif}>
-                  <div>
-                    <Card className="shadow-sm border-0">
-                      <Card.Header className="bg-dark text-white fw-bold">Notifications</Card.Header>
-                      <Card.Body style={{ maxHeight: '420px', overflowY: 'auto' }}>
-                        {notifications.length === 0 ? (
-                          <p className="text-muted">Aucune notification</p>
-                        ) : (
-                          <ListGroup variant="flush">
-                            {notifications.map(n => (
-                              <ListGroup.Item key={n.id}>
-                                {n.message}
-                                <div className="text-muted small">{new Date(n.date_envoi).toLocaleString()}</div>
-                              </ListGroup.Item>
-                            ))}
-                          </ListGroup>
-                        )}
-                      </Card.Body>
-                    </Card>
-                  </div>
-                </Collapse>
-              </Col>
+              {/* Notifications */}
+              {showNotif && (
+                <Col lg={3}>
+                  <Collapse in={showNotif}>
+                    <div>
+                      <Card className="shadow-sm border-0">
+                        <Card.Header className="bg-dark text-white fw-bold">Notifications</Card.Header>
+                        <Card.Body style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                          {notifications.length === 0 ? (
+                            <p className="text-muted">Aucune notification</p>
+                          ) : (
+                            <ListGroup variant="flush">
+                              {notifications.map(n => (
+                                <ListGroup.Item key={n.id}>
+                                  {n.message}
+                                  <div className="text-muted small">
+                                    {new Date(n.date_envoi).toLocaleString()}
+                                  </div>
+                                </ListGroup.Item>
+                              ))}
+                            </ListGroup>
+                          )}
+                        </Card.Body>
+                      </Card>
+                    </div>
+                  </Collapse>
+                </Col>
+              )}
             </Row>
           )}
         </main>

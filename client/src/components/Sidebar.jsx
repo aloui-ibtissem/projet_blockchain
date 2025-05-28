@@ -26,8 +26,11 @@ const Sidebar = ({ role }) => {
           <NavLink to="/encPro" className={({ isActive }) => isActive ? 'active' : ''}><FaHome /> Évaluations</NavLink>
         )}
         {role === 'ResponsableUniversitaire' && (
-          <NavLink to="/respUniv" className={({ isActive }) => isActive ? 'active' : ''}><FaHome /> Attestations</NavLink>
-        )}
+  <NavLink to="/respUniv" className={({ isActive }) => isActive ? 'active' : ''}>
+    <FaHome /> Attestations
+  </NavLink>
+)}
+
         {role === 'ResponsableEntreprise' && (
           <NavLink to="/respEnt" className={({ isActive }) => isActive ? 'active' : ''}><FaHome /> Stagiaires</NavLink>
         )}
