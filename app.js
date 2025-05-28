@@ -10,7 +10,7 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     "http://localhost:3001", // accès local dev
     "https://projet-blockchain-blush.vercel.app", // vercel frontend
-    "https://45fa-102-107-109-255.ngrok-free.app"  //  lien ngrok 
+    "https://9272-197-1-115-14.ngrok-free.app"  //  lien ngrok 
   ];
 
   if (allowedOrigins.includes(origin)) {

@@ -127,9 +127,10 @@ const ipfsUrl = await uploadToIPFS(pdfPath); //  ipfs://Qm...
 exports.validerParUniversite = async (stageId, responsableId) => {
   const [[stage]] = await db.execute("SELECT * FROM Stage WHERE id = ?", [stageId]);
   if (!stage) throw new Error("Stage introuvable");
-  if (stage.etat === "validé") return; // éviter erreur si déjà validé
+  if (stage.etat === "validé") return;
 
-  await db.execute("UPDATE Stage SET etat = 'validé' WHERE id = ?", [stageId]);
+  //  Mettre à jour état et historique
+  await db.execute("UPDATE Stage SET etat = 'validé', estHistorique = TRUE WHERE id = ?", [stageId]);
 
   const [[etudiant]] = await db.execute(
     "SELECT id, prenom, nom FROM Etudiant WHERE id = ?",
@@ -146,7 +147,7 @@ exports.validerParUniversite = async (stageId, responsableId) => {
       etudiantNom: etudiant.nom,
       titreStage: stage.titre,
       dateValidation: new Date().toLocaleDateString("fr-FR"),
-      dashboardUrl:buildUrl("/login")
+      dashboardUrl: buildUrl("/login")
     },
     message: "Votre stage a été validé par le responsable universitaire."
   });

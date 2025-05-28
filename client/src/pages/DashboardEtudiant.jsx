@@ -32,6 +32,7 @@ function DashboardEtudiant() {
   const [commentaires, setCommentaires] = useState([]);
   const [attestationUrl, setAttestationUrl] = useState('');
   const [loading, setLoading] = useState(true);
+  const [stagesHistoriques, setStagesHistoriques] = useState(true);
 
   useEffect(() => {
     if (!token || role !== 'Etudiant') return navigate('/login');
@@ -48,7 +49,9 @@ function DashboardEtudiant() {
       await Promise.all([
         fetchStage(),
         fetchNotifications(),
-        fetchMesRapports()
+        fetchMesRapports(),
+        fetchStagesHistoriques()
+
       ]);
     } catch (err) {
       console.error("Erreur initiale :", err);
@@ -170,6 +173,7 @@ function DashboardEtudiant() {
     }
   };
 
+
   const downloadAttestation = async () => {
     try {
       const res = await axios.get(`${API_URL}/attestation/download`, {
@@ -198,6 +202,19 @@ function DashboardEtudiant() {
       </Container>
     );
   }
+  
+
+const fetchStagesHistoriques = async () => {
+  try {
+    const res = await axios.get(`${API_URL}/stage/historique`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setStagesHistoriques(res.data);
+  } catch {
+    setStagesHistoriques([]);
+  }
+};
+
 
   return (
     <Container className="mt-4">
@@ -231,19 +248,42 @@ function DashboardEtudiant() {
       </Card>
 
       {/* Stage en cours */}
-      {currentStage && (
-        <Card className="mb-4 shadow-sm">
-          <Card.Header>Stage Actuel</Card.Header>
-          <Card.Body>
-            <p><strong>ID :</strong> {currentStage.identifiant_unique}</p>
-            <p><strong>Titre :</strong> {currentStage.titre}</p>
-            <p><strong>Entreprise :</strong> {currentStage.entreprise}</p>
-            <p><strong>Période :</strong> {new Date(currentStage.dateDebut).toLocaleDateString()} → {new Date(currentStage.dateFin).toLocaleDateString()}</p>
-            <p><strong>Encadrant Académique :</strong> {currentStage.acaPrenom} {currentStage.acaNom} ({currentStage.acaEmail})</p>
-            <p><strong>Encadrant Professionnel :</strong> {currentStage.proPrenom} {currentStage.proNom} ({currentStage.proEmail})</p>
-          </Card.Body>
-        </Card>
-      )}
+      <Card className="mb-4 shadow-sm">
+  <Card.Header>Stage Actuel</Card.Header>
+  <Card.Body>
+    {currentStage ? (
+      <>
+        <p><strong>ID :</strong> {currentStage.identifiant_unique}</p>
+        <p><strong>Titre :</strong> {currentStage.titre}</p>
+        <p><strong>Entreprise :</strong> {currentStage.entreprise}</p>
+        <p><strong>Période :</strong> {new Date(currentStage.dateDebut).toLocaleDateString()} → {new Date(currentStage.dateFin).toLocaleDateString()}</p>
+        <p><strong>Encadrant Académique :</strong> {currentStage.acaPrenom} {currentStage.acaNom} ({currentStage.acaEmail})</p>
+        <p><strong>Encadrant Professionnel :</strong> {currentStage.proPrenom} {currentStage.proNom} ({currentStage.proEmail})</p>
+      </>
+    ) : (
+      <p className="text-muted">Aucun stage en cours. Vous pouvez proposer un nouveau sujet.</p>
+    )}
+  </Card.Body>
+</Card>
+<Card className="mb-4 shadow-sm">
+  <Card.Header>Stages Précédents</Card.Header>
+  <Card.Body>
+    {stagesHistoriques.length > 0 ? (
+      <ul>
+        {stagesHistoriques.map((s) => (
+          <li key={s.id}>
+            <strong>{s.titre}</strong> à {s.entreprise} —
+            {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="text-muted">Aucun stage validé pour le moment.</p>
+    )}
+  </Card.Body>
+</Card>
+
+
 
       {/* Proposition de stage */}
       <Card className="mb-4 shadow-sm">

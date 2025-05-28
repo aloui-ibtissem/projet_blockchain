@@ -249,15 +249,38 @@ exports.getCurrentStageByEmail = async (email) => {
   const [rows] = await db.execute(
     `SELECT S.*, 
             E.nom AS entreprise,
+            A.prenom AS acaPrenom, A.nom AS acaNom, A.email AS acaEmail,
+            P.prenom AS proPrenom, P.nom AS proNom, P.email AS proEmail
+     FROM Stage S
+     JOIN Entreprise E ON S.entrepriseId = E.id
+     JOIN EncadrantAcademique A ON S.encadrantAcademiqueId = A.id
+     JOIN EncadrantProfessionnel P ON S.encadrantProfessionnelId = P.id
+     WHERE S.etudiantId = ? AND S.etat = 'en attente' AND S.estHistorique = FALSE`,
+    [etudiant.id]
+  );
+
+  return rows[0] || null;
+};
+
+//
+exports.getStagesHistoriquesByEmail = async (email) => {
+  const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email = ?", [email]);
+  if (!etudiant) return [];
+
+  const [rows] = await db.execute(
+    `SELECT S.*, 
+            E.nom AS entreprise,
             A.prenom AS acaPrenom, A.nom AS acaNom,
             P.prenom AS proPrenom, P.nom AS proNom
      FROM Stage S
      JOIN Entreprise E ON S.entrepriseId = E.id
      JOIN EncadrantAcademique A ON S.encadrantAcademiqueId = A.id
      JOIN EncadrantProfessionnel P ON S.encadrantProfessionnelId = P.id
-     WHERE S.etudiantId = ?`,
+     WHERE S.etudiantId = ? AND S.estHistorique = TRUE
+     ORDER BY S.dateDebut DESC`,
     [etudiant.id]
   );
 
-  return rows[0] || null;
+  return rows;
 };
+

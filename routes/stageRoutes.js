@@ -26,6 +26,9 @@ router.get("/notifications", checkToken, stageController.getNotifications);
 //
 // Détails complets d’un stage (utilisé pour préremplir formulaire attestation)
 router.get("/details/:stageId", checkToken, stageController.getStageDetails);
+//
+router.get("/historique", checkToken, stageController.getStagesHistoriques);
+
 
 
 module.exports = router;

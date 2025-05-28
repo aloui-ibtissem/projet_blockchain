@@ -146,3 +146,16 @@ const stageId = req.params.stageId;
     res.status(500).json({ error: "Erreur interne serveur." });
   }
 };
+
+//
+exports.getStagesHistoriques = async (req, res) => {
+  try {
+    const email = req.user.email;
+    const stages = await stageService.getStagesHistoriquesByEmail(email);
+    res.status(200).json(stages);
+  } catch (err) {
+    console.error("Erreur dans getStagesHistoriques :", err);
+    res.status(500).json({ error: "Erreur interne serveur" });
+  }
+};
+
