@@ -11,33 +11,34 @@ const Sidebar = ({ role }) => {
     navigate('/login');
   };
 
+  const links = {
+    Etudiant: { path: '/etudiant', label: 'Mon Stage' },
+    EncadrantAcademique: { path: '/encAca', label: 'Propositions' },
+    EncadrantProfessionnel: { path: '/encPro', label: 'Évaluations' },
+    ResponsableUniversitaire: { path: '/respUniv', label: 'Attestations' },
+    ResponsableEntreprise: { path: '/respEnt', label: 'Stagiaires' }
+  };
+
+  const currentLink = links[role];
+
   return (
     <div className="custom-sidebar">
       <div className="logo">StageChain</div>
 
       <nav className="nav-links">
-        {role === 'Etudiant' && (
-          <NavLink to="/etudiant" className={({ isActive }) => isActive ? 'active' : ''}><FaHome /> Mon Stage</NavLink>
-        )}
-        {role === 'EncadrantAcademique' && (
-          <NavLink to="/encAca" className={({ isActive }) => isActive ? 'active' : ''}><FaHome /> Propositions</NavLink>
-        )}
-        {role === 'EncadrantProfessionnel' && (
-          <NavLink to="/encPro" className={({ isActive }) => isActive ? 'active' : ''}><FaHome /> Évaluations</NavLink>
-        )}
-        {role === 'ResponsableUniversitaire' && (
-  <NavLink to="/respUniv" className={({ isActive }) => isActive ? 'active' : ''}>
-    <FaHome /> Attestations
-  </NavLink>
-)}
-
-        {role === 'ResponsableEntreprise' && (
-          <NavLink to="/respEnt" className={({ isActive }) => isActive ? 'active' : ''}><FaHome /> Stagiaires</NavLink>
+        {currentLink && (
+          <NavLink
+            to={currentLink.path}
+            className={({ isActive }) => (isActive ? 'active' : '')}
+          >
+            <FaHome className="me-2" />
+            {currentLink.label}
+          </NavLink>
         )}
       </nav>
 
       <button className="logout-btn" onClick={handleLogout}>
-        <FaSignOutAlt /> Déconnexion
+        <FaSignOutAlt className="me-2" /> Déconnexion
       </button>
     </div>
   );
