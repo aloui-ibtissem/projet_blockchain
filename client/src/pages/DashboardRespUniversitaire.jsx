@@ -5,11 +5,11 @@ import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { Alert, Card, Button, ListGroup, Badge } from 'react-bootstrap';
+import { Alert, Card, Button, ListGroup, Badge, Row, Col, Collapse } from 'react-bootstrap';
+import { FaBell } from 'react-icons/fa';
 import './DashboardRespUniversite.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
-
 
 function DashboardRespUniversitaire() {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ function DashboardRespUniversitaire() {
   const role = localStorage.getItem('role');
   const [attestations, setAttestations] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [showNotif, setShowNotif] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -64,74 +65,85 @@ function DashboardRespUniversitaire() {
   };
 
   return (
-    <div className="dashboard-layout">
+    <div className="dashboard-layout d-flex bg-light">
       <Sidebar role={role} />
-      <div className="dashboard-content">
-        <Header title="Responsable Universitaire" />
-        <main className="main-content">
+      <div className="dashboard-content flex-grow-1">
+        <Header title="Responsable Universitaire">
+          <Button variant="outline-secondary" onClick={() => setShowNotif(!showNotif)} className="ms-auto">
+            <FaBell /> {showNotif ? 'Masquer' : 'Afficher'} Notifications
+          </Button>
+        </Header>
+
+        <main className="main-content p-4">
           {message && <Alert variant="info">{message}</Alert>}
           {loading ? (
             <SkeletonLoader />
           ) : (
-            <div className="dashboard-grid">
-              <Card className="dashboard-card">
-                <Card.Header>Attestations Générées</Card.Header>
-                <Card.Body>
-                  {attestations.length === 0 ? (
-                    <p className="text-muted">Aucune attestation pour l’instant.</p>
-                  ) : (
-                    attestations.map(att => (
-                      <Card key={att.id} className="inner-card">
-                        <Card.Body>
-                          <strong>Étudiant :</strong> {att.etudiantPrenom} {att.etudiantNom}<br />
-                          <strong>Stage :</strong> {att.identifiant_unique}<br />
-                          <strong>Identifiant Attestation :</strong> {att.identifiant}<br />
-                          <strong>Date :</strong> {new Date(att.dateCreation).toLocaleDateString()}<br />
-                          <strong>État :</strong>{' '}
-                          {att.etat === 'validé' ? (
-                            <Badge bg="success">Stage validé</Badge>
-                          ) : (
-                            <Badge bg="warning">En attente</Badge>
-                          )}
-                          <div className="mt-2 text-end">
-                            <a href={att.ipfsUrl} target="_blank" rel="noreferrer" className="btn btn-link p-0">
-                              Voir le PDF
-                            </a>
-                            {att.etat !== 'validé' && (
-                              <Button
-                                variant="success"
-                                size="sm"
-                                className="mt-2"
-                                onClick={() => validerStage(att.stageId)}
-                              >
-                                Valider officiellement
-                              </Button>
-                            )}
-                          </div>
-                        </Card.Body>
-                      </Card>
-                    ))
-                  )}
-                </Card.Body>
-              </Card>
+            <Row className="g-4">
+              <Col lg={8}>
+                <Card className="shadow-sm border-0">
+                  <Card.Header className="bg-primary text-white fw-bold">Attestations Générées</Card.Header>
+                  <Card.Body>
+                    {attestations.length === 0 ? (
+                      <p className="text-muted">Aucune attestation pour l’instant.</p>
+                    ) : (
+                      <div className="vstack gap-3">
+                        {attestations.map(att => (
+                          <Card key={att.id} className="p-3 border-start border-4 border-primary bg-white rounded shadow-sm">
+                            <p><strong>Étudiant :</strong> {att.etudiantPrenom} {att.etudiantNom}</p>
+                            <p><strong>Stage :</strong> {att.identifiant_unique}</p>
+                            <p><strong>Identifiant :</strong> {att.identifiant}</p>
+                            <p><strong>Date :</strong> {new Date(att.dateCreation).toLocaleDateString()}</p>
+                            <p>
+                              <strong>État :</strong>{' '}
+                              {att.etat === 'validé' ? (
+                                <Badge bg="success">Stage validé</Badge>
+                              ) : (
+                                <Badge bg="warning text-dark">En attente</Badge>
+                              )}
+                            </p>
+                            <div className="d-flex justify-content-between mt-3">
+                              <a href={att.ipfsUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
+                                Voir le PDF
+                              </a>
+                              {att.etat !== 'validé' && (
+                                <Button size="sm" variant="success" onClick={() => validerStage(att.stageId)}>
+                                  Valider
+                                </Button>
+                              )}
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
 
-              <Card className="dashboard-card">
-                <Card.Header>Notifications</Card.Header>
-                <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {notifications.length === 0 ? (
-                    <p className="text-muted">Aucune notification</p>
-                  ) : (
-                    <ListGroup>
-                      {notifications.map(n => (
-                        <ListGroup.Item key={n.id}>
-                          {n.message} — <small className="notification-date">{new Date(n.date_envoi).toLocaleString()}</small>
-                        </ListGroup.Item>
-                      ))}
-                    </ListGroup>
-                  )}
-                </Card.Body>
-              </Card>
-            </div>
+              <Col lg={4}>
+                <Collapse in={showNotif}>
+                  <div>
+                    <Card className="shadow-sm border-0">
+                      <Card.Header className="bg-dark text-white fw-bold">Notifications</Card.Header>
+                      <Card.Body style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                        {notifications.length === 0 ? (
+                          <p className="text-muted">Aucune notification</p>
+                        ) : (
+                          <ListGroup variant="flush">
+                            {notifications.map(n => (
+                              <ListGroup.Item key={n.id}>
+                                {n.message}
+                                <div className="text-muted small">{new Date(n.date_envoi).toLocaleString()}</div>
+                              </ListGroup.Item>
+                            ))}
+                          </ListGroup>
+                        )}
+                      </Card.Body>
+                    </Card>
+                  </div>
+                </Collapse>
+              </Col>
+            </Row>
           )}
         </main>
       </div>

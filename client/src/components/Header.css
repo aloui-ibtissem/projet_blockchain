@@ -1,9 +1,22 @@
-.header {
-  background: linear-gradient(to right, #007bff, #6610f2);
+.custom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(90deg, #007bff, #6f42c1);
+  padding: 20px 30px;
   color: white;
-  padding: 20px;
-  text-align: center;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  margin-bottom: 25px;
+}
+
+.custom-header h1 {
+  margin: 0;
   font-size: 1.8rem;
-  font-weight: bold;
-  border-bottom: 3px solid #0056b3;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }

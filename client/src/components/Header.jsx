@@ -1,10 +1,15 @@
 import React from 'react';
 import './Header.css';
 
-const Header = ({ title }) => (
-  <header className="header">
-    <h1>{title}</h1>
-  </header>
-);
+function Header({ title, children }) {
+  return (
+    <div className="custom-header">
+      <h1>{title}</h1>
+      <div className="header-actions">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default Header;
