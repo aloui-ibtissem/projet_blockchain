@@ -34,6 +34,17 @@ function DashboardEtudiant() {
   const [loading, setLoading] = useState(true);
   const [stagesHistoriques, setStagesHistoriques] = useState([]);
 
+  const fetchStagesHistoriques = async () => {
+  try {
+    const res = await axios.get(`${API_URL}/stage/historique`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setStagesHistoriques(res.data);
+  } catch {
+    setStagesHistoriques([]);
+  }
+};
+
 
   useEffect(() => {
     if (!token || role !== 'Etudiant') return navigate('/login');
@@ -52,7 +63,6 @@ function DashboardEtudiant() {
         fetchNotifications(),
         fetchMesRapports(),
         fetchStagesHistoriques()
-
       ]);
     } catch (err) {
       console.error("Erreur initiale :", err);
@@ -61,7 +71,6 @@ function DashboardEtudiant() {
       setLoading(false);
     }
   };
-
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -205,16 +214,7 @@ function DashboardEtudiant() {
   }
   
 
-const fetchStagesHistoriques = async () => {
-  try {
-    const res = await axios.get(`${API_URL}/stage/historique`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    setStagesHistoriques(res.data);
-  } catch {
-    setStagesHistoriques([]);
-  }
-};
+
 
 
   return (
