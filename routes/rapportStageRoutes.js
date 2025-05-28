@@ -24,5 +24,10 @@ router.get("/encadrant", checkToken, rapportController.getRapportsAValider);
 
 // Étudiant : consulter tous ses rapports soumis
 router.get("/mes-rapports", checkToken, rapportController.getMesRapports);
+//
+// Étudiant : consulter tous ses rapports soumis (et déclencher rappel automatique si applicable)
+router.get("/mes-rapports", checkToken, rapportController.getMesRapports);
+
+
 
 module.exports = router;

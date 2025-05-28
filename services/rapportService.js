@@ -281,6 +281,8 @@ exports.getMesRapports = async (email) => {
   const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email = ?", [email]);
   if (!etudiant) throw new Error("Étudiant introuvable.");
 
+  await checkAndSendReminderIfNeeded(etudiant.id);
+
   const [rows] = await db.execute(`
     SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
            r.statutAcademique, r.statutProfessionnel
@@ -291,3 +293,40 @@ exports.getMesRapports = async (email) => {
   return rows;
 };
 
+//
+const checkAndSendReminderIfNeeded = async (etudiantId) => {
+  const [[stage]] = await db.execute(
+    `SELECT id, titre, dateFin FROM Stage WHERE etudiantId = ?`, [etudiantId]
+  );
+  if (!stage) return;
+
+  const [rapport] = await db.execute(
+    `SELECT id FROM RapportStage WHERE stageId = ?`, [stage.id]
+  );
+  if (rapport.length > 0) return;
+
+  const daysLeft = Math.floor((new Date(stage.dateFin) - new Date()) / (1000 * 60 * 60 * 24));
+  if (daysLeft > 7 || daysLeft < 0) return;
+
+  const [[etudiant]] = await db.execute(
+    `SELECT prenom, nom FROM Etudiant WHERE id = ?`, [etudiantId]
+  );
+
+  await notificationService.notifyUser({
+    toId: etudiantId,
+    toRole: "Etudiant",
+    subject: "Rappel : Soumission de votre rapport",
+    templateName: "reminder_submission",
+    templateData: {
+      etudiantPrenom: etudiant.prenom,
+      etudiantNom: etudiant.nom,
+      titreStage: stage.titre,
+      soumissionUrl: buildUrl("/etudiant"),
+      appName: "CertiChain",
+      year: new Date().getFullYear(),
+      homeUrl: buildUrl("/"),
+      loginUrl: buildUrl("/login")
+    },
+    message: `Rappel automatique : merci de soumettre votre rapport de stage pour "${stage.titre}".`
+  });
+};
