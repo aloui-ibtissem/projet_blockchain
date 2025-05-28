@@ -32,7 +32,8 @@ function DashboardEtudiant() {
   const [commentaires, setCommentaires] = useState([]);
   const [attestationUrl, setAttestationUrl] = useState('');
   const [loading, setLoading] = useState(true);
-  const [stagesHistoriques, setStagesHistoriques] = useState(true);
+  const [stagesHistoriques, setStagesHistoriques] = useState([]);
+
 
   useEffect(() => {
     if (!token || role !== 'Etudiant') return navigate('/login');

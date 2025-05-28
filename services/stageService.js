@@ -156,9 +156,16 @@ exports.creerStageDepuisSujet = async (sujet) => {
 
   const identifiant = await genererIdentifiantStage(pro.entrepriseId, etudiant.universiteId);
 
+  // Important : désactiver les anciens stages comme historiques
+  await db.execute(
+    "UPDATE Stage SET estHistorique = TRUE WHERE etudiantId = ? AND estHistorique = FALSE",
+    [sujet.etudiantId]
+  );
+
+  // Création du nouveau stage en attente (actuel)
   const [result] = await db.execute(
-    `INSERT INTO Stage (etudiantId, encadrantAcademiqueId, encadrantProfessionnelId, entrepriseId, titre, dateDebut, dateFin, intervalleValidation, identifiant_unique)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 10, ?)`,
+    `INSERT INTO Stage (etudiantId, encadrantAcademiqueId, encadrantProfessionnelId, entrepriseId, titre, dateDebut, dateFin, intervalleValidation, identifiant_unique, etat, estHistorique)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 10, ?, 'en attente', FALSE)`,
     [
       sujet.etudiantId,
       sujet.encadrantAcademiqueId,
@@ -189,11 +196,11 @@ exports.creerStageDepuisSujet = async (sujet) => {
       dateDebut: sujet.dateDebut,
       dateFin: sujet.dateFin,
       dashboardUrl: buildUrl("/etudiant")
-
     },
     message: `Votre stage a été créé avec l'identifiant ${identifiant}.`
   });
 };
+
 
 // ===============================
 // 4. Propositions à valider (GET)
