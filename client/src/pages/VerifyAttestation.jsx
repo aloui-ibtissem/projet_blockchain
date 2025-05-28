@@ -1,52 +1,42 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ethers } from "ethers";
 import { Card, Alert, Spinner, Button } from "react-bootstrap";
-import abi from "./AttestationContractAbi.json";
-
-const CONTRACT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; 
 
 function VerifyAttestation() {
   const { id } = useParams();
   const [status, setStatus] = useState("loading");
-  const [attestation, setAttestation] = useState(null);
-  const [hashMatch, setHashMatch] = useState(null);
+  const [ipfsUrl, setIpfsUrl] = useState(null);
+  const [attestationInfo, setAttestationInfo] = useState(null);
 
-  const fetchBlockchainData = async () => {
+  const fetchAttestation = async () => {
     try {
-      const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545"); 
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider);
-      const data = await contract.getAttestation(id);
+      const res = await fetch(`https://TON-NGROK-URL/api/attestation/verifier/${id}`);
+      const data = await res.json();
 
-      //  Transforme le lien IPFS utilisable
-      const ipfsUrl = `https://ipfs.io/ipfs/${data.fileHash}`;
-      setAttestation({ ...data, ipfsUrl });
+      if (!data || data.error) {
+        setStatus("error");
+        return;
+      }
 
-      //  Téléchargement du PDF depuis IPFS
-      const response = await fetch(ipfsUrl);
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-
-      setHashMatch(hashHex === data.fileHash.toLowerCase());
+      const ipfs = data.lienIPFS.replace("ipfs://", "https://ipfs.io/ipfs/");
+      setIpfsUrl(ipfs);
+      setAttestationInfo(data);
       setStatus("done");
     } catch (err) {
-      console.error("Erreur de vérification:", err);
+      console.error("Erreur de chargement de l'attestation:", err);
       setStatus("error");
     }
   };
 
   useEffect(() => {
-    if (id) fetchBlockchainData();
+    if (id) fetchAttestation();
     else setStatus("error");
   }, [id]);
 
   return (
     <div className="d-flex flex-column align-items-center justify-content-center min-vh-100 bg-light px-3">
       <Card className="w-100" style={{ maxWidth: "700px", padding: "30px" }}>
-        <h2 className="text-center mb-4">Vérification d'attestation</h2>
+        <h2 className="text-center mb-4">Vérification de l'attestation</h2>
 
         {status === "loading" && (
           <div className="text-center text-secondary">
@@ -60,28 +50,25 @@ function VerifyAttestation() {
           </Alert>
         )}
 
-        {status === "done" && attestation && (
+        {status === "done" && ipfsUrl && (
           <>
-            <p><strong>Stage ID :</strong> {attestation.stageId}</p>
-            <p><strong>Rapport ID :</strong> {attestation.reportId}</p>
-            <p><strong>Hash attendu :</strong> <span className="small text-break">{attestation.fileHash}</span></p>
+            <p><strong>Identifiant Attestation :</strong> {attestationInfo.identifiant}</p>
+            <p><strong>Nom Étudiant :</strong> {attestationInfo.etudiantNom}</p>
+            <p><strong>Identifiant Stage :</strong> {attestationInfo.identifiantStage}</p>
+            <p><strong>Hash :</strong> <span className="small text-break">{attestationInfo.hash}</span></p>
 
-            <p className="mt-3">
-              <strong>Statut :</strong><br />
-              {hashMatch ? (
-                <span className="text-success fw-bold"> Attestation authentique.</span>
-              ) : (
-                <span className="text-danger fw-bold"> Attestation falsifiée !</span>
-              )}
-            </p>
+            <Alert variant="success">
+              Cette attestation est <strong>authentique</strong>, <strong>signée</strong> et hébergée sur <strong>IPFS</strong>.<br />
+              Elle peut être consultée à tout moment via le QR code ou le lien ci-dessous.
+            </Alert>
 
             <Button
               variant="outline-primary"
-              href={attestation.ipfsUrl}
+              href={ipfsUrl}
               target="_blank"
               className="mt-3"
             >
-              Voir le fichier IPFS
+              Voir le fichier PDF original
             </Button>
           </>
         )}

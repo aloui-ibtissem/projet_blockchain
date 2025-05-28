@@ -1,41 +1,44 @@
-/* src/components/Layout.css */
-.layout-container {
+.layout {
   display: flex;
   min-height: 100vh;
+  background-color: #f8f9fa;
+  font-family: "Segoe UI", sans-serif;
 }
 
-.custom-sidebar {
-  width: 220px;
-  background: linear-gradient(180deg, #e6f0fa 0%, #d9e4f5 100%);
-  padding: 1rem;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-}
-
-.sidebar-header {
-  font-weight: bold;
-  font-size: 1.3rem;
-  margin-bottom: 2rem;
-  color: #1e293b;
-  text-align: center;
-}
-
-.custom-sidebar .nav-link {
-  margin-bottom: 1rem;
-  color: #1e293b;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  transition: background 0.2s ease;
-}
-
-.custom-sidebar .nav-link:hover {
-  background: #c3dafe;
-  color: #111827;
-}
-
-.layout-content {
+.main-area {
   flex: 1;
-  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.dashboard-card {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.inner-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 10px;
+  background-color: #fafafa;
+}
+
+.notification-date {
+  font-size: 0.8rem;
+  color: #888;
 }

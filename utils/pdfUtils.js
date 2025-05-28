@@ -10,27 +10,25 @@ exports.generatePDFWithQR = async (data) => {
   const stream = fs.createWriteStream(outputPath);
   doc.pipe(stream);
 
-  // Logo entreprise (optionnel)
+  // Logo entreprise
   if (data.logoPath && fs.existsSync(data.logoPath)) {
     doc.image(data.logoPath, 50, 40, { width: 80 });
   }
 
-  // En-tête centré si fourni
+  // En-tête personnalisé
   if (data.headerText) {
-    doc.fontSize(16).font("Helvetica-Bold").text(data.headerText, {
-      align: "center"
-    });
+    doc.fontSize(16).font("Helvetica-Bold").text(data.headerText, { align: "center" });
     doc.moveDown();
   }
 
-  // Titre principal centré
+  // Titre principal
   doc.fontSize(18).font("Helvetica-Bold").text("ATTESTATION DE STAGE", {
     align: "center",
     underline: true
   });
   doc.moveDown(2);
 
-  // Corps du texte principal
+  // Corps du texte
   doc.fontSize(12).font("Helvetica").text(`Je soussigné ${data.responsableNom}, certifie que :`);
   doc.moveDown();
   doc.text(`${data.etudiantPrenom} ${data.etudiantNom} a effectué un stage du ${new Date(data.dateDebut).toLocaleDateString()} au ${new Date(data.dateFin).toLocaleDateString()}.`);
@@ -44,36 +42,35 @@ exports.generatePDFWithQR = async (data) => {
   doc.text("La présente attestation est délivrée pour servir et valoir ce que de droit.");
   doc.moveDown();
 
-  doc.font("Helvetica-Bold").text(`Identifiant : ${data.attestationId}`, {
-    align: "left"
-  });
+  doc.font("Helvetica-Bold").text(`Identifiant : ${data.attestationId}`, { align: "left" });
   doc.moveDown(2);
 
-  // QR Code au centre
+  // QR code centré
   const qrBuffer = await generateQRCodeBuffer(data.verificationUrl);
   const qrX = (doc.page.width - 120) / 2;
-  doc.image(qrBuffer, qrX, doc.y, { width: 120 });
-  doc.moveDown(1.5);
+  const qrY = doc.y;
+  doc.image(qrBuffer, qrX, qrY, { width: 120 });
+  doc.moveDown(8); // espace pour phrases grises
 
-  // Phrase explicative
-  doc.fontSize(10).fillColor("gray").text("Ce QR code vous permet de vérifier l’authenticité de cette attestation via la blockchain.", {
-    align: "center"
-  });
-  doc.moveDown();
+  //  Phrase explicative SOUS le QR
+  doc.fontSize(10).fillColor("gray").text(
+    "Vérifier l'attestation via ce QR code",
+    { align: "center" }
+  );
+  doc.moveDown(0.3);
 
-  // Horodatage
-  doc.text(`Publié et horodaté sur la blockchain le : ${new Date().toLocaleDateString()}`, {
-    align: "center"
-  });
+  doc.text(
+    `Publié et horodaté sur la blockchain le : ${new Date().toLocaleDateString()}`,
+    { align: "center" }
+  );
   doc.moveDown(2);
 
-  // Signature et lieu à droite
+  // Signature
   doc.fillColor("black").fontSize(11);
   doc.text(`Fait à ${data.lieu || "[Lieu]"}, le ${new Date().toLocaleDateString()}`, { align: "right" });
   doc.text(`${data.responsableNom}`, { align: "right" });
   doc.text("Responsable de l’entreprise", { align: "right" });
 
-  // Signature image si existe
   if (data.signature && fs.existsSync(data.signature)) {
     doc.image(data.signature, doc.page.width - 150, doc.y + 10, { width: 100 });
   }

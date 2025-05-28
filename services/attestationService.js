@@ -6,6 +6,8 @@ const { publishAttestation } = require("../utils/blockchainUtils");
 const notificationService = require("./notificationService");
 const { genererIdentifiantAttestation } = require("../utils/identifiantUtils");
 require("dotenv").config();
+const { buildUrl } = require("../utils/urlUtils");
+
 
 exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, responsableId }) => {
   const [existingRows] = await db.execute(
@@ -36,7 +38,8 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   const stage = stageRows[0];
   const attestationId = await genererIdentifiantAttestation(stage.universiteId, stage.entrepriseId);
   //lien de verification de attestation
-const verificationUrl = `https://projet-blockchain-blush.vercel.app/verify/${attestationId}`;
+  const verificationUrl = ipfsUrl.replace("ipfs://", "https://ipfs.io/ipfs/");
+
 
 
   const pdfData = {
@@ -108,7 +111,7 @@ const ipfsUrl = await uploadToIPFS(pdfPath); //  ipfs://Qm...
         etudiantNom: stage.etudiantNom,
         titreStage: stage.titre,
         identifiantAttestation: attestationId,
-        dashboardUrl: `${process.env.APP_URL}/login`
+         dashboardUrl: buildUrl("/login")
       },
       message: `Une attestation est prête à être consultée et validée.`
     });
@@ -143,7 +146,7 @@ exports.validerParUniversite = async (stageId, responsableId) => {
       etudiantNom: etudiant.nom,
       titreStage: stage.titre,
       dateValidation: new Date().toLocaleDateString("fr-FR"),
-      dashboardUrl: `${process.env.APP_URL || 'http://localhost:3001'}/etudiant`
+      dashboardUrl:buildUrl("/login")
     },
     message: "Votre stage a été validé par le responsable universitaire."
   });

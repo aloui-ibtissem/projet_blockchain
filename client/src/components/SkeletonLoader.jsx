@@ -11,4 +11,4 @@ function SkeletonLoader() {
   );
 }
 
-export default SkeletonLoader;
+export default SkeletonLoader
