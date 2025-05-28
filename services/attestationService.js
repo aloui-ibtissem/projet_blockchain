@@ -51,7 +51,8 @@ const verificationUrl = `https://projet-blockchain-blush.vercel.app/verify/${att
   };
 
   const pdfPath = await generatePDFWithQR(pdfData);
-  const fileHash = hashFile(pdfPath);
+  const fileHash = await hashFile(pdfPath);
+
 const ipfsUrl = await uploadToIPFS(pdfPath); //  ipfs://Qm...
 
   await db.execute(`
