@@ -9,12 +9,18 @@ const { genererIdentifiantAttestation } = require("../utils/identifiantUtils");
 const { buildUrl } = require("../utils/urlUtils");
 require("dotenv").config();
 
-exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, responsableId }) => {
+exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, responsableId, forcer = false }) => {
+  console.log(`[StageChain]  Démarrage génération attestation pour stageId=${stageId}, responsableId=${responsableId}`);
+
   const [existingRows] = await db.execute(
     "SELECT fileHash AS hash, ipfsUrl, identifiant FROM Attestation WHERE stageId = ?",
     [stageId]
   );
-  if (existingRows.length) return existingRows[0];
+
+  if (existingRows.length && !forcer) {
+    console.log(`[StageChain]  Attestation déjà existante pour stageId=${stageId}`);
+    return existingRows[0];
+  }
 
   const [stageRows] = await db.execute(`
     SELECT S.identifiant_unique, S.dateDebut, S.dateFin, S.titre, S.etat,
@@ -55,13 +61,13 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     signature: modifs.signature || ""
   };
 
-  console.log("[StageChain] Génération PDF temporaire...");
+  console.log("[StageChain]  Génération PDF temporaire...");
   const tempPdfPath = await generatePDFWithQR(pdfData);
   const fileHash = await hashFile(tempPdfPath);
   const ipfsUrl = await uploadToIPFS(tempPdfPath);
-  console.log("[StageChain] PDF hashé & uploadé sur IPFS:", ipfsUrl);
+  console.log("[StageChain]  PDF temporaire hashé et uploadé :", ipfsUrl);
 
-  console.log("[StageChain] Génération page HTML de vérification...");
+  console.log("[StageChain]  Génération page HTML de vérification...");
   const htmlContent = generateVerificationHTML({
     attestationId,
     fileHash,
@@ -72,13 +78,13 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   });
   const htmlUrl = await uploadHTMLToIPFS(htmlContent);
 
-  console.log("[StageChain] Régénération du PDF avec URL de vérification...");
+  console.log("[StageChain]  Régénération PDF avec URL de vérification...");
   pdfData.verificationUrl = htmlUrl;
   const finalPdfPath = await generatePDFWithQR(pdfData);
   const finalHash = await hashFile(finalPdfPath);
   const finalIpfsUrl = await uploadToIPFS(finalPdfPath);
 
-  console.log("[StageChain] Insertion BDD...");
+  console.log("[StageChain]  Insertion dans la base de données...");
   await db.execute(`
     INSERT INTO Attestation
       (stageId, identifiant, fileHash, ipfsUrl, responsableId, etudiantId, dateCreation, publishedOnChain)
@@ -87,10 +93,10 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
 
   await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
 
-  console.log("[StageChain] Publication blockchain...");
+  console.log("[StageChain]  Publication sur la blockchain...");
   await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, finalHash);
 
-  console.log("[StageChain] Notifications...");
+  console.log("[StageChain]  Envoi des notifications...");
   const [respUniRows] = await db.execute(
     "SELECT id, email, prenom, nom FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
     [stage.universiteId]
@@ -137,6 +143,8 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
       message: `Une attestation est prête à être consultée et validée.`
     });
   }
+
+  console.log("[StageChain]  Attestation générée avec succès.");
 
   return {
     hash: finalHash,
