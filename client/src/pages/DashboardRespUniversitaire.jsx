@@ -95,9 +95,12 @@ function DashboardRespUniversitaire() {
                     ) : (
                       <div className="vstack gap-3">
                         {attestations.map(att => (
-                          <Card key={att.id} className="p-3 border-start border-4 border-primary bg-white rounded shadow-sm">
+                          <Card
+                            key={att.stageId}
+                            className="p-3 border-start border-4 border-primary bg-white rounded shadow-sm"
+                          >
                             <p><strong>Étudiant :</strong> {att.etudiantPrenom} {att.etudiantNom}</p>
-                            <p><strong>Stage :</strong> {att.identifiant_unique}</p>
+                            <p><strong>Stage :</strong> {att.identifiantStage}</p>
                             <p><strong>Identifiant :</strong> {att.identifiant}</p>
                             <p><strong>Date :</strong> {new Date(att.dateCreation).toLocaleDateString()}</p>
                             <p>

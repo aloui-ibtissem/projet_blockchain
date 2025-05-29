@@ -64,9 +64,11 @@ exports.attestationEtudiant = async (req, res) => {
       [etudiantId]
     );
 
-    if (!attestation) return res.status(404).json({ error: "Aucune attestation trouvée" });
+    if (!attestation) {
+      return res.status(404).json({ error: "Aucune attestation trouvée" });
+    }
 
-    res.json({
+    res.status(200).json({
       attestationUrl: attestation.ipfsUrl,
       hash: attestation.fileHash,
       identifiant: attestation.identifiant
@@ -84,8 +86,9 @@ exports.getAttestationsUniversite = async (req, res) => {
     }
 
     const data = await attestationService.getAttestationsByUniversite(userId);
-    res.json(data);
+    res.status(200).json(data);
   } catch (err) {
+    console.error("Erreur lors de la récupération des attestations:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -110,7 +113,7 @@ exports.validerStageUniversite = async (req, res) => {
 
 exports.downloadAttestation = async (req, res) => {
   try {
-    const filePath = `/attestations/${req.user.id}.pdf`; // <- assurez-vous que ce chemin est correct
+    const filePath = `/attestations/${req.user.id}.pdf`; 
     res.download(filePath);
   } catch (err) {
     console.error("Erreur téléchargement attestation:", err);

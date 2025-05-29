@@ -54,7 +54,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     identifiantStage: stage.identifiant_unique,
     attestationId,
     dateGeneration: new Date().toLocaleDateString(),
-    verificationUrl: "PLACEHOLDER",
+    verificationUrl: "", // sera mis à jour plus tard
     responsableNom: modifs.responsableNom || stage.responsableNom,
     lieu: modifs.lieu || stage.nomEntreprise,
     logoPath: modifs.logoPath || stage.logoPath,
@@ -152,4 +152,61 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     identifiant: attestationId,
     verificationPage: htmlUrl
   };
+};
+
+exports.getAttestationsByUniversite = async (responsableUniId) => {
+  const [[responsable]] = await db.execute(`
+    SELECT universiteId FROM ResponsableUniversitaire WHERE id = ?
+  `, [responsableUniId]);
+
+  if (!responsable) {
+    throw new Error("Responsable universitaire introuvable");
+  }
+
+  const universiteId = responsable.universiteId;
+
+  const [attestations] = await db.execute(`
+    SELECT A.identifiant, A.fileHash AS hash, A.ipfsUrl, A.dateCreation,
+           S.id AS stageId, S.identifiant_unique AS identifiantStage, S.titre, S.etat,
+           E.prenom AS etudiantPrenom, E.nom AS etudiantNom
+    FROM Attestation A
+    JOIN Stage S ON A.stageId = S.id
+    JOIN Etudiant E ON A.etudiantId = E.id
+    WHERE E.universiteId = ?
+    ORDER BY A.dateCreation DESC
+  `, [universiteId]);
+
+  return attestations;
+};
+
+exports.validerParUniversite = async (stageId, responsableId) => {
+  const [rows] = await db.execute("SELECT * FROM Stage WHERE id = ?", [stageId]);
+  if (!rows.length) throw new Error("Stage introuvable");
+
+  await db.execute("UPDATE Stage SET etat = 'validé' WHERE id = ?", [stageId]);
+
+  const [etudiantRow] = await db.execute(`
+    SELECT E.id, E.prenom, E.nom FROM Etudiant E
+    JOIN Stage S ON S.etudiantId = E.id
+    WHERE S.id = ?
+  `, [stageId]);
+
+  const etudiant = etudiantRow[0];
+  if (etudiant) {
+    await notificationService.notifyUser({
+      toId: etudiant.id,
+      toRole: "Etudiant",
+      subject: "Stage validé par l'université",
+      templateName: "stage_validated_universite",
+      templateData: {
+        etudiantPrenom: etudiant.prenom,
+        etudiantNom: etudiant.nom,
+        stageId,
+        year: new Date().getFullYear()
+      },
+      message: `Votre stage a été validé par votre université.`
+    });
+  }
+
+  return { success: true };
 };
