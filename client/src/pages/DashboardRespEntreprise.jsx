@@ -17,6 +17,7 @@ function DashboardRespEntreprise() {
   const [stagiaires, setStagiaires] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [message, setMessage] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState(null);
@@ -91,6 +92,7 @@ function DashboardRespEntreprise() {
         encadrants: `${stage.acaPrenom} ${stage.acaNom} / ${stage.proPrenom} ${stage.proNom}`,
         dates: `${new Date(stage.dateDebut).toLocaleDateString()} - ${new Date(stage.dateFin).toLocaleDateString()}`
       }));
+      setUploadSuccess('');
       setShowModal(true);
     } catch (error) {
       console.error("Erreur chargement détails stage:", error);
@@ -99,6 +101,24 @@ function DashboardRespEntreprise() {
   };
 
   const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formDataUpload = new FormData();
+    formDataUpload.append("logo", file);
+    try {
+      const res = await axios.post(`${API_URL}/entreprises/upload-logo`, formDataUpload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setFormData(prev => ({ ...prev, logoPath: res.data.logoPath }));
+      setUploadSuccess("Logo mis à jour avec succès !");
+    } catch (err) {
+      console.error(err);
+      alert("Échec de l'upload du logo.");
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       const res = await axios.post(`${API_URL}/api/attestation/generer/${selectedStageId}`, formData, {
@@ -168,6 +188,7 @@ function DashboardRespEntreprise() {
           <Modal.Title>Formulaire Attestation</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {uploadSuccess && <Alert variant="success">{uploadSuccess}</Alert>}
           <Form>
             <Form.Group className="mb-2">
               <Form.Label>Étudiant</Form.Label>
@@ -199,7 +220,8 @@ function DashboardRespEntreprise() {
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Label>Logo (chemin local)</Form.Label>
-              <Form.Control type="text" name="logoPath" value={formData.logoPath} onChange={handleChange} />
+              <Form.Control type="text" name="logoPath" value={formData.logoPath} readOnly />
+              <Form.Control type="file" accept="image/*" onChange={handleLogoUpload} className="mt-1" />
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Label>Signature numérique</Form.Label>

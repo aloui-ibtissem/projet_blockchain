@@ -70,7 +70,7 @@ router.get("/info", checkToken, async (req, res) => {
 
 //  Stocker les logos dans /logos
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "/logos"),
+  destination: (req, file, cb) => cb(null, "logos"),
   filename: (req, file, cb) => {
     const ext = file.originalname.split(".").pop();
     const uniqueName = `logo_${Date.now()}.${ext}`;
