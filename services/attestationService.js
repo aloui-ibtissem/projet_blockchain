@@ -167,8 +167,11 @@ exports.getAttestationsByUniversite = async (responsableUniId) => {
 
   const [attestations] = await db.execute(`
     SELECT A.identifiant, A.fileHash AS hash, A.ipfsUrl, A.dateCreation,
-           S.id AS stageId, S.identifiant_unique AS identifiantStage, S.titre, S.etat,
-           E.prenom AS etudiantPrenom, E.nom AS etudiantNom
+       S.id AS stageId, S.identifiant_unique AS identifiantStage,
+       S.titre,
+       E.prenom AS etudiantPrenom, E.nom AS etudiantNom,
+       S.etat
+
     FROM Attestation A
     JOIN Stage S ON A.stageId = S.id
     JOIN Etudiant E ON A.etudiantId = E.id

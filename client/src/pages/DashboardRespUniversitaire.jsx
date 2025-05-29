@@ -100,7 +100,7 @@ function DashboardRespUniversitaire() {
                             className="p-3 border-start border-4 border-primary bg-white rounded shadow-sm"
                           >
                             <p><strong>Étudiant :</strong> {att.etudiantPrenom} {att.etudiantNom}</p>
-                            <p><strong>Stage :</strong> {att.identifiantStage}</p>
+                           <p><strong>Stage :</strong> {att.titre} ({att.identifiantStage})</p>
                             <p><strong>Identifiant :</strong> {att.identifiant}</p>
                             <p><strong>Date :</strong> {new Date(att.dateCreation).toLocaleDateString()}</p>
                             <p>
