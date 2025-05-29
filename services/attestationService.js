@@ -24,7 +24,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
            U.id AS universiteId, ENT.id AS entrepriseId,
            ENT.nom AS nomEntreprise, ENT.logoPath AS logoPath,
            R.identifiantRapport,
-           RE.nom AS responsableNom
+           CONCAT(RE.prenom, ' ', RE.nom) AS responsableNom
     FROM Stage S
     JOIN Etudiant E ON S.etudiantId = E.id
     JOIN EncadrantAcademique EA ON S.encadrantAcademiqueId = EA.id
@@ -37,6 +37,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   `, [responsableId, stageId]);
 
   if (!stageRows.length) throw new Error("Rapport non validé par les deux encadrants");
+
   const stage = stageRows[0];
   const attestationId = await genererIdentifiantAttestation(stage.universiteId, stage.entrepriseId);
 
@@ -54,12 +55,13 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     signature: modifs.signature || ""
   };
 
-  // Étape 1: PDF initial pour calculer hash
+  console.log("[StageChain] Génération PDF temporaire...");
   const tempPdfPath = await generatePDFWithQR(pdfData);
   const fileHash = await hashFile(tempPdfPath);
   const ipfsUrl = await uploadToIPFS(tempPdfPath);
+  console.log("[StageChain] PDF hashé & uploadé sur IPFS:", ipfsUrl);
 
-  // Étape 2: Génération de la page HTML de vérification (IPFS)
+  console.log("[StageChain] Génération page HTML de vérification...");
   const htmlContent = generateVerificationHTML({
     attestationId,
     fileHash,
@@ -70,13 +72,13 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   });
   const htmlUrl = await uploadHTMLToIPFS(htmlContent);
 
-  // Étape 3: Régénération du PDF avec vrai lien vérification
+  console.log("[StageChain] Régénération du PDF avec URL de vérification...");
   pdfData.verificationUrl = htmlUrl;
   const finalPdfPath = await generatePDFWithQR(pdfData);
   const finalHash = await hashFile(finalPdfPath);
   const finalIpfsUrl = await uploadToIPFS(finalPdfPath);
 
-  // Base de données
+  console.log("[StageChain] Insertion BDD...");
   await db.execute(`
     INSERT INTO Attestation
       (stageId, identifiant, fileHash, ipfsUrl, responsableId, etudiantId, dateCreation, publishedOnChain)
@@ -85,14 +87,14 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
 
   await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
 
+  console.log("[StageChain] Publication blockchain...");
   await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, finalHash);
 
-  // Notifications
+  console.log("[StageChain] Notifications...");
   const [respUniRows] = await db.execute(
     "SELECT id, email, prenom, nom FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
     [stage.universiteId]
   );
-
   const respUni = respUniRows[0];
 
   await notificationService.notifyUser({

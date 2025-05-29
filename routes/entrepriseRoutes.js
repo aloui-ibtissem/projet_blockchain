@@ -1,10 +1,11 @@
+// Express router for entreprise
 const express = require("express");
 const router = express.Router();
 const db = require("../config/db");
 const checkToken = require("../middlewares/checkToken");
 const multer = require("multer");
 
-//  Route publique : liste des entreprises
+// Public route: list entreprises
 router.get("/", async (req, res) => {
   try {
     const [rows] = await db.execute("SELECT id, nom FROM Entreprise");
@@ -15,12 +16,10 @@ router.get("/", async (req, res) => {
   }
 });
 
-//  Route privée : dashboard du ResponsableEntreprise
+// Dashboard route for ResponsableEntreprise
 router.get("/dashboard", checkToken, async (req, res) => {
   try {
     const { id } = req.user;
-
-    // Étape 1 : récupérer les stagiaires avec rapport validé (2x) mais sans attestation
     const [stagiaires] = await db.execute(`
       SELECT DISTINCT S.id AS stageId, E.prenom, E.nom, E.email
       FROM Stage S
@@ -34,13 +33,12 @@ router.get("/dashboard", checkToken, async (req, res) => {
         )
     `, [id]);
 
-    // Étape 2 : récupérer les notifications du responsable
     const [notifications] = await db.execute(`
-  SELECT id, message, date_envoi
-  FROM notifications
-  WHERE destinataire_id = ? AND destinataire_type = 'entreprise'
-  ORDER BY date_envoi DESC
-`, [id]);
+      SELECT id, message, date_envoi
+      FROM notifications
+      WHERE destinataire_id = ? AND destinataire_type = 'entreprise'
+      ORDER BY date_envoi DESC
+    `, [id]);
 
     res.status(200).json({ stagiaires, notifications });
   } catch (err) {
@@ -49,12 +47,12 @@ router.get("/dashboard", checkToken, async (req, res) => {
   }
 });
 
-//récupérer nom  resp ent , logo , nom ent
+// Get entreprise info for ResponsableEntreprise
 router.get("/info", checkToken, async (req, res) => {
   try {
     const { id } = req.user;
     const [[row]] = await db.execute(`
-      SELECT RE.nom AS responsableNom, RE.logoPath, E.nom AS entrepriseNom
+      SELECT CONCAT(RE.prenom, ' ', RE.nom) AS responsableNom, E.logoPath, E.nom AS entrepriseNom
       FROM ResponsableEntreprise RE
       JOIN Entreprise E ON RE.entrepriseId = E.id
       WHERE RE.id = ?
@@ -68,7 +66,7 @@ router.get("/info", checkToken, async (req, res) => {
   }
 });
 
-//  Stocker les logos dans /logos
+// Setup for storing logo files
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "logos"),
   filename: (req, file, cb) => {
@@ -80,16 +78,17 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-//  Route sécurisée pour uploader le logo
+// Upload logo and update in Entreprise table
 router.post("/upload-logo", checkToken, upload.single("logo"), async (req, res) => {
   try {
-    const logoPath = req.file.path; 
+    const logoPath = req.file.path;
     const responsableId = req.user.id;
 
-    await db.execute(
-      "UPDATE ResponsableEntreprise SET logoPath = ? WHERE id = ?",
-      [logoPath, responsableId]
-    );
+    await db.execute(`
+      UPDATE Entreprise
+      SET logoPath = ?
+      WHERE id = (SELECT entrepriseId FROM ResponsableEntreprise WHERE id = ?)
+    `, [logoPath, responsableId]);
 
     res.json({ success: true, logoPath });
   } catch (error) {
@@ -97,6 +96,5 @@ router.post("/upload-logo", checkToken, upload.single("logo"), async (req, res) 
     res.status(500).json({ error: "Erreur serveur lors de l'enregistrement du logo." });
   }
 });
-
 
 module.exports = router;

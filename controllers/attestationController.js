@@ -1,4 +1,5 @@
 const attestationService = require("../services/attestationService");
+const db = require("../config/db");
 
 exports.genererAttestation = async (req, res) => {
   try {
@@ -55,7 +56,6 @@ exports.verifierAttestation = async (req, res) => {
   }
 };
 
-
 exports.attestationEtudiant = async (req, res) => {
   try {
     const etudiantId = req.user.id;
@@ -76,9 +76,6 @@ exports.attestationEtudiant = async (req, res) => {
   }
 };
 
-//
-
-
 exports.getAttestationsUniversite = async (req, res) => {
   try {
     const { id: userId, role } = req.user;
@@ -97,22 +94,6 @@ exports.validerStageUniversite = async (req, res) => {
   try {
     const { id: userId, role } = req.user;
     const { stageId } = req.params;
-    if (role !== "ResponsableUniversitaire") {
-      return res.status(403).json({ error: "Accès refusé" });
-    }
-
-    await attestationService.validerParUniversite(stageId, userId);
-    res.status(200).json({ message: "Stage validé et archivé avec succès." });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-//
-exports.validerStageUniversite = async (req, res) => {
-  try {
-    const { id: userId, role } = req.user;
-    const { stageId } = req.params;
 
     if (role !== "ResponsableUniversitaire") {
       return res.status(403).json({ error: "Accès refusé" });
@@ -122,21 +103,17 @@ exports.validerStageUniversite = async (req, res) => {
 
     res.status(200).json({ message: "Stage validé et archivé avec succès." });
   } catch (err) {
-    console.error("Erreur backend lors de la validation du stage :", err); // <== AJOUT ICI
+    console.error("Erreur backend lors de la validation du stage :", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-//
 exports.downloadAttestation = async (req, res) => {
   try {
-    const filePath = `/path/to/attestations/${req.user.id}.pdf`; 
+    const filePath = `/attestations/${req.user.id}.pdf`; // <- assurez-vous que ce chemin est correct
     res.download(filePath);
   } catch (err) {
     console.error("Erreur téléchargement attestation:", err);
     res.status(500).json({ error: "Erreur serveur lors du téléchargement" });
   }
 };
-
-
-

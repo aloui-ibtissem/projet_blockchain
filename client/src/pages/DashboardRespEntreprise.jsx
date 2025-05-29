@@ -65,7 +65,7 @@ function DashboardRespEntreprise() {
 
       setFormData(prev => ({
         ...prev,
-        responsableNom: infoRes.data.responsableNom || '',
+        responsableNom: infoRes.data.responsablePrenom + ' ' + infoRes.data.responsableNom || '',
         lieu: infoRes.data.entrepriseNom || '',
         logoPath: infoRes.data.logoPath || ''
       }));
