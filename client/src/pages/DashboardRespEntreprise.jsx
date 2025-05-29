@@ -14,6 +14,7 @@ function DashboardRespEntreprise() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
+
   const [stagiaires, setStagiaires] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [message, setMessage] = useState('');
@@ -21,6 +22,7 @@ function DashboardRespEntreprise() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState(null);
+
   const [formData, setFormData] = useState({
     appreciation: '',
     responsableNom: '',
@@ -60,12 +62,14 @@ function DashboardRespEntreprise() {
         })
       ]);
 
+      const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
+
       setStagiaires(dashRes.data.stagiaires || []);
       setNotifications(dashRes.data.notifications || []);
 
       setFormData(prev => ({
         ...prev,
-        responsableNom: infoRes.data.responsablePrenom + ' ' + infoRes.data.responsableNom || '',
+        responsableNom: nomComplet,
         lieu: infoRes.data.entrepriseNom || '',
         logoPath: infoRes.data.logoPath || ''
       }));
@@ -100,7 +104,9 @@ function DashboardRespEntreprise() {
     }
   };
 
-  const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
