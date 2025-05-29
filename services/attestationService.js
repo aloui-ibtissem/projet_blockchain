@@ -1,13 +1,13 @@
 const db = require("../config/db");
 const { uploadToIPFS } = require("../utils/ipfsUtils");
 const { generatePDFWithQR } = require("../utils/pdfUtils");
+const { generateVerificationHTML, uploadHTMLToIPFS } = require("../utils/htmlVerificationUtils");
 const { hashFile } = require("../utils/hashUtils");
 const { publishAttestation } = require("../utils/blockchainUtils");
 const notificationService = require("./notificationService");
 const { genererIdentifiantAttestation } = require("../utils/identifiantUtils");
-require("dotenv").config();
 const { buildUrl } = require("../utils/urlUtils");
-
+require("dotenv").config();
 
 exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, responsableId }) => {
   const [existingRows] = await db.execute(
@@ -22,8 +22,9 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
            EA.prenom AS acaPrenom, EA.nom AS acaNom,
            EP.prenom AS proPrenom, EP.nom AS proNom,
            U.id AS universiteId, ENT.id AS entrepriseId,
-           ENT.nom AS nomEntreprise,
-           R.identifiantRapport
+           ENT.nom AS nomEntreprise, ENT.logoPath AS logoPath,
+           R.identifiantRapport,
+           RE.nom AS responsableNom
     FROM Stage S
     JOIN Etudiant E ON S.etudiantId = E.id
     JOIN EncadrantAcademique EA ON S.encadrantAcademiqueId = EA.id
@@ -31,16 +32,13 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     JOIN Universite U ON E.universiteId = U.id
     JOIN Entreprise ENT ON S.entrepriseId = ENT.id
     JOIN RapportStage R ON R.stageId = S.id
+    JOIN ResponsableEntreprise RE ON RE.id = ?
     WHERE S.id = ? AND R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE
-  `, [stageId]);
+  `, [responsableId, stageId]);
 
   if (!stageRows.length) throw new Error("Rapport non validé par les deux encadrants");
   const stage = stageRows[0];
   const attestationId = await genererIdentifiantAttestation(stage.universiteId, stage.entrepriseId);
-  //lien de verification de attestation
-  const verificationUrl = ipfsUrl.replace("ipfs://", "https://ipfs.io/ipfs/");
-
-
 
   const pdfData = {
     ...stage,
@@ -49,26 +47,47 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     identifiantStage: stage.identifiant_unique,
     attestationId,
     dateGeneration: new Date().toLocaleDateString(),
-    verificationUrl,
-    responsableNom: modifs.responsableNom || "Responsable Entreprise"
+    verificationUrl: "PLACEHOLDER",
+    responsableNom: modifs.responsableNom || stage.responsableNom,
+    lieu: modifs.lieu || stage.nomEntreprise,
+    logoPath: modifs.logoPath || stage.logoPath,
+    signature: modifs.signature || ""
   };
 
-  const pdfPath = await generatePDFWithQR(pdfData);
-  //
-  const fileHash = await hashFile(pdfPath);
+  // Étape 1: PDF initial pour calculer hash
+  const tempPdfPath = await generatePDFWithQR(pdfData);
+  const fileHash = await hashFile(tempPdfPath);
+  const ipfsUrl = await uploadToIPFS(tempPdfPath);
 
-const ipfsUrl = await uploadToIPFS(pdfPath); //  ipfs://Qm...
+  // Étape 2: Génération de la page HTML de vérification (IPFS)
+  const htmlContent = generateVerificationHTML({
+    attestationId,
+    fileHash,
+    ipfsUrl,
+    issuer: responsableId,
+    timestamp: Date.now(),
+    event: "AttestationPublished"
+  });
+  const htmlUrl = await uploadHTMLToIPFS(htmlContent);
 
+  // Étape 3: Régénération du PDF avec vrai lien vérification
+  pdfData.verificationUrl = htmlUrl;
+  const finalPdfPath = await generatePDFWithQR(pdfData);
+  const finalHash = await hashFile(finalPdfPath);
+  const finalIpfsUrl = await uploadToIPFS(finalPdfPath);
+
+  // Base de données
   await db.execute(`
     INSERT INTO Attestation
       (stageId, identifiant, fileHash, ipfsUrl, responsableId, etudiantId, dateCreation, publishedOnChain)
     VALUES (?, ?, ?, ?, ?, ?, NOW(), TRUE)
-  `, [stageId, attestationId, fileHash, ipfsUrl, responsableId, stage.etudiantId]);
+  `, [stageId, attestationId, finalHash, finalIpfsUrl, responsableId, stage.etudiantId]);
 
   await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
 
-  await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, fileHash);
+  await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, finalHash);
 
+  // Notifications
   const [respUniRows] = await db.execute(
     "SELECT id, email, prenom, nom FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
     [stage.universiteId]
@@ -93,8 +112,8 @@ const ipfsUrl = await uploadToIPFS(pdfPath); //  ipfs://Qm...
       encadrantProPrenom: stage.proPrenom,
       encadrantProNom: stage.proNom,
       identifiantAttestation: attestationId,
-      hash: fileHash,
-      attestationUrl: verificationUrl,
+      hash: finalHash,
+      attestationUrl: htmlUrl,
       year: new Date().getFullYear()
     },
     message: "Votre attestation de stage est prête."
@@ -111,68 +130,16 @@ const ipfsUrl = await uploadToIPFS(pdfPath); //  ipfs://Qm...
         etudiantNom: stage.etudiantNom,
         titreStage: stage.titre,
         identifiantAttestation: attestationId,
-         dashboardUrl: buildUrl("/login")
+        dashboardUrl: buildUrl("/login")
       },
       message: `Une attestation est prête à être consultée et validée.`
     });
   }
 
   return {
-    hash: fileHash,
-    ipfsUrl,
-    identifiant: attestationId
+    hash: finalHash,
+    ipfsUrl: finalIpfsUrl,
+    identifiant: attestationId,
+    verificationPage: htmlUrl
   };
-};
-
-exports.validerParUniversite = async (stageId, responsableId) => {
-  const [[stage]] = await db.execute("SELECT * FROM Stage WHERE id = ?", [stageId]);
-  if (!stage) throw new Error("Stage introuvable");
-  if (stage.etat === "validé") return;
-
-  //  Mettre à jour état et historique
-  await db.execute("UPDATE Stage SET etat = 'validé', estHistorique = TRUE WHERE id = ?", [stageId]);
-
-  const [[etudiant]] = await db.execute(
-    "SELECT id, prenom, nom FROM Etudiant WHERE id = ?",
-    [stage.etudiantId]
-  );
-
-  await notificationService.notifyUser({
-    toId: etudiant.id,
-    toRole: "Etudiant",
-    subject: "Stage validé par l’université",
-    templateName: "stage_validated_universite",
-    templateData: {
-      etudiantPrenom: etudiant.prenom,
-      etudiantNom: etudiant.nom,
-      titreStage: stage.titre,
-      dateValidation: new Date().toLocaleDateString("fr-FR"),
-      dashboardUrl: buildUrl("/login")
-    },
-    message: "Votre stage a été validé par le responsable universitaire."
-  });
-};
-
-exports.getAttestationsByUniversite = async (responsableId) => {
-  const [[resp]] = await db.execute(
-    "SELECT universiteId FROM ResponsableUniversitaire WHERE id = ?",
-    [responsableId]
-  );
-
-  const [rows] = await db.execute(`
-    SELECT A.id, A.identifiant, A.stageId, A.dateCreation, A.ipfsUrl,
-           S.identifiant_unique, S.etat,
-           E.prenom AS etudiantPrenom, E.nom AS etudiantNom
-    FROM Attestation A
-    JOIN Stage S ON A.stageId = S.id
-    JOIN Etudiant E ON A.etudiantId = E.id
-    WHERE S.id IN (
-      SELECT id FROM Stage WHERE etudiantId IN (
-        SELECT id FROM Etudiant WHERE universiteId = ?
-      )
-    )
-    ORDER BY A.dateCreation DESC
-  `, [resp.universiteId]);
-
-  return rows;
 };

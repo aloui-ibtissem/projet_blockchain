@@ -50,9 +50,9 @@ exports.generatePDFWithQR = async (data) => {
   const qrX = (doc.page.width - 120) / 2;
   const qrY = doc.y;
   doc.image(qrBuffer, qrX, qrY, { width: 120 });
-  doc.moveDown(8); // espace pour phrases grises
+  doc.moveDown(8);
 
-  //  Phrase explicative SOUS le QR
+  // Phrase explicative SOUS le QR
   doc.fontSize(10).fillColor("gray").text(
     "Vérifier l'attestation via ce QR code",
     { align: "center" }

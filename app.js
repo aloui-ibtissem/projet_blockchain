@@ -10,7 +10,7 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     "http://localhost:3001", // accès local dev
     "https://projet-blockchain-blush.vercel.app", // vercel frontend
-    "https://9272-197-1-115-14.ngrok-free.app"  //  lien ngrok 
+    "https://9a82-197-1-115-14.ngrok-free.app"  //  lien ngrok 
   ];
 
   if (allowedOrigins.includes(origin)) {
@@ -49,6 +49,8 @@ app.use("/verify", require("./routes/verify"));
 // === Fichiers statiques
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/attestations", express.static(path.join(__dirname, "attestations")));
+app.use("/logos", express.static(path.join(__dirname, "logos")));
+
 
 // === Static React build local (à ne pas servir si tu utilises Vercel)
 if (process.env.NODE_ENV !== "production") {

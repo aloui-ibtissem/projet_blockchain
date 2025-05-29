@@ -10,7 +10,6 @@ import './DashboardRespEntreprise.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
 
-
 function DashboardRespEntreprise() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -51,11 +50,24 @@ function DashboardRespEntreprise() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/entreprises/dashboard`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setStagiaires(res.data.stagiaires || []);
-      setNotifications(res.data.notifications || []);
+      const [dashRes, infoRes] = await Promise.all([
+        axios.get(`${API_URL}/entreprises/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_URL}/entreprises/info`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      setStagiaires(dashRes.data.stagiaires || []);
+      setNotifications(dashRes.data.notifications || []);
+
+      setFormData(prev => ({
+        ...prev,
+        responsableNom: infoRes.data.responsableNom || '',
+        lieu: infoRes.data.entrepriseNom || '',
+        logoPath: infoRes.data.logoPath || ''
+      }));
     } catch (err) {
       console.error(err);
       setMessage('Erreur lors du chargement.');
@@ -71,18 +83,14 @@ function DashboardRespEntreprise() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const stage = res.data;
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         appreciation: '',
-        responsableNom: '',
         etudiant: `${stage.etudiantPrenom} ${stage.etudiantNom}`,
         titre: stage.titre,
         encadrants: `${stage.acaPrenom} ${stage.acaNom} / ${stage.proPrenom} ${stage.proNom}`,
-        dates: `${new Date(stage.dateDebut).toLocaleDateString()} - ${new Date(stage.dateFin).toLocaleDateString()}`,
-        lieu: '',
-        headerText: '',
-        logoPath: '',
-        signature: ''
-      });
+        dates: `${new Date(stage.dateDebut).toLocaleDateString()} - ${new Date(stage.dateFin).toLocaleDateString()}`
+      }));
       setShowModal(true);
     } catch (error) {
       console.error("Erreur chargement détails stage:", error);
