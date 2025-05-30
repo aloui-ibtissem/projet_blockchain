@@ -51,6 +51,19 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/attestations", express.static(path.join(__dirname, "attestations")));
 app.use("/logos", express.static(path.join(__dirname, "logos")));
 
+//Cron job 
+app.get("/api/cron/run-reminders", async (req, res) => {
+  try {
+    await require("./services/rapportService").remindersCheck();
+    await require("./services/rapportService").remindersValidationCheck();
+    await require("./services/rapportService").checkForTierIntervention();
+    res.status(200).send("Rappels exécutés.");
+  } catch (err) {
+    res.status(500).send("Erreur CRON: " + err.message);
+  }
+});
+
+
 
 // === Static React build local (à ne pas servir si tu utilises Vercel)
 if (process.env.NODE_ENV !== "production") {

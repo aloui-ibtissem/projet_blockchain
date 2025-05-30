@@ -328,7 +328,7 @@ exports.remindersCheck = async () => {
         etudiantNom: stage.nom,
         titreStage: stage.titre,
         soumissionUrl: buildUrl("/etudiant"),
-        appName: "CertiChain",
+        appName: "StageChain",
         year: new Date().getFullYear(),
         homeUrl: buildUrl("/"),
         loginUrl: buildUrl("/login")
@@ -337,3 +337,108 @@ exports.remindersCheck = async () => {
     });
   }
 };
+
+//
+exports.remindersValidationCheck = async () => {
+  const [rapports] = await db.execute(`
+    SELECT r.id, r.identifiantRapport, r.dateSoumission, r.statutAcademique, r.statutProfessionnel,
+           s.encadrantAcademiqueId, s.encadrantProfessionnelId, s.titre, s.dateFin,
+           e.prenom, e.nom
+    FROM RapportStage r
+    JOIN Stage s ON r.stageId = s.id
+    JOIN Etudiant e ON s.etudiantId = e.id
+    WHERE DATEDIFF(CURDATE(), s.dateFin) BETWEEN 7 AND 10
+  `);
+
+  for (const r of rapports) {
+    if (!r.statutAcademique && r.encadrantAcademiqueId) {
+      await notificationService.notifyUser({
+        toId: r.encadrantAcademiqueId,
+        toRole: "EncadrantAcademique",
+        subject: "Rappel de validation rapport",
+        templateName: "reminder_validation",
+        templateData: {
+          encadrantPrenom: "", encadrantNom: "",
+          etudiantPrenom: r.prenom,
+          etudiantNom: r.nom,
+          titreStage: r.titre,
+          dashboardUrl: buildUrl("/login")
+        },
+        message: `Rappel : vous n'avez pas encore validé le rapport de ${r.prenom} ${r.nom}.`
+      });
+    }
+
+    if (!r.statutProfessionnel && r.encadrantProfessionnelId) {
+      await notificationService.notifyUser({
+        toId: r.encadrantProfessionnelId,
+        toRole: "EncadrantProfessionnel",
+        subject: "Rappel de validation rapport",
+        templateName: "reminder_validation",
+        templateData: {
+          encadrantPrenom: "", encadrantNom: "",
+          etudiantPrenom: r.prenom,
+          etudiantNom: r.nom,
+          titreStage: r.titre,
+          dashboardUrl: buildUrl("/login")
+        },
+        message: `Rappel : vous n'avez pas encore validé le rapport de ${r.prenom} ${r.nom}.`
+      });
+    }
+  }
+};
+
+//
+exports.checkForTierIntervention = async () => {
+  const [rapports] = await db.execute(`
+    SELECT r.id, r.identifiantRapport, r.statutAcademique, r.statutProfessionnel,
+           s.dateFin, s.entrepriseId, s.universiteId,
+           s.encadrantAcademiqueId, s.encadrantProfessionnelId,
+           e.prenom, e.nom
+    FROM RapportStage r
+    JOIN Stage s ON r.stageId = s.id
+    JOIN Etudiant e ON s.etudiantId = e.id
+    WHERE DATEDIFF(CURDATE(), s.dateFin) > 10
+      AND (r.statutAcademique = FALSE OR r.statutProfessionnel = FALSE)
+  `);
+
+  for (const r of rapports) {
+    let roleBloqueur = null;
+    let entite = null;
+    let tierId = null;
+
+    if (!r.statutAcademique) {
+      roleBloqueur = "ACA";
+      entite = "universite";
+      const [[tier]] = await db.execute(
+        `SELECT id FROM TierDebloqueur WHERE universiteId = ?`, [r.universiteId]
+      );
+      tierId = tier?.id;
+    } else if (!r.statutProfessionnel) {
+      roleBloqueur = "PRO";
+      entite = "entreprise";
+      const [[tier]] = await db.execute(
+        `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`, [r.entrepriseId]
+      );
+      tierId = tier?.id;
+    }
+
+    if (tierId) {
+      await exports.validerParTier(r.id, tierId, entite); // Cette fonction existe déjà
+
+      await notificationService.notifyUser({
+        toId: tierId,
+        toRole: "TierDebloqueur",
+        subject: "Intervention requise",
+        templateName: "tier_intervention",
+        templateData: {
+          etudiantPrenom: r.prenom,
+          etudiantNom: r.nom,
+          identifiantRapport: r.identifiantRapport,
+          dashboardUrl: buildUrl("/login")
+        },
+        message: `Un encadrant n’a pas validé le rapport à temps. Vous devez intervenir pour ${r.prenom} ${r.nom}.`
+      });
+    }
+  }
+};
+
