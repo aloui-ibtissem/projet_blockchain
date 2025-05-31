@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Rappel : validation rapport</title>
+  <title>Intervention requise</title>
   <style>
     body { font-family: Arial; background: #f4f4f4; padding: 20px; }
     table {
@@ -10,9 +10,9 @@
       background: #fff; padding: 30px;
       border-radius: 10px; box-shadow: 0 0 10px #ccc;
     }
-    h2 { color: #2980b9; }
+    h2 { color: #0c0891; }
     a.button {
-      background: #3498db; color: white;
+      background: #3c4de7; color: white;
       padding: 12px 20px; border-radius: 5px;
       text-decoration: none; display: inline-block;
     }
@@ -24,12 +24,12 @@
 </head>
 <body>
   <table><tr><td>
-    <h2>Rappel : validation attendue</h2>
-    <p>Bonjour {{encadrantPrenom}} {{encadrantNom}},</p>
-    <p>Le rapport de stage de l’étudiant <strong>{{etudiantPrenom}} {{etudiantNom}}</strong> n’a pas encore été validé.</p>
-    <p>Merci de procéder à sa validation dès que possible.</p>
+    <h2>Action urgente requise</h2>
+    <p>Bonjour,</p>
+    <p>Un encadrant n’a pas validé à temps le rapport de stage de <strong>{{etudiantPrenom}} {{etudiantNom}}</strong>.</p>
+    <p>Merci d’intervenir rapidement dans le système.</p>
     <p style="text-align: center;">
-      <a class="button" href="{{dashboardUrl}}" target="_blank">Accéder au tableau de bord</a>
+      <a class="button" href="{{dashboardUrl}}" target="_blank">Intervenir maintenant</a>
     </p>
     <p class="footer">
       {{appName}} – © {{year}}<br>

@@ -45,6 +45,8 @@ app.use("/etudiants", require("./routes/etudiantRoutes"));
 app.use("/encadrants-academiques", require("./routes/encadrantAcademiqueRoutes"));
 app.use("/encadrants-professionnels", require("./routes/encadrantProfessionnelRoutes"));
 app.use("/verify", require("./routes/verify"));
+app.use("/api/notifications", require("./routes/notificationsRoutes"));
+
 
 // === Fichiers statiques
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -52,6 +54,8 @@ app.use("/attestations", express.static(path.join(__dirname, "attestations")));
 app.use("/logos", express.static(path.join(__dirname, "logos")));
 
 //Cron job 
+require("./cronJobs/rapportCron"); // Active les tâches planifiées
+
 app.get("/api/cron/run-reminders", async (req, res) => {
   try {
     await require("./services/rapportService").remindersCheck();
@@ -65,7 +69,7 @@ app.get("/api/cron/run-reminders", async (req, res) => {
 
 
 
-// === Static React build local (à ne pas servir si tu utilises Vercel)
+// === Static React build local 
 if (process.env.NODE_ENV !== "production") {
   app.use(express.static(path.join(__dirname, "client/build")));
   app.get("*", (req, res) => {

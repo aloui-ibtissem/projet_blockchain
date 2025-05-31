@@ -91,7 +91,23 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     VALUES (?, ?, ?, ?, ?, ?, NOW(), TRUE)
   `, [stageId, attestationId, finalHash, finalIpfsUrl, responsableId, stage.etudiantId]);
 
-  await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
+ await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
+
+// Ajout au journal des actions (historique)
+const [[rapportRow]] = await db.execute("SELECT id FROM RapportStage WHERE stageId = ?", [stageId]);
+if (rapportRow?.id) {
+  await db.execute(`
+    INSERT INTO HistoriqueAction (rapportId, utilisateurId, role, action, commentaire, origine)
+    VALUES (?, ?, ?, ?, ?, 'automatique')
+  `, [
+    rapportRow.id,
+    responsableId,
+    'ResponsableEntreprise',
+    "Attestation générée",
+    `Attestation générée et publiée sur la blockchain pour ${stage.etudiantPrenom} ${stage.etudiantNom}.`
+  ]);
+}
+
 
   console.log("[StageChain]  Publication sur la blockchain...");
   await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, finalHash);

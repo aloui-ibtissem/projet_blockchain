@@ -23,6 +23,8 @@ function DashboardRespEntreprise() {
   const [showModal, setShowModal] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState(null);
 
+ 
+
   const [formData, setFormData] = useState({
     appreciation: '',
     responsableNom: '',
@@ -49,6 +51,8 @@ function DashboardRespEntreprise() {
     }
     fetchData();
   }, [navigate, token, role]);
+
+
 
   const fetchData = async () => {
     try {

@@ -100,3 +100,15 @@ Accédez à votre espace personnel : ${globalTemplateVars.loginUrl}
     console.error("Erreur dans notifyUser:", err.message);
   }
 };
+
+//
+exports.getNotifications = async (userId, role) => {
+  const [rows] = await db.execute(
+    `SELECT id, subject, message, createdAt FROM Notification 
+     WHERE userId = ? AND userRole = ? 
+     ORDER BY createdAt DESC LIMIT 10`,
+    [userId, role]
+  );
+  return rows;
+};
+

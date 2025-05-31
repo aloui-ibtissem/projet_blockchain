@@ -107,4 +107,15 @@ exports.getCommentaires = async (req, res) => {
   }
 };
 //
+exports.getRapportsPourTier = async (req, res) => {
+  try {
+    const { id } = req.user; // ID du tier débloqueur connecté
+    const result = await rapportService.getRapportsPourTier(id);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error("Erreur getRapportsPourTier:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 

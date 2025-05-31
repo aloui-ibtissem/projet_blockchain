@@ -21,6 +21,15 @@ function DashboardRespUniversitaire() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
+  //
+  useEffect(() => {
+  const fetchNotifications = async () => {
+    const res = await axios.get(`${API_URL}/api/notifications/${role}/${userId}`);
+    setNotifications(res.data);
+  };
+  fetchNotifications();
+}, []);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -145,16 +154,16 @@ function DashboardRespUniversitaire() {
                           {notifications.length === 0 ? (
                             <p className="text-muted">Aucune notification</p>
                           ) : (
-                            <ListGroup variant="flush">
-                              {notifications.map(n => (
-                                <ListGroup.Item key={n.id}>
-                                  {n.message}
-                                  <div className="text-muted small">
-                                    {new Date(n.date_envoi).toLocaleString()}
-                                  </div>
-                                </ListGroup.Item>
-                              ))}
-                            </ListGroup>
+                           <ListGroup>
+  {notifications.map((notif, idx) => (
+    <ListGroup.Item key={idx}>
+      <strong>{notif.subject}</strong><br />
+      {notif.message}<br />
+      <small>{new Date(notif.date).toLocaleString()}</small>
+    </ListGroup.Item>
+  ))}
+</ListGroup>
+
                           )}
                         </Card.Body>
                       </Card>

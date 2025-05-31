@@ -402,28 +402,36 @@ exports.checkForTierIntervention = async () => {
   `);
 
   for (const r of rapports) {
-    let roleBloqueur = null;
-    let entite = null;
-    let tierId = null;
+    const interventions = [];
 
-    if (!r.statutAcademique) {
-      roleBloqueur = "ACA";
-      entite = "universite";
-      const [[tier]] = await db.execute(
-        `SELECT id FROM TierDebloqueur WHERE universiteId = ?`, [r.universiteId]
+    if (!r.statutAcademique && r.encadrantAcademiqueId) {
+      // Cas ACA
+      const [[tierUni]] = await db.execute(
+        `SELECT id FROM TierDebloqueur WHERE universiteId = ?`,
+        [r.universiteId]
       );
-      tierId = tier?.id;
-    } else if (!r.statutProfessionnel) {
-      roleBloqueur = "PRO";
-      entite = "entreprise";
-      const [[tier]] = await db.execute(
-        `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`, [r.entrepriseId]
-      );
-      tierId = tier?.id;
+      if (tierUni?.id) {
+        interventions.push({ champ: 'statutAcademique', entite: 'universite', tierId: tierUni.id });
+      }
     }
 
-    if (tierId) {
-      await exports.validerParTier(r.id, tierId, entite); // Cette fonction existe déjà
+    if (!r.statutProfessionnel && r.encadrantProfessionnelId) {
+      // Cas PRO
+      const [[tierEnt]] = await db.execute(
+        `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`,
+        [r.entrepriseId]
+      );
+      if (tierEnt?.id) {
+        interventions.push({ champ: 'statutProfessionnel', entite: 'entreprise', tierId: tierEnt.id });
+      }
+    }
+
+    for (const intervention of interventions) {
+      const { tierId, entite } = intervention;
+
+      console.log(`Intervention tier ${entite.toUpperCase()} pour le rapport ${r.identifiantRapport}`);
+
+      await exports.validerParTier(r.id, tierId, entite);
 
       await notificationService.notifyUser({
         toId: tierId,
@@ -436,9 +444,40 @@ exports.checkForTierIntervention = async () => {
           identifiantRapport: r.identifiantRapport,
           dashboardUrl: buildUrl("/login")
         },
-        message: `Un encadrant n’a pas validé le rapport à temps. Vous devez intervenir pour ${r.prenom} ${r.nom}.`
+        message: `Un encadrant n’a pas validé le rapport de ${r.prenom} ${r.nom} à temps. Une intervention est requise.`
       });
     }
   }
 };
+
+
+//
+exports.getRapportsPourTier = async (tierId) => {
+  const [[tier]] = await db.execute("SELECT id, universiteId, entrepriseId FROM TierDebloqueur WHERE id = ?", [tierId]);
+  if (!tier) throw new Error("Tier introuvable.");
+
+  const [rows] = await db.execute(`
+    SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
+           r.statutAcademique, r.statutProfessionnel,
+           e.nom AS nomEtudiant, e.prenom AS prenomEtudiant,
+           s.dateFin, s.titre,
+           u.nom AS nomUniversite, ent.nom AS nomEntreprise
+    FROM RapportStage r
+    JOIN Stage s ON r.stageId = s.id
+    JOIN Etudiant e ON s.etudiantId = e.id
+    LEFT JOIN Universite u ON s.universiteId = u.id
+    LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
+    WHERE DATEDIFF(CURDATE(), s.dateFin) > 10
+      AND (
+        (s.universiteId = ? AND r.statutAcademique = FALSE)
+        OR
+        (s.entrepriseId = ? AND r.statutProfessionnel = FALSE)
+      )
+  `, [tier.universiteId, tier.entrepriseId]);
+
+  return rows;
+};
+
+
+
 

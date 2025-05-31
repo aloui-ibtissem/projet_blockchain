@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Validation automatique par un tiers</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    table { max-width: 600px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+    h2 { color: #3f00d3d8; }
+    .footer { text-align: center; font-size: 12px; color: #64748b; background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px; margin-top: 30px; }
+    .footer a { color: #3b82f6; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <table>
+    <tr><td>
+      <h2>Validation automatique effectuée</h2>
+      <p>Bonjour {{etudiantPrenom}} {{etudiantNom}},</p>
+      <p>
+        Votre rapport de stage a été validé automatiquement par le tiers <strong>{{tierPrenom}} {{tierNom}}</strong><br>
+        en raison du dépassement du délai accordé à vos encadrants pour effectuer la validation.
+      </p>
+      <p>
+        Cette procédure vise à éviter tout blocage dans le processus de génération de votre attestation.
+        Vous pouvez consulter l'état de votre rapport ou contacter le responsable concerné si besoin.
+      </p>
+      <div class="footer">
+        <p><strong>StageChain</strong></p>
+        <p>© {{year}} – Tous droits réservés</p>
+        <p>
+          <a href="{{homeUrl}}">Accueil</a> |
+          <a href="{{loginUrl}}">Connexion</a>
+        </p>
+      </div>
+    </td></tr>
+  </table>
+</body>
+</html>

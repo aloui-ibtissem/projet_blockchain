@@ -28,6 +28,10 @@ router.get("/mes-rapports", checkToken, rapportController.getMesRapports);
 // Étudiant : consulter tous ses rapports soumis (et déclencher rappel automatique si applicable)
 router.get("/mes-rapports", checkToken, rapportController.getMesRapports);
 
+// Tier : récupérer les rapports à valider après dépassement de délai
+router.get("/tier/rapports-assignes", checkToken, rapportController.getRapportsPourTier);
+
+
 
 
 module.exports = router;
