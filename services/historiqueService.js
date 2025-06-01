@@ -19,33 +19,32 @@ exports.logAction = async ({
   origine = "manuelle",
 }) => {
   try {
-    let lienRapport = null;
+    let finalCommentaire = commentaire;
 
-    // Récupère le lien du dernier rapport s'il y a un rapportId
+    // Ajoute un lien vers le fichier du rapport si disponible
     if (rapportId) {
       const [[rapport]] = await db.execute(
         `SELECT fichier FROM RapportStage WHERE id = ? ORDER BY dateSoumission DESC LIMIT 1`,
         [rapportId]
       );
       if (rapport?.fichier) {
-        lienRapport = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/uploads/${rapport.fichier}`;
-        commentaire = commentaire
-          ? `${commentaire} | Voir: ${lienRapport}`
-          : `Voir: ${lienRapport}`;
+        const lien = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/uploads/${rapport.fichier}`;
+        finalCommentaire = finalCommentaire
+          ? `${finalCommentaire} | Voir rapport: ${lien}`
+          : `Voir rapport: ${lien}`;
       }
     }
 
     await db.execute(
       `INSERT INTO HistoriqueAction 
-        (rapportId || null, utilisateurId, role, action, commentaire, origine, dateAction) 
+        (rapportId, utilisateurId, role, action, commentaire, origine, dateAction) 
        VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [rapportId, utilisateurId, role, action, commentaire, origine]
+      [rapportId, utilisateurId, role, action, finalCommentaire, origine]
     );
   } catch (err) {
-    console.error("Erreur lors de la journalisation (historiqueService) :", err);
+    console.error("Erreur lors de la journalisation (historiqueService):", err.message);
   }
 };
-
 
 /**
  * Récupère l’historique des actions d’un utilisateur
