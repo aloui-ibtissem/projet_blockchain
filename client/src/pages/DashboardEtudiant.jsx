@@ -33,6 +33,8 @@ function DashboardEtudiant() {
   const [attestationUrl, setAttestationUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [stagesHistoriques, setStagesHistoriques] = useState([]);
+    const [rapports, setRapports] = useState([]);
+  
   const [rapportsHistoriques, setRapportsHistoriques] = useState([]);
 
   useEffect(() => {
@@ -229,7 +231,7 @@ function DashboardEtudiant() {
         </Collapse>
       </Card>
 
-      <Row className="mb-4">
+      
         <Col md={6}>
           <Card className="shadow-sm mb-3">
             <Card.Header>Stage Actuel</Card.Header>
@@ -250,7 +252,7 @@ function DashboardEtudiant() {
           </Card>
         </Col>
         
-      </Row>
+     
 
       <Card className="mb-4 shadow-sm">
         <Card.Header>Proposer un Stage</Card.Header>
@@ -285,7 +287,7 @@ function DashboardEtudiant() {
           <Button variant="primary" onClick={submitRapport}>Envoyer</Button>
         </Card.Body>
       </Card>
-      <Col md={6}>
+   
   <Card className="shadow-sm mb-3">
     <Card.Header>Rapports soumis</Card.Header>
     <Card.Body>
@@ -310,7 +312,7 @@ function DashboardEtudiant() {
       )}
     </Card.Body>
   </Card>
-</Col>
+
 
       
 
