@@ -19,12 +19,12 @@ exports.logAction = async ({
   origine = "manuelle",
 }) => {
   try {
-    await db.execute(
-      `INSERT INTO HistoriqueAction 
-       (rapportId, utilisateurId, role, action, commentaire, origine, dateAction) 
-       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [rapportId, utilisateurId, role, action, commentaire, origine]
-    );
+    await db.execute(`
+  INSERT INTO HistoriqueAction 
+  (rapportId, utilisateurId, role, action, commentaire, origine, dateAction) 
+  VALUES (?, ?, ?, ?, ?, ?, NOW())
+`, [rapportId || null, utilisateurId, role, action, commentaire, origine]);
+
   } catch (err) {
     console.error("[HistoriqueService] Erreur lors de la journalisation :", err.message);
     // On ne bloque pas l’action principale

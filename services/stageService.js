@@ -255,20 +255,35 @@ exports.getEncadrements = async (type, email) => {
   return rows;
 };
 //
-// stageService.js
+// 6
 exports.getCurrentStageByEmail = async (email) => {
-  const [rows] = await db.execute(
-    `SELECT s.* FROM Stage s
-     JOIN Etudiant e ON s.etudiantId = e.id
-     WHERE e.email = ? ORDER BY s.dateDebut DESC LIMIT 1`,
-    [email]
-  );
-  return rows[0];
+  const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email = ?", [email]);
+  if (!etudiant) return null;
+
+  const [rows] = await db.execute(`
+    SELECT 
+      S.*, 
+      E.nom AS entreprise,
+      A.prenom AS acaPrenom,
+      A.nom AS acaNom,
+      A.email AS acaEmail,
+      P.prenom AS proPrenom,
+      P.nom AS proNom,
+      P.email AS proEmail
+    FROM Stage S
+    JOIN Entreprise E ON S.entrepriseId = E.id
+    JOIN EncadrantAcademique A ON S.encadrantAcademiqueId = A.id
+    JOIN EncadrantProfessionnel P ON S.encadrantProfessionnelId = P.id
+    WHERE S.etudiantId = ?
+  `, [etudiant.id]);
+
+  return rows[0] || null;
 };
 
 
+
 // ===============================
-// 6. Liste des stages historiques (étudiant)
+// 7. Liste des stages historiques (étudiant)
 // ===============================
 exports.getStagesHistoriquesByEmail = async (email) => {
   const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email = ?", [email]);

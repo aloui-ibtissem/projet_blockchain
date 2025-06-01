@@ -1,4 +1,3 @@
-// ✅ Version améliorée du Dashboard Étudiant avec sidebar fonctionnelle, logout, navigation interne et meilleur design
 import React, { useEffect, useState, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
