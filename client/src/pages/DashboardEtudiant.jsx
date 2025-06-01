@@ -1,9 +1,8 @@
-
-import React, { useEffect, useState } from 'react';
+// ✅ Version améliorée du Dashboard Étudiant avec sidebar fonctionnelle, logout, navigation interne et meilleur design
+import React, { useEffect, useState, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './DashboardEtudiant.css';
 
 const BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
 const API_URL = BASE.includes('/api') ? BASE : `${BASE}/api`;
@@ -26,12 +25,24 @@ function DashboardEtudiant() {
   const [stagesHistoriques, setStagesHistoriques] = useState([]);
   const [rapportsHistoriques, setRapportsHistoriques] = useState([]);
 
+  // Refs for scrolling
+  const refAccueil = useRef();
+  const refRapports = useRef();
+  const refProposition = useRef();
+  const refAttestation = useRef();
+
+  const scrollTo = (ref) => ref?.current?.scrollIntoView({ behavior: 'smooth' });
+
+  const logout = () => {
+    localStorage.clear();
+    navigate('/login');
+  };
+
   useEffect(() => {
     if (!token || role !== 'Etudiant') return navigate('/login');
     const decoded = jwtDecode(token);
     if (decoded.exp < Date.now() / 1000) {
-      localStorage.clear();
-      return navigate('/login');
+      logout();
     }
     loadInitialData();
   }, []);
@@ -174,11 +185,11 @@ function DashboardEtudiant() {
     <div className="dashboard-layout">
       <aside className="sidebar-menu">
         <div className="menu-card">
-          <button className="menu-item">Accueil</button>
-          <button className="menu-item">Mes Rapports</button>
-          <button className="menu-item">Proposer un Stage</button>
-          <button className="menu-item">Attestation</button>
-          <button className="menu-item logout-btn">Se Déconnecter</button>
+          <button className="menu-item" onClick={() => scrollTo(refAccueil)}>Accueil</button>
+          <button className="menu-item" onClick={() => scrollTo(refRapports)}>Mes Rapports</button>
+          <button className="menu-item" onClick={() => scrollTo(refProposition)}>Proposer un Stage</button>
+          <button className="menu-item" onClick={() => scrollTo(refAttestation)}>Attestation</button>
+          <button className="menu-item logout-btn" onClick={logout}>Se Déconnecter</button>
         </div>
       </aside>
       <main className="dashboard-content">
@@ -189,17 +200,13 @@ function DashboardEtudiant() {
         <div className="main-content">
           {message && <div className="mb-4 p-3 rounded bg-blue-100 text-blue-800">{message}</div>}
 
-          {/* Notifications */}
-          <section className="dashboard-card mb-6">
+          <section ref={refAccueil} className="dashboard-card mb-6">
             <div className="card-header">Notifications ({notifications.length})</div>
             <div className="card-body">
               {showNotif && (
                 <ul className="notification-list">
                   {notifications.length > 0 ? notifications.map(n => (
-                    <li key={n.id}>
-                      <strong>{n.message}</strong>
-                      <span className="notification-date"> ({new Date(n.date_envoi).toLocaleDateString()})</span>
-                    </li>
+                    <li key={n.id}><strong>{n.message}</strong><span className="notification-date"> ({new Date(n.date_envoi).toLocaleDateString()})</span></li>
                   )) : <li className="text-muted">Aucune notification</li>}
                 </ul>
               )}
@@ -209,7 +216,6 @@ function DashboardEtudiant() {
             </div>
           </section>
 
-          {/* Stage Actuel */}
           <section className="dashboard-card mb-6">
             <div className="card-header">Stage Actuel</div>
             <div className="card-body">
@@ -226,8 +232,7 @@ function DashboardEtudiant() {
             </div>
           </section>
 
-          {/* Rapports soumis */}
-          <section className="dashboard-card mb-6">
+          <section ref={refRapports} className="dashboard-card mb-6">
             <div className="card-header">Rapports soumis</div>
             <div className="card-body">
               {rapportsHistoriques.length > 0 ? (
@@ -240,16 +245,11 @@ function DashboardEtudiant() {
             </div>
           </section>
 
-          {/* Proposer un stage */}
-          <section className="dashboard-card mb-6">
+          <section ref={refProposition} className="dashboard-card mb-6">
             <div className="card-header">Proposer un Stage</div>
             <div className="card-body">
-              <div className="form-row">
-                <input className="form-control" name="sujet" placeholder="Sujet" value={form.sujet} onChange={handleChange} />
-              </div>
-              <div className="form-row">
-                <input className="form-control" name="objectifs" placeholder="Objectifs" value={form.objectifs} onChange={handleChange} />
-              </div>
+              <div className="form-row"><input className="form-control" name="sujet" placeholder="Sujet" value={form.sujet} onChange={handleChange} /></div>
+              <div className="form-row"><input className="form-control" name="objectifs" placeholder="Objectifs" value={form.objectifs} onChange={handleChange} /></div>
               <div className="form-row">
                 <input className="form-control" type="date" name="dateDebut" value={form.dateDebut} onChange={handleChange} />
                 <input className="form-control" type="date" name="dateFin" value={form.dateFin} onChange={handleChange} />
@@ -262,7 +262,6 @@ function DashboardEtudiant() {
             </div>
           </section>
 
-          {/* Soumettre un rapport */}
           <section className="dashboard-card mb-6">
             <div className="card-header">Soumettre un Rapport</div>
             <div className="card-body">
@@ -274,29 +273,23 @@ function DashboardEtudiant() {
                   </label>
                 ))}
               </div>
-              <div className="form-row">
-                <input type="file" accept=".pdf,.doc,.docx" className="form-control" onChange={e => setRapport(e.target.files[0])} />
-              </div>
+              <div className="form-row"><input type="file" accept=".pdf,.doc,.docx" className="form-control" onChange={e => setRapport(e.target.files[0])} /></div>
               <button className="btn-primary" onClick={submitRapport}>Envoyer</button>
             </div>
           </section>
 
-          {/* Commentaires */}
           <section className="dashboard-card mb-6">
             <div className="card-header">Commentaires</div>
             <div className="card-body">
               {commentaires.length > 0 ? (
                 <ul>
-                  {commentaires.map((c, i) => (
-                    <li key={i}><strong>{new Date(c.date_envoi).toLocaleString()}:</strong> {c.commentaire}</li>
-                  ))}
+                  {commentaires.map((c, i) => (<li key={i}><strong>{new Date(c.date_envoi).toLocaleString()}:</strong> {c.commentaire}</li>))}
                 </ul>
               ) : <p className="text-muted">Aucun commentaire</p>}
             </div>
           </section>
 
-          {/* Attestation */}
-          <section className="dashboard-card mb-6">
+          <section ref={refAttestation} className="dashboard-card mb-6">
             <div className="card-header">Attestation</div>
             <div className="card-body">
               <div className="form-row">
@@ -304,9 +297,7 @@ function DashboardEtudiant() {
                 <button className="btn-outline-primary ml-2" onClick={downloadAttestation}>Télécharger</button>
               </div>
               {attestationUrl && (
-                <p className="mt-3">
-                  <a href={attestationUrl} target="_blank" rel="noreferrer">Voir l’attestation en ligne</a>
-                </p>
+                <p className="mt-3"><a href={attestationUrl} target="_blank" rel="noreferrer">Voir l’attestation en ligne</a></p>
               )}
             </div>
           </section>
