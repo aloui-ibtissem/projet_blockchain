@@ -254,6 +254,18 @@ exports.getEncadrements = async (type, email) => {
 
   return rows;
 };
+//
+// stageService.js
+exports.getCurrentStageByEmail = async (email) => {
+  const [rows] = await db.execute(
+    `SELECT s.* FROM Stage s
+     JOIN Etudiant e ON s.etudiantId = e.id
+     WHERE e.email = ? ORDER BY s.dateDebut DESC LIMIT 1`,
+    [email]
+  );
+  return rows[0];
+};
+
 
 // ===============================
 // 6. Liste des stages historiques (étudiant)
