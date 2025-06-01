@@ -16,18 +16,24 @@ function TierUniDashboard() {
     fetchNotifications();
   }, []);
 
-  const fetchRapports = async () => {
+const fetchRapports = async () => {
   try {
-    const res = await axios.get(`${API_URL}/api/rapport/tiers`, {
+    const res = await axios.get(`${API_URL}/api/rapport/tier/rapports-assignes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.log("Données reçues:", res.data); // Ajout
-    setRapports(res.data);
+    console.log("Rapports reçus:", res.data);
+    if (Array.isArray(res.data)) {
+      setRapports(res.data);
+    } else {
+      console.warn("Réponse inattendue du backend:", res.data);
+      setRapports([]); // éviter crash
+    }
   } catch (err) {
     console.error(err);
     setMessage("Erreur lors du chargement des rapports.");
   }
 };
+
 
 
   const fetchNotifications = async () => {

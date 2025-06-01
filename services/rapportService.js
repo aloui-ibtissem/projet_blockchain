@@ -517,7 +517,7 @@ exports.checkForTierIntervention = async () => {
 //
 exports.getRapportsPourTier = async (tierId) => {
   const [[tier]] = await db.execute("SELECT id, universiteId, entrepriseId FROM TierDebloqueur WHERE id = ?", [tierId]);
-  if (!tier) throw new Error("Tier introuvable.");
+if (!tier || (!tier.universiteId && !tier.entrepriseId)) return []; // <- retourne un tableau vide
 
   const [rows] = await db.execute(`
     SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
