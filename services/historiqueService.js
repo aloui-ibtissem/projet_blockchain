@@ -21,21 +21,21 @@ exports.logAction = async ({
   try {
     await db.execute(
       `INSERT INTO HistoriqueAction 
-        (rapportId, utilisateurId, role, action, commentaire, origine, dateAction) 
+       (rapportId, utilisateurId, role, action, commentaire, origine, dateAction) 
        VALUES (?, ?, ?, ?, ?, ?, NOW())`,
       [rapportId, utilisateurId, role, action, commentaire, origine]
     );
   } catch (err) {
-    console.error("Erreur lors de la journalisation (historiqueService) :", err);
-    // Ne pas bloquer l'action principale même en cas d'erreur ici
+    console.error("[HistoriqueService] Erreur lors de la journalisation :", err.message);
+    // On ne bloque pas l’action principale
   }
 };
 
 /**
- * Récupère les actions historiques pour un utilisateur
- * @param {number} utilisateurId - ID de l'utilisateur
- * @param {string} role - rôle de l'utilisateur
- * @param {string|null} filtreOrigine - 'automatique' ou 'manuelle' ou null pour tout
+ * Récupère l’historique des actions d’un utilisateur
+ * @param {number} utilisateurId 
+ * @param {string} role 
+ * @param {string|null} filtreOrigine - 'automatique' | 'manuelle' | null (toutes)
  */
 exports.getHistoriqueParUtilisateur = async (utilisateurId, role, filtreOrigine = null) => {
   let query = `
@@ -52,14 +52,19 @@ exports.getHistoriqueParUtilisateur = async (utilisateurId, role, filtreOrigine 
 
   query += ` ORDER BY dateAction DESC`;
 
-  const [rows] = await db.execute(query, params);
-  return rows;
+  try {
+    const [rows] = await db.execute(query, params);
+    return rows;
+  } catch (err) {
+    console.error("[HistoriqueService] Erreur récupération utilisateur :", err.message);
+    return [];
+  }
 };
 
 /**
- * Recherche par mot-clé ou identifiant dans l'historique.
- * @param {string} motCle - mot clé à rechercher dans action/commentaire
- * @param {string} [origine] - optionnel: filtre sur l’origine
+ * Recherche dans l'historique par mot-clé (action/commentaire)
+ * @param {string} motCle 
+ * @param {string|null} origine 
  */
 exports.rechercherHistorique = async (motCle, origine = null) => {
   let query = `
@@ -75,18 +80,28 @@ exports.rechercherHistorique = async (motCle, origine = null) => {
 
   query += ` ORDER BY dateAction DESC`;
 
-  const [rows] = await db.execute(query, params);
-  return rows;
+  try {
+    const [rows] = await db.execute(query, params);
+    return rows;
+  } catch (err) {
+    console.error("[HistoriqueService] Erreur recherche historique :", err.message);
+    return [];
+  }
 };
 
 /**
- * Récupère les actions liées à un rapport spécifique
+ * Récupère les actions liées à un rapport
  * @param {number} rapportId 
  */
 exports.getHistoriqueParRapport = async (rapportId) => {
-  const [rows] = await db.execute(
-    `SELECT * FROM HistoriqueAction WHERE rapportId = ? ORDER BY dateAction DESC`,
-    [rapportId]
-  );
-  return rows;
+  try {
+    const [rows] = await db.execute(
+      `SELECT * FROM HistoriqueAction WHERE rapportId = ? ORDER BY dateAction DESC`,
+      [rapportId]
+    );
+    return rows;
+  } catch (err) {
+    console.error("[HistoriqueService] Erreur historique par rapport :", err.message);
+    return [];
+  }
 };
