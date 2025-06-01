@@ -4,6 +4,12 @@ const path = require("path");
 const db = require("./config/db");
 const app = express();
 
+// Supprimer l'avertissement ngrok dans la console
+app.use((req, res, next) => {
+  res.setHeader("ngrok-skip-browser-warning", "true");
+  next();
+});
+
 // === Middleware CORS MANUEL pour une seule URL publique (ngrok)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -26,11 +32,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Supprimer l'avertissement ngrok dans la console
-app.use((req, res, next) => {
-  res.setHeader("ngrok-skip-browser-warning", "true");
-  next();
-});
+
 
 app.use(express.json());
 

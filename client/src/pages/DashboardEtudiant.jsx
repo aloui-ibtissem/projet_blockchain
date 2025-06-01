@@ -201,7 +201,7 @@ function DashboardEtudiant() {
 
   return (
     <Container className="mt-4 dashboard-etudiant">
-      <h2 className="text-center mb-4">🎓 Tableau de Bord Étudiant</h2>
+      <h2 className="text-center mb-4"> Tableau de Bord Étudiant</h2>
       {message && <Alert variant="info">{message}</Alert>}
 
       <Card className="mb-4 shadow-sm">
