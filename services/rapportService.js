@@ -514,7 +514,6 @@ exports.getRapportsPourTier = async (tierId) => {
     FROM RapportStage r
     JOIN Stage s ON r.stageId = s.id
     JOIN Etudiant e ON s.etudiantId = e.id
-    LEFT JOIN Universite u ON s.universiteId = u.id
     LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
     WHERE DATEDIFF(CURDATE(), s.dateFin) > 10
       AND (

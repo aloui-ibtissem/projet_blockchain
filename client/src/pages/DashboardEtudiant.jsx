@@ -249,22 +249,7 @@ function DashboardEtudiant() {
             </Card.Body>
           </Card>
         </Col>
-        <Col md={6}>
-          <Card className="shadow-sm mb-3">
-            <Card.Header>Rapports soumis</Card.Header>
-            <Card.Body>
-              {rapportsHistoriques.length > 0 ? (
-                <ul>
-                  {rapportsHistoriques.map((r, i) => (
-                    <li key={i}><strong>{r.identifiantRapport}</strong> — {new Date(r.dateSoumission).toLocaleDateString()}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted">Aucun rapport soumis.</p>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
+        
       </Row>
 
       <Card className="mb-4 shadow-sm">
@@ -300,6 +285,30 @@ function DashboardEtudiant() {
           <Button variant="primary" onClick={submitRapport}>Envoyer</Button>
         </Card.Body>
       </Card>
+      <Col md={6}>
+          <Card className="shadow-sm mb-3">
+            <Card.Header>Rapports soumis</Card.Header>
+            <Card.Body>
+              {rapportsHistoriques.length > 0 ? (
+                <ul>
+                  {rapportsHistoriques.map((r, i) => (
+                    <li key={i}><strong>{r.identifiantRapport}</strong> — {new Date(r.dateSoumission).toLocaleDateString()}
+                    <a
+                            href={`${API_URL}/uploads/${r.fichier}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Voir le rapport
+                          </a>
+                          </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted">Aucun rapport soumis.</p>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
 
       <Card className="mb-4 shadow-sm">
         <Card.Header>Commentaires</Card.Header>
