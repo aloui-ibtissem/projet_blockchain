@@ -1,12 +1,12 @@
 const db = require("../config/db");
 
 /**
- * Journalise une action dans la table HistoriqueAction.
+ * Journalise une action dans la table HistoriqueAction avec possibilité d'inclure un lien de rapport.
  * @param {Object} options
  * @param {number|null} options.rapportId - ID du rapport concerné (peut être null).
  * @param {number} options.utilisateurId - ID de l'utilisateur ayant effectué l'action.
- * @param {string} options.role - Rôle de l'utilisateur (Etudiant, EncadrantAcademique, etc.).
- * @param {string} options.action - Nom ou description de l'action.
+ * @param {string} options.role - Rôle de l'utilisateur.
+ * @param {string} options.action - Description de l'action.
  * @param {string|null} options.commentaire - Détails complémentaires (optionnel).
  * @param {string} options.origine - "manuelle" ou "automatique".
  */
@@ -19,17 +19,33 @@ exports.logAction = async ({
   origine = "manuelle",
 }) => {
   try {
-    await db.execute(`
-  INSERT INTO HistoriqueAction 
-  (rapportId, utilisateurId, role, action, commentaire, origine, dateAction) 
-  VALUES (?, ?, ?, ?, ?, ?, NOW())
-`, [rapportId || null, utilisateurId, role, action, commentaire, origine]);
+    let lienRapport = null;
 
+    // Récupère le lien du dernier rapport s'il y a un rapportId
+    if (rapportId) {
+      const [[rapport]] = await db.execute(
+        `SELECT fichier FROM RapportStage WHERE id = ? ORDER BY dateSoumission DESC LIMIT 1`,
+        [rapportId]
+      );
+      if (rapport?.fichier) {
+        lienRapport = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/uploads/${rapport.fichier}`;
+        commentaire = commentaire
+          ? `${commentaire} | Voir: ${lienRapport}`
+          : `Voir: ${lienRapport}`;
+      }
+    }
+
+    await db.execute(
+      `INSERT INTO HistoriqueAction 
+        (rapportId || null, utilisateurId, role, action, commentaire, origine, dateAction) 
+       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+      [rapportId, utilisateurId, role, action, commentaire, origine]
+    );
   } catch (err) {
-    console.error("[HistoriqueService] Erreur lors de la journalisation :", err.message);
-    // On ne bloque pas l’action principale
+    console.error("Erreur lors de la journalisation (historiqueService) :", err);
   }
 };
+
 
 /**
  * Récupère l’historique des actions d’un utilisateur

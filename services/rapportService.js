@@ -430,7 +430,7 @@ exports.remindersValidationCheck = async () => {
 exports.checkForTierIntervention = async () => {
   const [rapports] = await db.execute(`
     SELECT r.id, r.identifiantRapport, r.statutAcademique, r.statutProfessionnel,
-           s.dateFin, s.entrepriseId, s.universiteId,
+           s.dateFin, s.entrepriseId,
            s.encadrantAcademiqueId, s.encadrantProfessionnelId,
            e.prenom, e.nom
     FROM RapportStage r
