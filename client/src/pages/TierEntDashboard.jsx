@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Table, Button, Alert } from "react-bootstrap";
-import "../styles/DashboardTierEnt.css";
+import "./DashboardTierEnt.css";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:3000";
 
@@ -9,7 +9,6 @@ function TierEntDashboard() {
   const [rapports, setRapports] = useState([]);
   const [message, setMessage] = useState("");
   const [notifications, setNotifications] = useState([]);
-
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -25,6 +24,7 @@ function TierEntDashboard() {
       setRapports(res.data);
     } catch (err) {
       console.error(err);
+      setMessage("Erreur lors du chargement des rapports.");
     }
   };
 
@@ -42,41 +42,37 @@ function TierEntDashboard() {
   const validerRapport = async (id) => {
     if (!window.confirm("Confirmez-vous la validation de ce rapport ?")) return;
     try {
-      await axios.post(
-        `${API_URL}/api/rapport/valider-tier`,
-        {
-          rapportId: id,
-          structureType: "entreprise",
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setMessage(" Rapport validé avec succès.");
+      await axios.post(`${API_URL}/api/rapport/valider-tier`, {
+        rapportId: id,
+        structureType: "entreprise",
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMessage("Rapport validé avec succès.");
       fetchRapports();
     } catch (err) {
       console.error(err);
-      setMessage(" Échec lors de la validation.");
+      setMessage("Échec lors de la validation.");
     }
   };
 
   return (
     <div className="dashboard-tier">
-      <h2>Tableau de bord - Tiers Entreprise</h2>
+      <h2>Tableau de bord — Tiers Entreprise</h2>
       {message && <Alert variant="info">{message}</Alert>}
       {notifications.length > 0 && (
         <Alert variant="warning">
-           Vous avez {notifications.length} nouvelle(s) notification(s).
+          Vous avez {notifications.length} nouvelle(s) notification(s).
         </Alert>
       )}
       <Table striped bordered hover responsive>
         <thead>
           <tr>
-            <th>ID Rapport</th>
+            <th>Identifiant</th>
             <th>Étudiant</th>
             <th>Titre</th>
-            <th>Période</th>
-            <th>Soumission</th>
+            <th>Date de fin</th>
+            <th>Date de soumission</th>
             <th>Fichier</th>
             <th>Action</th>
           </tr>

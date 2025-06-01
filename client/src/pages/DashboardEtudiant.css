@@ -208,3 +208,25 @@ body {
     padding: 1rem;
   }
 }
+.card {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.card-header {
+  background-color: #f7f7f7;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+form input, form textarea, form select {
+  border-radius: 6px !important;
+}
+
+button {
+  transition: all 0.2s ease-in-out;
+}
+
+button:hover {
+  transform: scale(1.02);
+}

@@ -24,13 +24,13 @@ router.get("/encadrant", checkToken, rapportController.getRapportsAValider);
 
 // Étudiant : consulter tous ses rapports soumis
 router.get("/mes-rapports", checkToken, rapportController.getMesRapports);
-//
-// Étudiant : consulter tous ses rapports soumis (et déclencher rappel automatique si applicable)
-router.get("/mes-rapports", checkToken, rapportController.getMesRapports);
+
 
 // Tier : récupérer les rapports à valider après dépassement de délai
 router.get("/tier/rapports-assignes", checkToken, rapportController.getRapportsPourTier);
 
+// Historique des actions pour un utilisateur (filtrable par origine)
+router.get("/historique/:id/:role", checkToken, rapportController.getHistoriqueUtilisateur);
 
 
 

@@ -15,20 +15,12 @@ function DashboardRespUniversitaire() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
+
   const [attestations, setAttestations] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
-
-  //
-  useEffect(() => {
-  const fetchNotifications = async () => {
-    const res = await axios.get(`${API_URL}/api/notifications/${role}/${userId}`);
-    setNotifications(res.data);
-  };
-  fetchNotifications();
-}, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -44,18 +36,28 @@ function DashboardRespUniversitaire() {
       setAttestations(attestRes.data);
       setNotifications(notifRes.data);
     } catch (err) {
-      setMessage("Erreur lors du chargement des données");
+      setMessage("Erreur lors du chargement des données.");
     } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    if (!token || role !== 'ResponsableUniversitaire') return navigate('/login');
-    const decoded = jwtDecode(token);
-    if (decoded.exp < Date.now() / 1000) {
+    if (!token || role !== 'ResponsableUniversitaire') {
+      navigate('/login');
+      return;
+    }
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.exp < Date.now() / 1000) {
+        localStorage.clear();
+        navigate('/login');
+        return;
+      }
+    } catch {
       localStorage.clear();
-      return navigate('/login');
+      navigate('/login');
+      return;
     }
     fetchData();
   }, [token, role, navigate, fetchData]);
@@ -65,10 +67,10 @@ function DashboardRespUniversitaire() {
       const res = await axios.post(`${API_URL}/api/attestation/valider-stage/${stageId}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setMessage(res.data.message || "Stage validé avec succès");
+      setMessage(res.data.message || "Stage validé avec succès.");
       fetchData();
     } catch (err) {
-      const msg = err.response?.data?.error || "Erreur lors de la validation du stage";
+      const msg = err.response?.data?.error || "Erreur lors de la validation du stage.";
       setMessage(msg);
     }
   };
@@ -94,10 +96,11 @@ function DashboardRespUniversitaire() {
             <SkeletonLoader />
           ) : (
             <Row className="g-4">
-              {/* Attestations */}
               <Col lg={showNotif ? 9 : 12}>
                 <Card className="shadow-sm border-0">
-                  <Card.Header className="bg-primary text-white fw-bold">Attestations Générées</Card.Header>
+                  <Card.Header className="bg-primary text-white fw-bold">
+                    Attestations Générées
+                  </Card.Header>
                   <Card.Body>
                     {attestations.length === 0 ? (
                       <p className="text-muted">Aucune attestation pour l’instant.</p>
@@ -109,7 +112,7 @@ function DashboardRespUniversitaire() {
                             className="p-3 border-start border-4 border-primary bg-white rounded shadow-sm"
                           >
                             <p><strong>Étudiant :</strong> {att.etudiantPrenom} {att.etudiantNom}</p>
-                           <p><strong>Stage :</strong> {att.titre} ({att.identifiantStage})</p>
+                            <p><strong>Stage :</strong> {att.titre} ({att.identifiantStage})</p>
                             <p><strong>Identifiant :</strong> {att.identifiant}</p>
                             <p><strong>Date :</strong> {new Date(att.dateCreation).toLocaleDateString()}</p>
                             <p>
@@ -130,7 +133,11 @@ function DashboardRespUniversitaire() {
                                 Voir le PDF
                               </a>
                               {att.etat !== 'validé' && (
-                                <Button size="sm" variant="success" onClick={() => validerStage(att.stageId)}>
+                                <Button
+                                  size="sm"
+                                  variant="success"
+                                  onClick={() => validerStage(att.stageId)}
+                                >
                                   Valider
                                 </Button>
                               )}
@@ -143,27 +150,27 @@ function DashboardRespUniversitaire() {
                 </Card>
               </Col>
 
-              {/* Notifications */}
               {showNotif && (
                 <Col lg={3}>
                   <Collapse in={showNotif}>
                     <div>
                       <Card className="shadow-sm border-0">
-                        <Card.Header className="bg-dark text-white fw-bold">Notifications</Card.Header>
+                        <Card.Header className="bg-dark text-white fw-bold">
+                          Notifications
+                        </Card.Header>
                         <Card.Body style={{ maxHeight: '420px', overflowY: 'auto' }}>
                           {notifications.length === 0 ? (
                             <p className="text-muted">Aucune notification</p>
                           ) : (
-                           <ListGroup>
-  {notifications.map((notif, idx) => (
-    <ListGroup.Item key={idx}>
-      <strong>{notif.subject}</strong><br />
-      {notif.message}<br />
-      <small>{new Date(notif.date).toLocaleString()}</small>
-    </ListGroup.Item>
-  ))}
-</ListGroup>
-
+                            <ListGroup>
+                              {notifications.map((notif, idx) => (
+                                <ListGroup.Item key={idx}>
+                                  <strong>{notif.subject}</strong><br />
+                                  {notif.message}<br />
+                                  <small>{new Date(notif.date).toLocaleString()}</small>
+                                </ListGroup.Item>
+                              ))}
+                            </ListGroup>
                           )}
                         </Card.Body>
                       </Card>

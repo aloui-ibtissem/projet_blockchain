@@ -7,6 +7,8 @@ const { publishAttestation } = require("../utils/blockchainUtils");
 const notificationService = require("./notificationService");
 const { genererIdentifiantAttestation } = require("../utils/identifiantUtils");
 const { buildUrl } = require("../utils/urlUtils");
+const historiqueService = require("./historiqueService");
+
 require("dotenv").config();
 
 exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, responsableId, forcer = false }) => {
@@ -96,16 +98,14 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
 // Ajout au journal des actions (historique)
 const [[rapportRow]] = await db.execute("SELECT id FROM RapportStage WHERE stageId = ?", [stageId]);
 if (rapportRow?.id) {
-  await db.execute(`
-    INSERT INTO HistoriqueAction (rapportId, utilisateurId, role, action, commentaire, origine)
-    VALUES (?, ?, ?, ?, ?, 'automatique')
-  `, [
-    rapportRow.id,
-    responsableId,
-    'ResponsableEntreprise',
-    "Attestation générée",
-    `Attestation générée et publiée sur la blockchain pour ${stage.etudiantPrenom} ${stage.etudiantNom}.`
-  ]);
+  await historiqueService.logAction({
+    rapportId: rapportRow.id,
+    utilisateurId: responsableId,
+    role: "ResponsableEntreprise",
+    action: "Attestation générée",
+    commentaire: `Attestation générée et publiée sur la blockchain pour ${stage.etudiantPrenom} ${stage.etudiantNom}.`,
+    origine: "automatique"
+  });
 }
 
 
@@ -210,6 +210,19 @@ exports.validerParUniversite = async (stageId, responsableId) => {
     WHERE S.id = ?
   `, [stageId]);
 
+  const [[rapportRow]] = await db.execute("SELECT id FROM RapportStage WHERE stageId = ?", [stageId]);
+
+  if (rapportRow?.id) {
+    await historiqueService.logAction({
+      rapportId: rapportRow.id,
+      utilisateurId: responsableId,
+      role: "ResponsableUniversitaire",
+      action: "Validation finale du stage",
+      commentaire: "Le stage a été validé par l'université.",
+      origine: "manuelle"
+    });
+  }
+
   const etudiant = etudiantRow[0];
   if (etudiant) {
     await notificationService.notifyUser({
@@ -229,3 +242,21 @@ exports.validerParUniversite = async (stageId, responsableId) => {
 
   return { success: true };
 };
+
+
+exports.downloadAttestation = async (req, res) => {
+  try {
+    const etudiantId = req.user.id;
+    const [[attestation]] = await db.execute(
+      "SELECT ipfsUrl FROM Attestation WHERE etudiantId = ? ORDER BY dateCreation DESC LIMIT 1",
+      [etudiantId]
+    );
+    if (!attestation) return res.status(404).json({ error: "Aucune attestation trouvée" });
+
+    return res.redirect(attestation.ipfsUrl);
+  } catch (err) {
+    console.error("Erreur téléchargement attestation:", err);
+    res.status(500).json({ error: "Erreur serveur lors du téléchargement" });
+  }
+};
+

@@ -111,10 +111,17 @@ exports.validerStageUniversite = async (req, res) => {
   }
 };
 
+//
 exports.downloadAttestation = async (req, res) => {
   try {
-    const filePath = `/attestations/${req.user.id}.pdf`; 
-    res.download(filePath);
+    const etudiantId = req.user.id;
+    const [[attestation]] = await db.execute(
+      "SELECT ipfsUrl FROM Attestation WHERE etudiantId = ? ORDER BY dateCreation DESC LIMIT 1",
+      [etudiantId]
+    );
+    if (!attestation) return res.status(404).json({ error: "Aucune attestation trouvée" });
+
+    return res.redirect(attestation.ipfsUrl); // Redirection directe vers le lien IPFS
   } catch (err) {
     console.error("Erreur téléchargement attestation:", err);
     res.status(500).json({ error: "Erreur serveur lors du téléchargement" });

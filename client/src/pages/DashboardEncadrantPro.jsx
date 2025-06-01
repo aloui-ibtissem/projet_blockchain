@@ -10,7 +10,6 @@ import './DashboardEncadrantAca.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
 
-
 function DashboardEncadrantPro() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -34,7 +33,6 @@ function DashboardEncadrantPro() {
       return;
     }
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, role, navigate]);
 
   const loadData = async () => {
@@ -168,7 +166,7 @@ function DashboardEncadrantPro() {
                                 onClick={() => handleDecision(p.id, 'accepter')}
                               >
                                 Accepter
-                              </Button>
+                              </Button>{' '}
                               <Button
                                 size="sm"
                                 className="btn-reject"
@@ -243,3 +241,5 @@ function DashboardEncadrantPro() {
 }
 
 export default DashboardEncadrantPro;
+
+

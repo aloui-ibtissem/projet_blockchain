@@ -12,6 +12,8 @@ const { genererIdentifiantRapport } = require("../utils/identifiantUtils");
 
 const baseUrl = process.env.PUBLIC_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 const { buildUrl } = require("../utils/urlUtils");
+const historiqueService = require("./historiqueService");
+
 
 
 const getUtilisateurNom = async (id, role) => {
@@ -66,6 +68,15 @@ const rapportHash = await hashFile(fullPath);
       VALUES (?, ?, ?, ?, NOW(), FALSE, FALSE, FALSE, ?)
     `, [stage.id, etudiant.id, rapportPath, rapportHash, identifiantRapport]);
   }
+  await historiqueService.logAction({
+  rapportId: existing.length > 0 ? existing[0].id : null,
+  utilisateurId: etudiant.id,
+  role: "Etudiant",
+  action: "Soumission de rapport",
+  commentaire: `Fichier : ${rapportPath}`,
+  origine: "manuelle"
+});
+
 
   const encadrants = {
     EncadrantAcademique: stage.encadrantAcademiqueId,
@@ -115,6 +126,15 @@ exports.validerRapport = async (email, role, rapportId) => {
 
   await db.execute(`UPDATE RapportStage SET ${champ} = TRUE WHERE id = ?`, [rapportId]);
   await validateAsEncadrant(rapport.identifiantRapport, blockchainRole);
+  await historiqueService.logAction({
+  rapportId: rapportId,
+  utilisateurId: encadrant.id,
+  role,
+  action: `Validation du rapport`,
+  commentaire: `Rapport : ${rapport.identifiantRapport}`,
+  origine: "manuelle"
+});
+
 
   await notificationService.notifyUser({
     toId: rapport.etudiantId,
@@ -176,6 +196,16 @@ exports.validerParTier = async (rapportId, tierId, structureType) => {
 
   await db.execute(`UPDATE RapportStage SET ${champ} = TRUE WHERE id = ?`, [rapportId]);
   await validateAsTier(rapport.identifiantRapport, structureType);
+  //
+  await historiqueService.logAction({
+  rapportId: rapportId,
+  utilisateurId: tierId,
+  role: "TierDebloqueur",
+  action: "Validation automatique (par tier)",
+  commentaire: `Raison : Encadrant inactif. Rapport : ${rapport.identifiantRapport}`,
+  origine: "automatique"
+});
+
 
   await notificationService.notifyUser({
     toId: rapport.etudiantId,
@@ -241,6 +271,15 @@ exports.commenterRapport = async (email, rapportId, commentaire) => {
   if (validé) throw new Error("Impossible de commenter après validation.");
 
   await db.execute("INSERT INTO CommentaireRapport (rapportId, commentaire) VALUES (?, ?)", [rapportId, commentaire]);
+//
+await historiqueService.logAction({
+  rapportId,
+  utilisateurId: encadrant.id,
+  role: aca ? "EncadrantAcademique" : "EncadrantProfessionnel",
+  action: "Ajout de commentaire",
+  commentaire: commentaire,
+  origine: "manuelle"
+});
 
   await notificationService.notifyUser({
   toId: etudiant.id,
@@ -432,6 +471,16 @@ exports.checkForTierIntervention = async () => {
       console.log(`Intervention tier ${entite.toUpperCase()} pour le rapport ${r.identifiantRapport}`);
 
       await exports.validerParTier(r.id, tierId, entite);
+      //
+      await historiqueService.logAction({
+  rapportId: r.id,
+  utilisateurId: tierId,
+  role: "TierDebloqueur",
+  action: `Intervention automatique (déclenchée)`,
+  commentaire: `Validation par tier suite à délai dépassé. Rapport : ${r.identifiantRapport}`,
+  origine: "automatique"
+});
+
 
       await notificationService.notifyUser({
         toId: tierId,

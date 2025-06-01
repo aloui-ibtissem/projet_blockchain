@@ -117,5 +117,17 @@ exports.getRapportsPourTier = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+//
+exports.getHistoriqueUtilisateur = async (req, res) => {
+  const { id, role } = req.params;
+  const origine = req.query.origine || null;
+
+  try {
+    const historique = await historiqueService.getHistoriqueParUtilisateur(parseInt(id), role, origine);
+    res.json(historique);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 
