@@ -286,34 +286,33 @@ function DashboardEtudiant() {
         </Card.Body>
       </Card>
       <Col md={6}>
-          <Card className="mb-4 shadow-sm">
-  <Card.Header>Rapport soumis </Card.Header>
-  <Card.Body>
-    {rapportsHistoriques.length > 0 ? (
-      <ul>
-        {rapportsHistoriques.map((rapport, index) => (
-          <li key={index}>
-            <strong>{rapport.action || 'Soumission du rapport'} —</strong>{' '}
-            {new Date(rapport.dateSoumission).toLocaleDateString()}&nbsp;
-            {rapport.fichier && (
+  <Card className="shadow-sm mb-3">
+    <Card.Header>Rapports soumis</Card.Header>
+    <Card.Body>
+      {rapportsHistoriques.length > 0 ? (
+        <ul>
+          {rapportsHistoriques.map((r, i) => (
+            <li key={i}>
+              <strong>{r.identifiantRapport}</strong> — {new Date(r.dateSoumission).toLocaleDateString()} — 
               <a
-                href={`${API_URL}/uploads/${rapport.fichier}`}
+                href={`${API_URL}/uploads/${r.fichier}`}
                 target="_blank"
                 rel="noreferrer"
+                style={{ marginLeft: '10px' }}
               >
                 Voir le rapport
               </a>
-            )}
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <p className="text-muted">Aucune action enregistrée.</p>
-    )}
-  </Card.Body>
-</Card>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted">Aucun rapport soumis.</p>
+      )}
+    </Card.Body>
+  </Card>
+</Col>
 
-        </Col>
+      
 
       <Card className="mb-4 shadow-sm">
         <Card.Header>Commentaires</Card.Header>
