@@ -332,15 +332,29 @@ exports.getMesRapports = async (email) => {
   if (!etudiant) throw new Error("Étudiant introuvable.");
 
   const [rows] = await db.execute(`
-    SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
-           r.statutAcademique, r.statutProfessionnel
+    SELECT 
+      r.id, 
+      r.identifiantRapport, 
+      r.fichier, 
+      r.dateSoumission,
+      r.statutAcademique, 
+      r.statutProfessionnel,
+      s.identifiant_unique AS identifiantStage,
+      s.titre AS titreStage
     FROM RapportStage r
+    JOIN Stage s ON r.stageId = s.id
     WHERE r.etudiantId = ?
     ORDER BY r.dateSoumission DESC
   `, [etudiant.id]);
 
-  return rows;
+  // Formatage du lien fichier directement pour React
+  const baseUrl = process.env.PUBLIC_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
+  return rows.map(r => ({
+    ...r,
+    lienFichier: `${baseUrl}/uploads/${r.fichier}`
+  }));
 };
+
 
 
 

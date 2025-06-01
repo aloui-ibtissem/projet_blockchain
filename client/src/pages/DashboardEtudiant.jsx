@@ -232,7 +232,7 @@ function DashboardEtudiant() {
       </Card>
 
       
-        <Col md={6}>
+      
           <Card className="shadow-sm mb-3">
             <Card.Header>Stage Actuel</Card.Header>
             <Card.Body>
@@ -250,8 +250,7 @@ function DashboardEtudiant() {
               )}
             </Card.Body>
           </Card>
-        </Col>
-        
+  
      
 
       <Card className="mb-4 shadow-sm">

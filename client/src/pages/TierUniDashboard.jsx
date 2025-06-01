@@ -17,16 +17,18 @@ function TierUniDashboard() {
   }, []);
 
   const fetchRapports = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/rapport/tiers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setRapports(res.data);
-    } catch (err) {
-      console.error(err);
-      setMessage("Erreur lors du chargement des rapports.");
-    }
-  };
+  try {
+    const res = await axios.get(`${API_URL}/api/rapport/tiers`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    console.log("Données reçues:", res.data); // Ajout
+    setRapports(res.data);
+  } catch (err) {
+    console.error(err);
+    setMessage("Erreur lors du chargement des rapports.");
+  }
+};
+
 
   const fetchNotifications = async () => {
     try {
