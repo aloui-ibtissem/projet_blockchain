@@ -209,7 +209,7 @@ exports.validerParUniversite = async (stageId, responsableId) => {
   const [rows] = await db.execute("SELECT * FROM Stage WHERE id = ?", [stageId]);
   if (!rows.length) throw new Error("Stage introuvable");
 
-  await db.execute("UPDATE Stage SET etat = 'validé' WHERE id = ?", [stageId]);
+await db.execute("UPDATE Stage SET etat = 'validé', estHistorique = TRUE WHERE id = ?", [stageId]);
 
   const [etudiantRow] = await db.execute(`
     SELECT E.id, E.prenom, E.nom FROM Etudiant E
