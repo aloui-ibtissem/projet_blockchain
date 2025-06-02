@@ -41,7 +41,14 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     JOIN Entreprise ENT ON S.entrepriseId = ENT.id
     JOIN RapportStage R ON R.stageId = S.id
     JOIN ResponsableEntreprise RE ON RE.id = ?
-    WHERE S.id = ? AND R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE
+   WHERE S.id = ?
+AND (
+  (R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE)
+  OR (R.statutAcademique = TRUE AND R.tierIntervenantProfessionnelId IS NOT NULL)
+  OR (R.statutProfessionnel = TRUE AND R.tierIntervenantAcademiqueId IS NOT NULL)
+  OR (R.tierIntervenantAcademiqueId IS NOT NULL AND R.tierIntervenantProfessionnelId IS NOT NULL)
+)
+
   `, [responsableId, stageId]);
 
   if (!stageRows.length) throw new Error("Rapport non validé par les deux encadrants");
@@ -56,7 +63,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     identifiantStage: stage.identifiant_unique,
     attestationId,
     dateGeneration: new Date().toLocaleDateString(),
-    verificationUrl: "", // sera mis à jour plus tard
+    verificationUrl: "", // sera mis à jour plus tard (auto)
     responsableNom: modifs.responsableNom || stage.responsableNom,
     lieu: modifs.lieu || stage.nomEntreprise,
     logoPath: modifs.logoPath || stage.logoPath,

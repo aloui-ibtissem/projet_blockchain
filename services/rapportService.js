@@ -184,29 +184,35 @@ exports.validerRapport = async (email, role, rapportId) => {
   }
 };
 
-exports.validerParTier = async (rapportId, tierId, structureType) => {
+exports.validerParTier = async (rapportId, tierId) => {
   const [[rapport]] = await db.execute("SELECT * FROM RapportStage WHERE id = ?", [rapportId]);
   const [[stage]] = await db.execute("SELECT * FROM Stage WHERE id = ?", [rapport.stageId]);
-  const [[tier]] = await db.execute("SELECT prenom, nom FROM TierDebloqueur WHERE id = ?", [tierId]);
+  const [[tier]] = await db.execute("SELECT prenom, nom, universiteId, entrepriseId FROM TierDebloqueur WHERE id = ?", [tierId]);
   const [[etudiant]] = await db.execute("SELECT prenom, nom FROM Etudiant WHERE id = ?", [rapport.etudiantId]);
 
-  let champ;
-  if (!rapport.statutAcademique) champ = "statutAcademique";
-  else if (!rapport.statutProfessionnel) champ = "statutProfessionnel";
-  else throw new Error("Les deux validations ont déjà été faites.");
+  let champ, entite;
+
+  if (!rapport.statutAcademique && tier.universiteId === stage.universiteId) {
+    champ = "statutAcademique";
+    entite = "universite";
+  } else if (!rapport.statutProfessionnel && tier.entrepriseId === stage.entrepriseId) {
+    champ = "statutProfessionnel";
+    entite = "entreprise";
+  } else {
+    throw new Error("Aucune validation requise ou tier non autorisé à intervenir.");
+  }
 
   await db.execute(`UPDATE RapportStage SET ${champ} = TRUE WHERE id = ?`, [rapportId]);
-  await validateAsTier(rapport.identifiantRapport, structureType);
-  //
-  await historiqueService.logAction({
-  rapportId: rapportId,
-  utilisateurId: tierId,
-  role: "TierDebloqueur",
-  action: "Validation automatique (par tier)",
-  commentaire: `Raison : Encadrant inactif. Rapport : ${rapport.identifiantRapport}`,
-  origine: "automatique"
-});
+  await validateAsTier(rapport.identifiantRapport, entite);
 
+  await historiqueService.logAction({
+    rapportId: rapportId,
+    utilisateurId: tierId,
+    role: "TierDebloqueur",
+    action: `Validation automatique (par tier - ${entite})`,
+    commentaire: `Raison : Encadrant inactif. Rapport : ${rapport.identifiantRapport}`,
+    origine: "automatique"
+  });
 
   await notificationService.notifyUser({
     toId: rapport.etudiantId,
@@ -222,6 +228,7 @@ exports.validerParTier = async (rapportId, tierId, structureType) => {
     message: "Votre rapport a été validé par un tiers suite à un dépassement de délai."
   });
 
+  // Attestation possible ?
   const [[refreshed]] = await db.execute("SELECT statutAcademique, statutProfessionnel, attestationGeneree FROM RapportStage WHERE id = ?", [rapportId]);
 
   if (refreshed.statutAcademique && refreshed.statutProfessionnel && !refreshed.attestationGeneree) {
@@ -243,12 +250,15 @@ exports.validerParTier = async (rapportId, tierId, structureType) => {
           etudiantNom: etudiant.nom,
           titreStage: stage.titre,
           identifiantRapport: rapport.identifiantRapport,
-dashboardUrl: buildUrl("/login")        },
+          attestationFormUrl: `${baseUrl}/entreprise/attestation/${rapport.identifiantRapport}`,
+          dashboardUrl: buildUrl("/login")
+        },
         message: `L'attestation de ${etudiant.prenom} ${etudiant.nom} est prête à être générée.`
       });
     }
   }
 };
+
 
 exports.commenterRapport = async (email, rapportId, commentaire) => {
   const [[rapport]] = await db.execute("SELECT * FROM RapportStage WHERE id = ?", [rapportId]);
@@ -450,6 +460,7 @@ exports.remindersValidationCheck = async () => {
 exports.checkForTierIntervention = async () => {
   const [rapports] = await db.execute(`
     SELECT r.id, r.identifiantRapport, r.statutAcademique, r.statutProfessionnel,
+           r.tierIntervenantAcademiqueId, r.tierIntervenantProfessionnelId,
            s.dateFin, s.entrepriseId, s.universiteId, s.id AS stageId,
            s.encadrantAcademiqueId, s.encadrantProfessionnelId,
            e.prenom, e.nom
@@ -461,50 +472,73 @@ exports.checkForTierIntervention = async () => {
   `);
 
   for (const r of rapports) {
-    const interventions = [];
-
-    if (!r.statutAcademique) {
+    if (!r.statutAcademique && !r.tierIntervenantAcademiqueId) {
       const [[tierUni]] = await db.execute(
         `SELECT id FROM TierDebloqueur WHERE universiteId = ?`, [r.universiteId]
       );
-      if (tierUni?.id) interventions.push({ champ: 'statutAcademique', tierId: tierUni.id, entite: 'universite' });
-    }
-
-    if (!r.statutProfessionnel) {
-      const [[tierEnt]] = await db.execute(
-        `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`, [r.entrepriseId]
-      );
-      if (tierEnt?.id) interventions.push({ champ: 'statutProfessionnel', tierId: tierEnt.id, entite: 'entreprise' });
-    }
-
-    for (const { champ, tierId, entite } of interventions) {
-      try {
+      if (tierUni?.id) {
         await notificationService.notifyUser({
-          toId: tierId,
+          toId: tierUni.id,
           toRole: "TierDebloqueur",
-          subject: "Intervention requise",
+          subject: "Intervention requise - Université",
           templateName: "tier_intervention",
           templateData: {
             etudiantPrenom: r.prenom,
             etudiantNom: r.nom,
             identifiantRapport: r.identifiantRapport,
-            dashboardUrl: buildUrl("/tier/rapports")
+            dashboardUrl: buildUrl("/login")
           },
-          message: `Un encadrant n’a pas validé le rapport de ${r.prenom} ${r.nom} à temps. Merci d’intervenir.`
+          message: `Encadrant académique inactif : rapport ${r.identifiantRapport}. Merci d’intervenir.`
         });
+
+        await db.execute(`
+          UPDATE RapportStage SET tierIntervenantAcademiqueId = ? WHERE id = ?
+        `, [tierUni.id, r.id]);
 
         await historiqueService.logAction({
           rapportId: r.id,
           stageId: r.stageId,
-          utilisateurId: tierId,
+          utilisateurId: tierUni.id,
           role: "TierDebloqueur",
-          action: `Demande d’intervention tier (${entite})`,
-          commentaire: `Tier notifié pour ${champ} - rapport ${r.identifiantRapport}`,
+          action: "Demande d’intervention (académique)",
+          commentaire: `Tier Université notifié pour valider.`,
           origine: "automatique"
         });
+      }
+    }
 
-      } catch (err) {
-        console.error(`Erreur notification tier ${entite.toUpperCase()} (${r.identifiantRapport}):`, err.message);
+    if (!r.statutProfessionnel && !r.tierIntervenantProfessionnelId) {
+      const [[tierEnt]] = await db.execute(
+        `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`, [r.entrepriseId]
+      );
+      if (tierEnt?.id) {
+        await notificationService.notifyUser({
+          toId: tierEnt.id,
+          toRole: "TierDebloqueur",
+          subject: "Intervention requise - Entreprise",
+          templateName: "tier_intervention",
+          templateData: {
+            etudiantPrenom: r.prenom,
+            etudiantNom: r.nom,
+            identifiantRapport: r.identifiantRapport,
+            dashboardUrl: buildUrl("/login")
+          },
+          message: `Encadrant professionnel inactif : rapport ${r.identifiantRapport}. Merci d’intervenir.`
+        });
+
+        await db.execute(`
+          UPDATE RapportStage SET tierIntervenantProfessionnelId = ? WHERE id = ?
+        `, [tierEnt.id, r.id]);
+
+        await historiqueService.logAction({
+          rapportId: r.id,
+          stageId: r.stageId,
+          utilisateurId: tierEnt.id,
+          role: "TierDebloqueur",
+          action: "Demande d’intervention (professionnel)",
+          commentaire: `Tier Entreprise notifié pour valider.`,
+          origine: "automatique"
+        });
       }
     }
   }
@@ -527,17 +561,13 @@ exports.getRapportsPourTier = async (tierId) => {
     JOIN Etudiant e ON s.etudiantId = e.id
     LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
     LEFT JOIN Universite u ON s.universiteId = u.id
-    WHERE s.universiteId = ? OR s.entrepriseId = ?
+    WHERE (s.universiteId = ? AND r.statutAcademique = FALSE)
+       OR (s.entrepriseId = ? AND r.statutProfessionnel = FALSE)
   `, [tier.universiteId, tier.entrepriseId]);
 
   return {
-    enAttente: rows.filter(r =>
-      (tier.universiteId && !r.statutAcademique) ||
-      (tier.entrepriseId && !r.statutProfessionnel)
-    ),
-    valides: rows.filter(r =>
-      (tier.universiteId && r.statutAcademique) ||
-      (tier.entrepriseId && r.statutProfessionnel)
-    )
+    enAttente: rows,
+    valides: []
   };
 };
+
