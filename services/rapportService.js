@@ -16,6 +16,7 @@ const historiqueService = require("./historiqueService");
 
 
 
+// Fonction utilitaire pour récupérer nom utilisateur
 const getUtilisateurNom = async (id, role) => {
   const tableMap = {
     EncadrantAcademique: "EncadrantAcademique",
@@ -459,67 +460,61 @@ exports.checkForTierIntervention = async () => {
       AND (r.statutAcademique = FALSE OR r.statutProfessionnel = FALSE)
   `);
 
- for (const r of rapports) {
-  const interventions = [];
+  for (const r of rapports) {
+    const interventions = [];
 
-  if (!r.statutAcademique && r.encadrantAcademiqueId) {
-    const [[tierUni]] = await db.execute(
-      `SELECT id FROM TierDebloqueur WHERE universiteId = ?`, [r.universiteId]
-    );
-    if (tierUni?.id) interventions.push({ champ: 'statutAcademique', entite: 'universite', tierId: tierUni.id });
-  }
-
-  if (!r.statutProfessionnel && r.encadrantProfessionnelId) {
-    const [[tierEnt]] = await db.execute(
-      `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`, [r.entrepriseId]
-    );
-    if (tierEnt?.id) interventions.push({ champ: 'statutProfessionnel', entite: 'entreprise', tierId: tierEnt.id });
-  }
-
-  for (const { tierId, entite } of interventions) {
-    if (!tierId) {
-      console.warn(`Aucun tier trouvé pour ${entite} (rapport: ${r.identifiantRapport})`);
-      continue;
+    if (!r.statutAcademique) {
+      const [[tierUni]] = await db.execute(
+        `SELECT id FROM TierDebloqueur WHERE universiteId = ?`, [r.universiteId]
+      );
+      if (tierUni?.id) interventions.push({ champ: 'statutAcademique', tierId: tierUni.id, entite: 'universite' });
     }
 
-    try {
-      console.log(`Notification au tier ${entite.toUpperCase()} pour rapport ${r.identifiantRapport}`);
+    if (!r.statutProfessionnel) {
+      const [[tierEnt]] = await db.execute(
+        `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`, [r.entrepriseId]
+      );
+      if (tierEnt?.id) interventions.push({ champ: 'statutProfessionnel', tierId: tierEnt.id, entite: 'entreprise' });
+    }
 
-      await notificationService.notifyUser({
-        toId: tierId,
-        toRole: "TierDebloqueur",
-        subject: "Intervention requise",
-        templateName: "tier_intervention",
-        templateData: {
-          etudiantPrenom: r.prenom,
-          etudiantNom: r.nom,
-          identifiantRapport: r.identifiantRapport,
-          dashboardUrl: buildUrl("/tier/rapports")
-        },
-        message: `Un encadrant n’a pas validé le rapport de ${r.prenom} ${r.nom} à temps. Merci d’intervenir.`
-      });
+    for (const { champ, tierId, entite } of interventions) {
+      try {
+        await notificationService.notifyUser({
+          toId: tierId,
+          toRole: "TierDebloqueur",
+          subject: "Intervention requise",
+          templateName: "tier_intervention",
+          templateData: {
+            etudiantPrenom: r.prenom,
+            etudiantNom: r.nom,
+            identifiantRapport: r.identifiantRapport,
+            dashboardUrl: buildUrl("/tier/rapports")
+          },
+          message: `Un encadrant n’a pas validé le rapport de ${r.prenom} ${r.nom} à temps. Merci d’intervenir.`
+        });
 
-      await historiqueService.logAction({
-        rapportId: r.id,
-        stageId: r.stageId,
-        utilisateurId: tierId,
-        role: "TierDebloqueur",
-        action: `Demande d’intervention tier`,
-        commentaire: `Tier notifié pour rapport ${r.identifiantRapport}`,
-        origine: "automatique"
-      });
+        await historiqueService.logAction({
+          rapportId: r.id,
+          stageId: r.stageId,
+          utilisateurId: tierId,
+          role: "TierDebloqueur",
+          action: `Demande d’intervention tier (${entite})`,
+          commentaire: `Tier notifié pour ${champ} - rapport ${r.identifiantRapport}`,
+          origine: "automatique"
+        });
 
-    } catch (err) {
-      console.error(`❌ Erreur lors de la notification ou journalisation pour tier ID ${tierId}:`, err.message);
+      } catch (err) {
+        console.error(`Erreur notification tier ${entite.toUpperCase()} (${r.identifiantRapport}):`, err.message);
+      }
     }
   }
-}
+};
 
 
 //
 exports.getRapportsPourTier = async (tierId) => {
-  const [[tier]] = await db.execute("SELECT id, universiteId, entrepriseId FROM TierDebloqueur WHERE id = ?", [tierId]);
-  if (!tier || (!tier.universiteId && !tier.entrepriseId)) return { enAttente: [], valides: [] };
+  const [[tier]] = await db.execute("SELECT universiteId, entrepriseId FROM TierDebloqueur WHERE id = ?", [tierId]);
+  if (!tier) return { enAttente: [], valides: [] };
 
   const [rows] = await db.execute(`
     SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
@@ -532,17 +527,8 @@ exports.getRapportsPourTier = async (tierId) => {
     JOIN Etudiant e ON s.etudiantId = e.id
     LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
     LEFT JOIN Universite u ON s.universiteId = u.id
-    WHERE (
-      (s.universiteId = ? AND r.statutAcademique = FALSE)
-      OR
-      (s.entrepriseId = ? AND r.statutProfessionnel = FALSE)
-    )
-    OR (
-      (s.universiteId = ? AND r.statutAcademique = TRUE)
-      OR
-      (s.entrepriseId = ? AND r.statutProfessionnel = TRUE)
-    )
-  `, [tier.universiteId, tier.entrepriseId, tier.universiteId, tier.entrepriseId]);
+    WHERE s.universiteId = ? OR s.entrepriseId = ?
+  `, [tier.universiteId, tier.entrepriseId]);
 
   return {
     enAttente: rows.filter(r =>
