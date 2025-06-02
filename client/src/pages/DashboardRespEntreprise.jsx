@@ -151,7 +151,7 @@ function DashboardRespEntreprise() {
           ) : (
             <div className="dashboard-grid">
               <Card className="dashboard-card">
-                <Card.Header>Stagiaires validés</Card.Header>
+                <Card.Header>Stagiaires à générer leurs attestations</Card.Header>
                 <Card.Body>
                   <ListGroup variant="flush">
                     {stagiaires.length > 0 ? stagiaires.map(stag => (
