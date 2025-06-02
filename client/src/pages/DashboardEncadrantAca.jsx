@@ -8,9 +8,9 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import { Alert, Card, Button, Form, Table, Badge, Collapse } from 'react-bootstrap';
 import './DashboardEncadrantAca.css';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL?.includes('/api')
-  ? process.env.REACT_APP_BACKEND_URL
-  : `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000'}/api`;
+const BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+const API_URL = BASE.includes('/api') ? BASE : `${BASE}/api`;
+
 
 function DashboardEncadrantAca() {
   const navigate = useNavigate();
@@ -157,7 +157,7 @@ function DashboardEncadrantAca() {
                       <Card key={r.id} className="inner-card">
                         <Card.Body>
                           <strong>{r.prenomEtudiant} {r.nomEtudiant}</strong>
-                          <p><a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">📄 Voir le rapport</a></p>
+                          <p><a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer"> Voir le rapport</a></p>
                           <Form.Control as="textarea" value={commentaires[r.id] || ''} onChange={e => handleCommentChange(r.id, e.target.value)} rows={2} />
                           <div className="mt-2 d-flex gap-2">
                             <Button size="sm" onClick={() => commenterRapport(r.id)}>Commenter</Button>
