@@ -342,26 +342,11 @@ function DashboardEtudiant() {
 
       
 
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Commentaires</Card.Header>
-        <Card.Body>
-          {commentaires.length > 0 ? (
-            <ul>
-              {commentaires.map((c, i) => (
-                <li key={i}><strong>{new Date(c.date_envoi).toLocaleString()}:</strong> {c.commentaire}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted">Aucun commentaire</p>
-          )}
-        </Card.Body>
-      </Card>
-
+      
       <Card className="mb-4 shadow-sm">
         <Card.Header>Attestation</Card.Header>
         <Card.Body>
           <Button variant="success" className="me-2" onClick={fetchAttestation}>Vérifier</Button>
-          <Button variant="outline-primary" onClick={downloadAttestation}>Télécharger</Button>
           {attestationUrl && (
             <p className="mt-3">
               <a href={attestationUrl} target="_blank" rel="noreferrer">Voir l’attestation en ligne</a>
