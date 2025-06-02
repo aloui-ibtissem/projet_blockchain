@@ -459,67 +459,31 @@ exports.checkForTierIntervention = async () => {
       AND (r.statutAcademique = FALSE OR r.statutProfessionnel = FALSE)
   `);
 
-  for (const r of rapports) {
-    const interventions = [];
+ for (const r of rapports) {
+  const interventions = [];
 
-    if (!r.statutAcademique && r.encadrantAcademiqueId) {
-      const [[tierUni]] = await db.execute(
-        `SELECT id FROM TierDebloqueur WHERE universiteId = ?`,
-        [r.universiteId]
-      );
-      if (tierUni?.id) {
-        interventions.push({ champ: 'statutAcademique', entite: 'universite', tierId: tierUni.id });
-      }
+  if (!r.statutAcademique && r.encadrantAcademiqueId) {
+    const [[tierUni]] = await db.execute(
+      `SELECT id FROM TierDebloqueur WHERE universiteId = ?`, [r.universiteId]
+    );
+    if (tierUni?.id) interventions.push({ champ: 'statutAcademique', entite: 'universite', tierId: tierUni.id });
+  }
+
+  if (!r.statutProfessionnel && r.encadrantProfessionnelId) {
+    const [[tierEnt]] = await db.execute(
+      `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`, [r.entrepriseId]
+    );
+    if (tierEnt?.id) interventions.push({ champ: 'statutProfessionnel', entite: 'entreprise', tierId: tierEnt.id });
+  }
+
+  for (const { tierId, entite } of interventions) {
+    if (!tierId) {
+      console.warn(`Aucun tier trouvé pour ${entite} (rapport: ${r.identifiantRapport})`);
+      continue;
     }
 
-    if (!r.statutProfessionnel && r.encadrantProfessionnelId) {
-      const [[tierEnt]] = await db.execute(
-        `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`,
-        [r.entrepriseId]
-      );
-      if (tierEnt?.id) {
-        interventions.push({ champ: 'statutProfessionnel', entite: 'entreprise', tierId: tierEnt.id });
-      }
-    }
-
-    for (const intervention of interventions) {
-      const { tierId, entite } = intervention;
-
-      console.log(`Intervention tier ${entite.toUpperCase()} pour le rapport ${r.identifiantRapport}`);
-
-await notificationService.notifyUser({
-  toId: tierId,
-  toRole: "TierDebloqueur",
-  subject: "Intervention requise",
-  templateName: "tier_intervention",
-  templateData: {
-    etudiantPrenom: r.prenom,
-    etudiantNom: r.nom,
-    identifiantRapport: r.identifiantRapport,
-    dashboardUrl: buildUrl("/tier/rapports")
-  },
-  message: `Un encadrant n’a pas validé le rapport de ${r.prenom} ${r.nom} à temps. Merci d’intervenir manuellement.`
-});
-
-await historiqueService.logAction({
-  rapportId: r.id,
-  stageId: r.stageId,
-  utilisateurId: tierId,
-  role: "TierDebloqueur",
-  action: `Demande d’intervention tier`,
-  commentaire: `Tier notifié pour valider manuellement le rapport ${r.identifiantRapport}`,
-  origine: "automatique"
-});
-
-      await historiqueService.logAction({
-        rapportId: r.id,
-        stageId: r.stageId,
-        utilisateurId: tierId,
-        role: "TierDebloqueur",
-        action: `Intervention automatique (déclenchée)`,
-        commentaire: `Validation par tier suite à délai dépassé. Rapport : ${r.identifiantRapport}`,
-        origine: "automatique"
-      });
+    try {
+      console.log(`Notification au tier ${entite.toUpperCase()} pour rapport ${r.identifiantRapport}`);
 
       await notificationService.notifyUser({
         toId: tierId,
@@ -530,14 +494,26 @@ await historiqueService.logAction({
           etudiantPrenom: r.prenom,
           etudiantNom: r.nom,
           identifiantRapport: r.identifiantRapport,
-          dashboardUrl: buildUrl("/login")
+          dashboardUrl: buildUrl("/tier/rapports")
         },
-        message: `Un encadrant n’a pas validé le rapport de ${r.prenom} ${r.nom} à temps. Une intervention est requise.`
+        message: `Un encadrant n’a pas validé le rapport de ${r.prenom} ${r.nom} à temps. Merci d’intervenir.`
       });
+
+      await historiqueService.logAction({
+        rapportId: r.id,
+        stageId: r.stageId,
+        utilisateurId: tierId,
+        role: "TierDebloqueur",
+        action: `Demande d’intervention tier`,
+        commentaire: `Tier notifié pour rapport ${r.identifiantRapport}`,
+        origine: "automatique"
+      });
+
+    } catch (err) {
+      console.error(`❌ Erreur lors de la notification ou journalisation pour tier ID ${tierId}:`, err.message);
     }
   }
-};
-
+}
 
 
 //
