@@ -297,7 +297,7 @@ function DashboardEtudiant() {
                 <li key={i}>
                   <strong>{r.identifiantRapport}</strong> — {r.titre} —
                   <a
-                    href={`${API_URL}/uploads/${r.fichier}`}
+                    href={`${BASE}/uploads/${r.fichier}`}
                     target="_blank"
                     rel="noreferrer"
                     style={{ marginLeft: '10px' }}
