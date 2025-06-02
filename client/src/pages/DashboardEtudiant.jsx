@@ -286,32 +286,32 @@ function DashboardEtudiant() {
           <Button variant="primary" onClick={submitRapport}>Envoyer</Button>
         </Card.Body>
       </Card>
+      
    
-  <Card className="shadow-sm mb-3">
-    <Card.Header>Rapports soumis</Card.Header>
-    <Card.Body>
-      {rapportsHistoriques.length > 0 ? (
-        <ul>
-          {rapportsHistoriques.map((r, i) => (
-            <li key={i}>
-              <strong>{r.identifiantRapport}</strong> — {new Date(r.dateSoumission).toLocaleDateString()} — 
-              <a
-                href={`${API_URL}/uploads/${r.fichier}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ marginLeft: '10px' }}
-              >
-                Voir le rapport
-              </a>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-muted">Aucun rapport soumis.</p>
-      )}
-    </Card.Body>
-  </Card>
-
+ <Card className="mb-4 shadow-sm">
+        <Card.Header> Rapports </Card.Header>
+        <Card.Body>
+          {rapportsHistoriques.length > 0 ? (
+            <ul>
+              {rapportsHistoriques.map((r, i) => (
+                <li key={i}>
+                  <strong>{r.identifiantRapport}</strong> — {r.titre} —
+                  <a
+                    href={`${API_URL}/uploads/${r.fichier}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ marginLeft: '10px' }}
+                  >
+                    Voir PDF
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted">Aucun rapport validé encore.</p>
+          )}
+        </Card.Body>
+      </Card>
 
       
 

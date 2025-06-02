@@ -299,6 +299,7 @@ await historiqueService.logAction({
 };
 
 //
+
 exports.getRapportsAValider = async (email, role) => {
   const encadrantTable = role === "EncadrantAcademique" ? "EncadrantAcademique" : "EncadrantProfessionnel";
   const statutField = role === "EncadrantAcademique" ? "statutAcademique" : "statutProfessionnel";
@@ -314,18 +315,22 @@ exports.getRapportsAValider = async (email, role) => {
   const [rows] = await db.execute(
     `
     SELECT r.id, r.fichier, r.identifiantRapport, r.dateSoumission,
-           e.nom AS nomEtudiant, e.prenom AS prenomEtudiant
+           e.nom AS nomEtudiant, e.prenom AS prenomEtudiant,
+           s.titre AS titreStage
     FROM RapportStage r
     JOIN Stage s ON r.stageId = s.id
     JOIN Etudiant e ON r.etudiantId = e.id
-    WHERE s.${stageField} = ? AND r.${statutField} = FALSE
+    WHERE s.${stageField} = ?
     `,
     [encadrant.id]
   );
 
-  return rows;
+  // Découpage : en attente VS historiques
+  return {
+    enAttente: rows.filter(r => !r[statutField]),
+    valides: rows.filter(r => r[statutField])
+  };
 };
-
 //
 exports.getMesRapports = async (email) => {
   const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email = ?", [email]);
@@ -444,7 +449,7 @@ exports.remindersValidationCheck = async () => {
 exports.checkForTierIntervention = async () => {
   const [rapports] = await db.execute(`
     SELECT r.id, r.identifiantRapport, r.statutAcademique, r.statutProfessionnel,
-           s.dateFin, s.entrepriseId,
+           s.dateFin, s.entrepriseId, s.universiteId, s.id AS stageId,
            s.encadrantAcademiqueId, s.encadrantProfessionnelId,
            e.prenom, e.nom
     FROM RapportStage r
@@ -458,7 +463,6 @@ exports.checkForTierIntervention = async () => {
     const interventions = [];
 
     if (!r.statutAcademique && r.encadrantAcademiqueId) {
-      // Cas ACA
       const [[tierUni]] = await db.execute(
         `SELECT id FROM TierDebloqueur WHERE universiteId = ?`,
         [r.universiteId]
@@ -469,7 +473,6 @@ exports.checkForTierIntervention = async () => {
     }
 
     if (!r.statutProfessionnel && r.encadrantProfessionnelId) {
-      // Cas PRO
       const [[tierEnt]] = await db.execute(
         `SELECT id FROM TierDebloqueur WHERE entrepriseId = ?`,
         [r.entrepriseId]
@@ -485,16 +488,16 @@ exports.checkForTierIntervention = async () => {
       console.log(`Intervention tier ${entite.toUpperCase()} pour le rapport ${r.identifiantRapport}`);
 
       await exports.validerParTier(r.id, tierId, entite);
-      //
-      await historiqueService.logAction({
-  rapportId: r.id,
-  utilisateurId: tierId,
-  role: "TierDebloqueur",
-  action: `Intervention automatique (déclenchée)`,
-  commentaire: `Validation par tier suite à délai dépassé. Rapport : ${r.identifiantRapport}`,
-  origine: "automatique"
-});
 
+      await historiqueService.logAction({
+        rapportId: r.id,
+        stageId: r.stageId,
+        utilisateurId: tierId,
+        role: "TierDebloqueur",
+        action: `Intervention automatique (déclenchée)`,
+        commentaire: `Validation par tier suite à délai dépassé. Rapport : ${r.identifiantRapport}`,
+        origine: "automatique"
+      });
 
       await notificationService.notifyUser({
         toId: tierId,
@@ -514,10 +517,11 @@ exports.checkForTierIntervention = async () => {
 };
 
 
+
 //
 exports.getRapportsPourTier = async (tierId) => {
   const [[tier]] = await db.execute("SELECT id, universiteId, entrepriseId FROM TierDebloqueur WHERE id = ?", [tierId]);
-if (!tier || (!tier.universiteId && !tier.entrepriseId)) return []; // <- retourne un tableau vide
+  if (!tier || (!tier.universiteId && !tier.entrepriseId)) return { enAttente: [], valides: [] };
 
   const [rows] = await db.execute(`
     SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
@@ -529,17 +533,27 @@ if (!tier || (!tier.universiteId && !tier.entrepriseId)) return []; // <- retour
     JOIN Stage s ON r.stageId = s.id
     JOIN Etudiant e ON s.etudiantId = e.id
     LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
-    WHERE DATEDIFF(CURDATE(), s.dateFin) > 10
-      AND (
-        (s.universiteId = ? AND r.statutAcademique = FALSE)
-        OR
-        (s.entrepriseId = ? AND r.statutProfessionnel = FALSE)
-      )
-  `, [tier.universiteId, tier.entrepriseId]);
+    LEFT JOIN Universite u ON s.universiteId = u.id
+    WHERE (
+      (s.universiteId = ? AND r.statutAcademique = FALSE)
+      OR
+      (s.entrepriseId = ? AND r.statutProfessionnel = FALSE)
+    )
+    OR (
+      (s.universiteId = ? AND r.statutAcademique = TRUE)
+      OR
+      (s.entrepriseId = ? AND r.statutProfessionnel = TRUE)
+    )
+  `, [tier.universiteId, tier.entrepriseId, tier.universiteId, tier.entrepriseId]);
 
-  return rows;
+  return {
+    enAttente: rows.filter(r =>
+      (tier.universiteId && !r.statutAcademique) ||
+      (tier.entrepriseId && !r.statutProfessionnel)
+    ),
+    valides: rows.filter(r =>
+      (tier.universiteId && r.statutAcademique) ||
+      (tier.entrepriseId && r.statutProfessionnel)
+    )
+  };
 };
-
-
-
-

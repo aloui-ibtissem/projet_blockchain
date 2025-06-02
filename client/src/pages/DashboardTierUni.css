@@ -1,42 +1,74 @@
-.dashboard-card {
-  border-radius: 12px;
-  overflow: hidden;
+/* DashboardTier.css */
+
+.dashboard-tier {
+  padding: 2rem;
+  background-color: #f8f9fc;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* En-tête élégante */
 .dashboard-header {
-  padding: 20px 24px;
-  background: linear-gradient(90deg, #2563eb 0%, #1e3a8a 100%);
-  color: white;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(to right, #1f2937, #111827);
+  color: #fff;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .dashboard-header h5 {
+  margin: 0;
+  font-size: 1.5rem;
   font-weight: 600;
-  font-size: 20px;
-  margin-bottom: 0;
 }
 
-.table th,
-.table td {
-  vertical-align: middle;
-  text-align: center;
+/* Carte pour chaque rapport */
+.dashboard-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+  transition: transform 0.2s;
 }
 
-.table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  font-size: 14px;
+.dashboard-card:hover {
+  transform: scale(1.01);
 }
 
-.table td {
-  font-size: 14px;
+/* Texte à l'intérieur des cartes */
+.dashboard-card p {
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+  color: #374151;
 }
 
-button {
+/* Bouton action */
+.dashboard-card button {
+  font-size: 0.9rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+}
+
+/* Alertes */
+.alert {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+/* Lien PDF */
+a {
+  color: #3b82f6;
+  text-decoration: none;
   font-weight: 500;
 }
 
-.alert {
-  margin-top: 15px;
-  font-size: 14px;
+a:hover {
+  text-decoration: underline;
+}
+
+/* Historique */
+.bg-light {
+  background-color: #f1f5f9 !important;
 }

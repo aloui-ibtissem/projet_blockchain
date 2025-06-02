@@ -232,6 +232,32 @@ function DashboardEncadrantPro() {
                   )}
                 </Card.Body>
               </Card>
+              <Card className="dashboard-card mt-4">
+  <Card.Header> Rapports Validés</Card.Header>
+  <Card.Body>
+    {rapports.filter(r => r.statutAcademique).length === 0 ? (
+      <p className="text-muted">Aucun rapport validé.</p>
+    ) : (
+      <ul>
+        {rapports.filter(r => r.statutAcademique).map(r => (
+          <li key={r.id}>
+            <strong>{r.identifiantRapport}</strong> — {r.titre} —
+            <a
+              href={`${API_URL}/uploads/${r.fichier}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ marginLeft: '10px' }}
+            >
+              Voir PDF
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </Card.Body>
+</Card>
+
+
             </div>
           )}
         </main>
