@@ -1,4 +1,6 @@
 // controllers/notificationController.js
+const notificationService = require("../services/notificationService");
+
 const db = require("../config/db");
 
 exports.getMesNotifications = async (req, res) => {
