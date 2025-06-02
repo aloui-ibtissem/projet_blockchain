@@ -250,6 +250,33 @@ function DashboardEtudiant() {
               )}
             </Card.Body>
           </Card>
+          <Card className="mb-4 shadow-sm">
+  <Card.Header>Stages Historiques</Card.Header>
+  <Card.Body>
+    {stagesHistoriques.length > 0 ? (
+      <ul>
+        {stagesHistoriques.map((s, i) => (
+          <li key={i}>
+            <strong>{s.identifiant_unique}</strong> — {s.titre} — {s.entreprise}<br />
+            <small>Période : {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}</small><br />
+            {s.identifiantRapport && (
+              <a href={`${BASE}/uploads/${s.fichier}`} target="_blank" rel="noreferrer">Voir le rapport</a>
+            )}
+            {s.ipfsUrl && (
+              <>
+                {" | "}
+                <a href={s.ipfsUrl} target="_blank" rel="noreferrer">Voir l’attestation</a>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="text-muted">Aucun stage historique encore.</p>
+    )}
+  </Card.Body>
+</Card>
+
   
      
 

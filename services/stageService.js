@@ -276,7 +276,7 @@ exports.getCurrentStageByEmail = async (email) => {
   JOIN EncadrantProfessionnel P ON S.encadrantProfessionnelId = P.id
   WHERE S.etudiantId = ? AND S.estHistorique = FALSE
 `, [etudiant.id]);
-
+o
 
   return rows[0] || null;
 };
@@ -286,23 +286,29 @@ exports.getCurrentStageByEmail = async (email) => {
 // ===============================
 // 7. Liste des stages historiques (étudiant)
 // ===============================
-exports.getStagesHistoriquesByEmail = async (email) => {
+
+
+ exports.getStagesHistoriquesByEmail = async (email) => {
   const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email = ?", [email]);
   if (!etudiant) return [];
 
-  const [rows] = await db.execute(
-    `SELECT S.*, 
-            E.nom AS entreprise,
-            A.prenom AS acaPrenom, A.nom AS acaNom,
-            P.prenom AS proPrenom, P.nom AS proNom
-     FROM Stage S
-     JOIN Entreprise E ON S.entrepriseId = E.id
-     JOIN EncadrantAcademique A ON S.encadrantAcademiqueId = A.id
-     JOIN EncadrantProfessionnel P ON S.encadrantProfessionnelId = P.id
-     WHERE S.etudiantId = ? AND S.estHistorique = TRUE
-     ORDER BY S.dateDebut DESC`,
-    [etudiant.id]
-  );
+  const [rows] = await db.execute(`
+    SELECT 
+      S.*, 
+      E.nom AS entreprise,
+      A.prenom AS acaPrenom, A.nom AS acaNom,
+      P.prenom AS proPrenom, P.nom AS proNom,
+      R.identifiantRapport, R.fichier,
+      A2.identifiant AS attestationId, A2.ipfsUrl
+    FROM Stage S
+    JOIN Entreprise E ON S.entrepriseId = E.id
+    JOIN EncadrantAcademique A ON S.encadrantAcademiqueId = A.id
+    JOIN EncadrantProfessionnel P ON S.encadrantProfessionnelId = P.id
+    LEFT JOIN RapportStage R ON R.stageId = S.id
+    LEFT JOIN Attestation A2 ON A2.stageId = S.id
+    WHERE S.etudiantId = ? AND S.estHistorique = TRUE
+    ORDER BY S.dateDebut DESC
+  `, [etudiant.id]);
 
   return rows;
 };
