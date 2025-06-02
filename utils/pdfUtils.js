@@ -46,11 +46,12 @@ exports.generatePDFWithQR = async (data) => {
   doc.moveDown(2);
 
   // QR code centré
-  const qrBuffer = await generateQRCodeBuffer(data.verificationUrl);
-  const qrX = (doc.page.width - 120) / 2;
-  const qrY = doc.y;
-  doc.image(qrBuffer, qrX, qrY, { width: 120 });
-  doc.moveDown(8);
+if (data.verificationUrl && data.verificationUrl.trim() !== "") {
+    const qrBuffer = await generateQRCodeBuffer(data.verificationUrl);
+    const qrX = (doc.page.width - 120) / 2;
+    const qrY = doc.y;
+    doc.image(qrBuffer, qrX, qrY, { width: 120 });
+    doc.moveDown(8);
 
   // Phrase explicative SOUS le QR
   doc.fontSize(10).fillColor("gray").text(
