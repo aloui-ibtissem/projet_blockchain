@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { Alert, Card, Button, ListGroup, Form, Modal } from 'react-bootstrap';
@@ -47,26 +48,24 @@ function DashboardRespEntreprise() {
       return;
     }
     fetchData();
-  }, []);
+  }, [navigate, token, role]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache'
-      };
-
-      const [dashRes, infoRes, notifRes] = await Promise.all([
-        axios.get(`${API_URL}/entreprises/dashboard`, { headers }),
-        axios.get(`${API_URL}/entreprises/info`, { headers }),
-        axios.get(`${API_URL}/notifications/mes`, { headers })
+      const [dashRes, infoRes] = await Promise.all([
+        axios.get(`${API_URL}/entreprises/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_URL}/entreprises/info`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
       ]);
 
       const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
 
       setStagiaires(dashRes.data.stagiaires || []);
-      setNotifications(notifRes.data || []);
+      setNotifications(dashRes.data.notifications || []);
 
       setFormData(prev => ({
         ...prev,
@@ -141,51 +140,54 @@ function DashboardRespEntreprise() {
   };
 
   return (
-    <div className="dashboard-content p-4">
-      <Header title="Responsable Entreprise" />
-      <main className="main-content">
-        {message && <Alert variant="danger">{message}</Alert>}
-        {loading ? (
-          <SkeletonLoader />
-        ) : (
-          <div className="dashboard-grid">
-            <Card className="dashboard-card">
-              <Card.Header>Stagiaires à générer leurs attestations</Card.Header>
-              <Card.Body>
-                <ListGroup variant="flush">
-                  {stagiaires.length > 0 ? stagiaires.map(stag => (
-                    <ListGroup.Item key={stag.stageId}>
-                      <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}
-                      <Button
-                        variant="success"
-                        className="float-end"
-                        size="sm"
-                        onClick={() => openForm(stag.stageId)}
-                      >
-                        Générer Attestation
-                      </Button>
-                    </ListGroup.Item>
-                  )) : <ListGroup.Item>Aucun stagiaire à traiter.</ListGroup.Item>}
-                </ListGroup>
-              </Card.Body>
-            </Card>
+    <div className="dashboard-layout">
+      <Sidebar role={role} />
+      <div className="dashboard-content">
+        <Header title="Responsable Entreprise" />
+        <main className="main-content">
+          {message && <Alert variant="danger">{message}</Alert>}
+          {loading ? (
+            <SkeletonLoader />
+          ) : (
+            <div className="dashboard-grid">
+              <Card className="dashboard-card">
+                <Card.Header>Stagiaires à générer leurs attestations</Card.Header>
+                <Card.Body>
+                  <ListGroup variant="flush">
+                    {stagiaires.length > 0 ? stagiaires.map(stag => (
+                      <ListGroup.Item key={stag.stageId}>
+                        <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}
+                        <Button
+                          variant="success"
+                          className="float-end"
+                          size="sm"
+                          onClick={() => openForm(stag.stageId)}
+                        >
+                          Générer Attestation
+                        </Button>
+                      </ListGroup.Item>
+                    )) : <ListGroup.Item>Aucun stagiaire à traiter.</ListGroup.Item>}
+                  </ListGroup>
+                </Card.Body>
+              </Card>
 
-            <Card className="dashboard-card mt-4">
-              <Card.Header>Notifications</Card.Header>
-              <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                {notifications.length > 0 ? notifications.map(n => (
-                  <div key={n.id}>
-                    {n.message}
-                    <span className="notification-date">
-                      {new Date(n.date_envoi).toLocaleString()}
-                    </span>
-                  </div>
-                )) : <p className="text-muted">Aucune notification</p>}
-              </Card.Body>
-            </Card>
-          </div>
-        )}
-      </main>
+              <Card className="dashboard-card">
+                <Card.Header>Notifications</Card.Header>
+                <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  {notifications.length > 0 ? notifications.map(n => (
+                    <div key={n.id}>
+                      {n.message}
+                      <span className="notification-date">
+                        {new Date(n.date_envoi).toLocaleString()}
+                      </span>
+                    </div>
+                  )) : <p className="text-muted">Aucune notification</p>}
+                </Card.Body>
+              </Card>
+            </div>
+          )}
+        </main>
+      </div>
 
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
