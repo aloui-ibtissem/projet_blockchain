@@ -42,12 +42,12 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     JOIN RapportStage R ON R.stageId = S.id
     JOIN ResponsableEntreprise RE ON RE.id = ?
    WHERE S.id = ?
-AND (
-  (R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE)
-  OR (R.statutAcademique = TRUE AND R.tierIntervenantProfessionnelId IS NOT NULL)
-  OR (R.statutProfessionnel = TRUE AND R.tierIntervenantAcademiqueId IS NOT NULL)
-  OR (R.tierIntervenantAcademiqueId IS NOT NULL AND R.tierIntervenantProfessionnelId IS NOT NULL)
-)
+   AND (
+     (R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE)
+     OR (R.statutAcademique = TRUE AND R.tierIntervenantProfessionnelId IS NOT NULL)
+     OR (R.statutProfessionnel = TRUE AND R.tierIntervenantAcademiqueId IS NOT NULL)
+     OR (R.tierIntervenantAcademiqueId IS NOT NULL AND R.tierIntervenantProfessionnelId IS NOT NULL)
+   )
   `, [responsableId, stageId]);
 
   if (!stageRows.length) throw new Error("Rapport non validé par les deux encadrants");
@@ -55,51 +55,59 @@ AND (
   const stage = stageRows[0];
   const attestationId = await genererIdentifiantAttestation(stage.universiteId, stage.entrepriseId);
 
-  const pdfData = {
+  const baseData = {
     ...stage,
     ...modifs,
     appreciation,
     identifiantStage: stage.identifiant_unique,
     attestationId,
     dateGeneration: new Date().toLocaleDateString(),
-    verificationUrl: "",
+    verificationUrl: "", // À insérer après génération de la page HTML
     responsableNom: modifs.responsableNom || stage.responsableNom,
     lieu: modifs.lieu || stage.nomEntreprise,
     logoPath: modifs.logoPath || stage.logoPath,
     signature: modifs.signature || ""
   };
 
-  console.log("[StageChain]  Génération PDF temporaire...");
-  const tempPdfPath = await generatePDFWithQR(pdfData);
-  const fileHash = await hashFile(tempPdfPath);
-  const ipfsUrl = await uploadToIPFS(tempPdfPath);
-  console.log("[StageChain]  PDF temporaire hashé et uploadé :", ipfsUrl);
+  // Génération temporaire (inutile d'upload)
+  const tempPdfPath = await generatePDFWithQR(baseData);
+  const tempHash = await hashFile(tempPdfPath);
 
-  console.log("[StageChain]  Génération page HTML de vérification...");
-  const htmlContent = generateVerificationHTML({
+  // Génère page HTML temporaire pour obtenir URL
+  const tempHtml = generateVerificationHTML({
     attestationId,
-    fileHash,
-    ipfsUrl,
+    fileHash: tempHash,
+    ipfsUrl: "EN ATTENTE DU PDF FINAL",
     issuer: responsableId,
     timestamp: Date.now(),
     event: "AttestationPublished"
   });
+  const tempHtmlUpload = await uploadHTMLToIPFS(tempHtml);
+  const verificationUrl = tempHtmlUpload.publicUrl;
 
-  const htmlUpload = await uploadHTMLToIPFS(htmlContent);
-  const htmlUrl = htmlUpload.publicUrl;
-
-  console.log("[StageChain]  Régénération PDF avec URL de vérification...");
-  pdfData.verificationUrl = htmlUpload.localUrl || htmlUpload.publicUrl;
-  const finalPdfPath = await generatePDFWithQR(pdfData);
+  // Génération du PDF FINAL avec le bon QR
+  baseData.verificationUrl = verificationUrl;
+  const finalPdfPath = await generatePDFWithQR(baseData);
   const finalHash = await hashFile(finalPdfPath);
-  const finalIpfsUrl = await uploadToIPFS(finalPdfPath);
+  const finalPdfIpfs = await uploadToIPFS(finalPdfPath);
 
-  console.log("[StageChain]  Insertion dans la base de données...");
+  // Génération de la version FINALE de la page HTML (avec lien vers PDF correct)
+  const finalHtml = generateVerificationHTML({
+    attestationId,
+    fileHash: finalHash,
+    ipfsUrl: finalPdfIpfs.publicUrl,
+    issuer: responsableId,
+    timestamp: Date.now(),
+    event: "AttestationPublished"
+  });
+  const finalHtmlUpload = await uploadHTMLToIPFS(finalHtml);
+
+  // Enregistrement dans la base de données
   await db.execute(`
     INSERT INTO Attestation
       (stageId, identifiant, fileHash, ipfsUrl, responsableId, etudiantId, dateCreation, publishedOnChain)
     VALUES (?, ?, ?, ?, ?, ?, NOW(), TRUE)
-  `, [stageId, attestationId, finalHash, finalIpfsUrl, responsableId, stage.etudiantId]);
+  `, [stageId, attestationId, finalHash, finalPdfIpfs.publicUrl, responsableId, stage.etudiantId]);
 
   await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
 
@@ -115,10 +123,10 @@ AND (
     });
   }
 
-  console.log("[StageChain]  Publication sur la blockchain...");
+  // Blockchain publishing
   await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, finalHash);
 
-  console.log("[StageChain]  Envoi des notifications...");
+  // Notification
   const [respUniRows] = await db.execute(
     "SELECT id, email, prenom, nom FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
     [stage.universiteId]
@@ -143,7 +151,7 @@ AND (
       encadrantProNom: stage.proNom,
       identifiantAttestation: attestationId,
       hash: finalHash,
-      attestationUrl: htmlUrl,
+      attestationUrl: finalHtmlUpload.publicUrl,
       year: new Date().getFullYear()
     },
     message: "Votre attestation de stage est prête."
@@ -170,11 +178,12 @@ AND (
 
   return {
     hash: finalHash,
-    ipfsUrl: finalIpfsUrl,
+    ipfsUrl: finalPdfIpfs.publicUrl,
     identifiant: attestationId,
-    verificationPage: htmlUrl
+    verificationPage: finalHtmlUpload.publicUrl
   };
 };
+
 
 
 exports.getAttestationsByUniversite = async (responsableUniId) => {

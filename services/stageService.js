@@ -276,7 +276,7 @@ exports.getCurrentStageByEmail = async (email) => {
   JOIN EncadrantProfessionnel P ON S.encadrantProfessionnelId = P.id
   WHERE S.etudiantId = ? AND S.estHistorique = FALSE
 `, [etudiant.id]);
-o
+
 
   return rows[0] || null;
 };
