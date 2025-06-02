@@ -45,22 +45,23 @@ exports.generatePDFWithQR = async (data) => {
   doc.font("Helvetica-Bold").text(`Identifiant : ${data.attestationId}`, { align: "left" });
   doc.moveDown(2);
 
-  // QR code centré
-if (data.verificationUrl && data.verificationUrl.trim() !== "") {
+  // QR code
+  if (data.verificationUrl && data.verificationUrl.trim() !== "") {
     const qrBuffer = await generateQRCodeBuffer(data.verificationUrl);
     const qrX = (doc.page.width - 120) / 2;
     const qrY = doc.y;
     doc.image(qrBuffer, qrX, qrY, { width: 120 });
     doc.moveDown(8);
 
-  // Phrase explicative SOUS le QR
-  doc.fontSize(10).fillColor("gray").text(
-    "Vérifier l'attestation via ce QR code",
-    { align: "center" }
-  );
-  doc.moveDown(0.3);
+    // Phrase explicative
+    doc.fontSize(10).fillColor("gray").text(
+      "Vérifier l'attestation via ce QR code",
+      { align: "center" }
+    );
+    doc.moveDown(0.3);
+  }
 
-  doc.text(
+  doc.fontSize(10).fillColor("black").text(
     `Publié et horodaté sur la blockchain le : ${new Date().toLocaleDateString()}`,
     { align: "center" }
   );
@@ -77,5 +78,6 @@ if (data.verificationUrl && data.verificationUrl.trim() !== "") {
   }
 
   doc.end();
+
   return new Promise((resolve) => stream.on("finish", () => resolve(outputPath)));
 };
