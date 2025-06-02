@@ -204,7 +204,7 @@ function DashboardEncadrantAca() {
 
               {/* Rapports validés */}
               <Card className="dashboard-card mt-4">
-                <Card.Header> Rapports Validés</Card.Header>
+                <Card.Header>Rapports Validés</Card.Header>
                 <Card.Body>
                   {rapports.filter(r => r.statutAcademique).length === 0 ? (
                     <p className="text-muted">Aucun rapport validé.</p>
@@ -233,7 +233,7 @@ function DashboardEncadrantAca() {
                     <ul>
                       {historiquePropositions.map((p, idx) => (
                         <li key={idx}>
-                          <strong>{p.titre}</strong> — {p.action === 'accepter' ? '✅ Acceptée' : '❌ Refusée'}
+                          <strong>{p.titre}</strong> — {p.action === 'accepter' ? 'Acceptée' : 'Refusée'}
                         </li>
                       ))}
                     </ul>
