@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
@@ -157,14 +158,10 @@ function DashboardEncadrantAca() {
                         {propositions.map(p => (
                           <tr key={p.id}>
                             <td>{p.titre}</td>
+                            <td>{new Date(p.dateDebut).toLocaleDateString()} → {new Date(p.dateFin).toLocaleDateString()}</td>
                             <td>
-                              {new Date(p.dateDebut).toLocaleDateString()} → {new Date(p.dateFin).toLocaleDateString()}
-                            </td>
-                            <td>
-                              <Button variant="success" size="sm" className="me-2"
-                                onClick={() => handleDecision(p.id, 'accepter')}>Accepter</Button>
-                              <Button variant="danger" size="sm"
-                                onClick={() => handleDecision(p.id, 'rejeter')}>Refuser</Button>
+                              <Button variant="success" size="sm" className="me-2" onClick={() => handleDecision(p.id, 'accepter')}>Accepter</Button>
+                              <Button variant="danger" size="sm" onClick={() => handleDecision(p.id, 'rejeter')}>Refuser</Button>
                             </td>
                           </tr>
                         ))}
@@ -177,10 +174,10 @@ function DashboardEncadrantAca() {
               <Card className="dashboard-card">
                 <Card.Header>Rapports à Valider</Card.Header>
                 <Card.Body>
-                  {rapports.length === 0 ? (
+                  {rapports.filter(r => !r.statutAcademique).length === 0 ? (
                     <p className="text-muted">Aucun rapport en attente.</p>
                   ) : (
-                    rapports.map(r => (
+                    rapports.filter(r => !r.statutAcademique).map(r => (
                       <Card key={r.id} className="inner-card mb-3">
                         <Card.Body>
                           <strong>{r.prenomEtudiant} {r.nomEtudiant}</strong>
@@ -197,32 +194,26 @@ function DashboardEncadrantAca() {
                   )}
                 </Card.Body>
               </Card>
+
               <Card className="dashboard-card mt-4">
-  <Card.Header> Rapports Validés</Card.Header>
-  <Card.Body>
-    {rapports.filter(r => r.statutAcademique).length === 0 ? (
-      <p className="text-muted">Aucun rapport validé.</p>
-    ) : (
-      <ul>
-        {rapports.filter(r => r.statutAcademique).map(r => (
-          <li key={r.id}>
-            <strong>{r.identifiantRapport}</strong> — {r.titre} —
-            <a
-              href={`${API_URL}/uploads/${r.fichier}`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ marginLeft: '10px' }}
-            >
-              Voir PDF
-            </a>
-          </li>
-        ))}
-      </ul>
-    )}
-  </Card.Body>
-</Card>
-
-
+                <Card.Header> Rapports Validés</Card.Header>
+                <Card.Body>
+                  {rapports.filter(r => r.statutAcademique).length === 0 ? (
+                    <p className="text-muted">Aucun rapport validé.</p>
+                  ) : (
+                    <ul>
+                      {rapports.filter(r => r.statutAcademique).map(r => (
+                        <li key={r.id}>
+                          <strong>{r.identifiantRapport}</strong> — {r.titre} —
+                          <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer" style={{ marginLeft: '10px' }}>
+                            Voir PDF
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card.Body>
+              </Card>
             </div>
           )}
         </main>

@@ -17,7 +17,7 @@ function DashboardEncadrantPro() {
   const [propositions, setPropositions] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [rapports, setRapports] = useState([]);
-  const [commentaire, setCommentaire] = useState('');
+  const [commentaires, setCommentaires] = useState({});
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +33,7 @@ function DashboardEncadrantPro() {
       return;
     }
     loadData();
-  }, [token, role, navigate]);
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -54,49 +54,15 @@ function DashboardEncadrantPro() {
       setRapports(rapRes.data);
     } catch (err) {
       console.error(err);
-      setMessage('Erreur de chargement du tableau de bord.');
+      setMessage("Erreur lors du chargement des données.");
     } finally {
       setLoading(false);
     }
   };
 
-  const commenterRapport = async (rapportId) => {
-    if (!commentaire.trim()) return;
-    try {
-      await axios.post(`${API_URL}/api/rapport/comment`, {
-        rapportId,
-        commentaire
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessage('Commentaire envoyé.');
-      setCommentaire('');
-      loadData();
-    } catch {
-      setMessage("Échec de l'envoi du commentaire.");
-    }
-  };
-
-  const validerRapport = async (rapportId) => {
-    try {
-      await axios.post(`${API_URL}/api/rapport/valider`, {
-        rapportId
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessage('Rapport validé.');
-      loadData();
-    } catch {
-      setMessage('Échec de la validation.');
-    }
-  };
-
   const handleDecision = async (id, action) => {
     try {
-      await axios.post(`${API_URL}/api/stage/valider`, {
-        sujetId: id,
-        action
-      }, {
+      await axios.post(`${API_URL}/api/stage/valider`, { sujetId: id, action }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
@@ -104,6 +70,37 @@ function DashboardEncadrantPro() {
     } catch {
       setMessage("Erreur lors du traitement de la proposition.");
     }
+  };
+
+  const validerRapport = async (rapportId) => {
+    try {
+      await axios.post(`${API_URL}/api/rapport/valider`, { rapportId }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessage("Rapport validé.");
+      loadData();
+    } catch {
+      setMessage("Erreur lors de la validation du rapport.");
+    }
+  };
+
+  const commenterRapport = async (rapportId) => {
+    const texte = commentaires[rapportId];
+    if (!texte?.trim()) return;
+    try {
+      await axios.post(`${API_URL}/api/rapport/comment`, { rapportId, commentaire: texte }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessage("Commentaire ajouté.");
+      setCommentaires(prev => ({ ...prev, [rapportId]: '' }));
+      loadData();
+    } catch {
+      setMessage("Erreur lors de l'envoi du commentaire.");
+    }
+  };
+
+  const handleCommentChange = (id, value) => {
+    setCommentaires(prev => ({ ...prev, [id]: value }));
   };
 
   return (
@@ -155,25 +152,10 @@ function DashboardEncadrantPro() {
                         {propositions.map(p => (
                           <tr key={p.id}>
                             <td>{p.titre}</td>
+                            <td>{new Date(p.dateDebut).toLocaleDateString()} - {new Date(p.dateFin).toLocaleDateString()}</td>
                             <td>
-                              Du {new Date(p.dateDebut).toLocaleDateString()} au{' '}
-                              {new Date(p.dateFin).toLocaleDateString()}
-                            </td>
-                            <td>
-                              <Button
-                                size="sm"
-                                className="btn-accept"
-                                onClick={() => handleDecision(p.id, 'accepter')}
-                              >
-                                Accepter
-                              </Button>{' '}
-                              <Button
-                                size="sm"
-                                className="btn-reject"
-                                onClick={() => handleDecision(p.id, 'rejeter')}
-                              >
-                                Rejeter
-                              </Button>
+                              <Button size="sm" variant="success" className="me-2" onClick={() => handleDecision(p.id, 'accepter')}>Accepter</Button>
+                              <Button size="sm" variant="danger" onClick={() => handleDecision(p.id, 'rejeter')}>Rejeter</Button>
                             </td>
                           </tr>
                         ))}
@@ -186,45 +168,22 @@ function DashboardEncadrantPro() {
               <Card className="dashboard-card">
                 <Card.Header>Rapports à Valider</Card.Header>
                 <Card.Body>
-                  {rapports.length === 0 ? (
+                  {rapports.filter(r => !r.statutProfessionnel).length === 0 ? (
                     <p className="text-muted">Aucun rapport à examiner.</p>
                   ) : (
-                    rapports.map(r => (
+                    rapports.filter(r => !r.statutProfessionnel).map(r => (
                       <Card key={r.id} className="inner-card">
                         <Card.Body>
-                          <strong>
-                            {r.prenomEtudiant} {r.nomEtudiant}
-                          </strong>
+                          <strong>{r.prenomEtudiant} {r.nomEtudiant}</strong>
                           <br />
-                          <a
-                            href={`${API_URL}/uploads/${r.fichier}`}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Voir le rapport
-                          </a>
-                          <Form.Control
-                            as="textarea"
-                            rows={2}
-                            placeholder="Votre commentaire"
-                            value={commentaire}
+                          <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir le rapport</a>
+                          <Form.Control as="textarea" rows={2} placeholder="Votre commentaire"
+                            value={commentaires[r.id] || ''}
                             className="mt-2"
-                            onChange={e => setCommentaire(e.target.value)}
-                          />
-                          <div className="mt-2">
-                            <Button
-                              size="sm"
-                              onClick={() => commenterRapport(r.id)}
-                            >
-                              Commenter
-                            </Button>{' '}
-                            <Button
-                              size="sm"
-                              className="btn-accept"
-                              onClick={() => validerRapport(r.id)}
-                            >
-                              Valider
-                            </Button>
+                            onChange={e => handleCommentChange(r.id, e.target.value)} />
+                          <div className="mt-2 d-flex gap-2">
+                            <Button size="sm" onClick={() => commenterRapport(r.id)}>Commenter</Button>
+                            <Button size="sm" variant="success" onClick={() => validerRapport(r.id)}>Valider</Button>
                           </div>
                         </Card.Body>
                       </Card>
@@ -232,31 +191,26 @@ function DashboardEncadrantPro() {
                   )}
                 </Card.Body>
               </Card>
-              <Card className="dashboard-card mt-4">
-  <Card.Header> Rapports Validés</Card.Header>
-  <Card.Body>
-    {rapports.filter(r => r.statutAcademique).length === 0 ? (
-      <p className="text-muted">Aucun rapport validé.</p>
-    ) : (
-      <ul>
-        {rapports.filter(r => r.statutAcademique).map(r => (
-          <li key={r.id}>
-            <strong>{r.identifiantRapport}</strong> — {r.titre} —
-            <a
-              href={`${API_URL}/uploads/${r.fichier}`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ marginLeft: '10px' }}
-            >
-              Voir PDF
-            </a>
-          </li>
-        ))}
-      </ul>
-    )}
-  </Card.Body>
-</Card>
 
+              <Card className="dashboard-card mt-4">
+                <Card.Header>Rapports Validés</Card.Header>
+                <Card.Body>
+                  {rapports.filter(r => r.statutProfessionnel).length === 0 ? (
+                    <p className="text-muted">Aucun rapport validé.</p>
+                  ) : (
+                    <ul>
+                      {rapports.filter(r => r.statutProfessionnel).map(r => (
+                        <li key={r.id}>
+                          <strong>{r.identifiantRapport}</strong> — {r.titre} —
+                          <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer" style={{ marginLeft: '10px' }}>
+                            Voir PDF
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card.Body>
+              </Card>
 
             </div>
           )}
@@ -267,5 +221,3 @@ function DashboardEncadrantPro() {
 }
 
 export default DashboardEncadrantPro;
-
-
