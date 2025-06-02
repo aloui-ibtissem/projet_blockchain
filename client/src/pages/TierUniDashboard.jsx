@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Button, Alert } from "react-bootstrap";
-import "./DashboardTierEnt.css";
+import "./DashboardTierUni.css";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:3000";
 
-function TierEntDashboard() {
+function TierUniDashboard() {
   const [rapports, setRapports] = useState([]);
   const [message, setMessage] = useState("");
   const [notifications, setNotifications] = useState([]);
@@ -49,7 +49,7 @@ function TierEntDashboard() {
     try {
       await axios.post(`${API_URL}/api/rapport/valider-tier`, {
         rapportId: id,
-        structureType: "entreprise",
+        structureType: "universite",
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -60,6 +60,25 @@ function TierEntDashboard() {
       setMessage("Échec lors de la validation.");
     }
   };
+
+  const renderRapport = (r, isHistorique) => (
+    <div key={r.id} className={`dashboard-card p-3 mb-3 shadow-sm border rounded ${isHistorique ? "bg-light" : ""}`}>
+      <h6><strong>{r.identifiantRapport}</strong> — {r.titre}</h6>
+      <p className="mb-1">Étudiant : {r.prenomEtudiant} {r.nomEtudiant}</p>
+      <p className="mb-1">Date de fin : {new Date(r.dateFin).toLocaleDateString()}</p>
+      <p className="mb-1">Soumis le : {new Date(r.dateSoumission).toLocaleDateString()}</p>
+      <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">
+        Voir le fichier PDF
+      </a>
+      {!isHistorique && (
+        <div className="mt-2">
+          <Button variant="success" size="sm" onClick={() => validerRapport(r.id)}>
+            Valider ce rapport
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="dashboard-tier">
@@ -74,49 +93,25 @@ function TierEntDashboard() {
         </Alert>
       )}
 
-      {/*  Rapports à valider */}
       <div className="mt-4">
-        <h5 className="mb-3"> Rapports à valider</h5>
-        {rapports.filter(r => !r.statutProfessionnel).length === 0 ? (
+        <h5 className="mb-3">Rapports à valider</h5>
+        {rapports.filter(r => !r.statutAcademique).length === 0 ? (
           <p className="text-muted">Aucun rapport en attente.</p>
         ) : (
-          rapports.filter(r => !r.statutProfessionnel).map((r) => (
-            <div key={r.id} className="dashboard-card p-3 mb-3 shadow-sm border rounded">
-              <h6><strong>{r.identifiantRapport}</strong> — {r.titre}</h6>
-              <p className="mb-1">Étudiant : {r.prenomEtudiant} {r.nomEtudiant}</p>
-              <p className="mb-1">Date de fin : {new Date(r.dateFin).toLocaleDateString()}</p>
-              <p className="mb-1">Soumis le : {new Date(r.dateSoumission).toLocaleDateString()}</p>
-              <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">
-                Voir le fichier PDF
-              </a>
-              <div className="mt-2">
-                <Button variant="success" size="sm" onClick={() => validerRapport(r.id)}>
-                   Valider ce rapport
-                </Button>
-              </div>
-            </div>
-          ))
+          rapports.filter(r => !r.statutAcademique).map(r => renderRapport(r, false))
         )}
       </div>
 
-      {/*  Historique */}
       <div className="mt-5">
-        <h5 className="mb-3"> Rapports validés</h5>
-        {rapports.filter(r => r.statutProfessionnel).length === 0 ? (
+        <h5 className="mb-3">Rapports validés</h5>
+        {rapports.filter(r => r.statutAcademique).length === 0 ? (
           <p className="text-muted">Aucun rapport validé.</p>
         ) : (
-          rapports.filter(r => r.statutProfessionnel).map((r) => (
-            <div key={r.id} className="dashboard-card p-3 mb-3 shadow-sm border rounded bg-light">
-              <strong>{r.identifiantRapport}</strong> — {r.titre}<br />
-              <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">
-                Voir le PDF
-              </a>
-            </div>
-          ))
+          rapports.filter(r => r.statutAcademique).map(r => renderRapport(r, true))
         )}
       </div>
     </div>
   );
 }
 
-export default TierEntDashboard;
+export default TierUniDashboard;
