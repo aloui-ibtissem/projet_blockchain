@@ -54,16 +54,17 @@ exports.commentRapport = async (req, res) => {
 // Validation par un tier
 exports.validateByTier = async (req, res) => {
   try {
-    const { id } = req.user;
     const { rapportId } = req.body;
+    const tierId = req.user.id; // récupéré via le token (grâce à middleware checkToken)
 
-    await rapportService.validerParTier(rapportId, id);
-    res.status(200).json({ message: "Rapport validé par le tier." });
+    await rapportService.validerParTier(rapportId, tierId);
+    res.status(200).json({ message: "Validation par le tier effectuée." });
   } catch (err) {
-    console.error("Erreur validateByTier:", err);
+    console.error("Erreur validation tier:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
 
 //  Récupérer les rapports à valider pour l'encadrant
 exports.getRapportsAValider = async (req, res) => {

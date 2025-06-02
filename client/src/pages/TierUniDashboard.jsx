@@ -21,12 +21,12 @@ function TierUniDashboard() {
       const res = await axios.get(`${API_URL}/api/rapport/tier/rapports-assignes`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (Array.isArray(res.data)) {
-        setRapports(res.data);
-      } else {
-        setRapports([]);
-        console.warn("Format inattendu:", res.data);
-      }
+     if (res.data && Array.isArray(res.data.enAttente)) {
+  setRapports(res.data.enAttente);
+} else {
+  setRapports([]);
+}
+ 
     } catch (err) {
       console.error(err);
       setMessage("Erreur lors du chargement des rapports.");

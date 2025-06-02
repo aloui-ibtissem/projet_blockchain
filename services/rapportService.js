@@ -326,8 +326,10 @@ exports.getRapportsAValider = async (email, role) => {
   const [rows] = await db.execute(
     `
     SELECT r.id, r.fichier, r.identifiantRapport, r.dateSoumission,
-           e.nom AS nomEtudiant, e.prenom AS prenomEtudiant,
-           s.titre AS titreStage
+       r.statutAcademique, r.statutProfessionnel,
+       e.nom AS nomEtudiant, e.prenom AS prenomEtudiant,
+       s.titre AS titreStage
+
     FROM RapportStage r
     JOIN Stage s ON r.stageId = s.id
     JOIN Etudiant e ON r.etudiantId = e.id
@@ -561,9 +563,10 @@ exports.getRapportsPourTier = async (tierId) => {
     JOIN Etudiant e ON s.etudiantId = e.id
     LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
     LEFT JOIN Universite u ON s.universiteId = u.id
-    WHERE (s.universiteId = ? AND r.statutAcademique = FALSE)
-       OR (s.entrepriseId = ? AND r.statutProfessionnel = FALSE)
-  `, [tier.universiteId, tier.entrepriseId]);
+    WHERE (s.universiteId = ? AND r.statutAcademique = FALSE AND r.tierIntervenantAcademiqueId = ?)
+   OR (s.entrepriseId = ? AND r.statutProfessionnel = FALSE AND r.tierIntervenantProfessionnelId = ?)
+
+  `, [tier.universiteId, tier.id, tier.entrepriseId, tier.id]);
 
   return {
     enAttente: rows,
