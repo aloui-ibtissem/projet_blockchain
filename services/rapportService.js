@@ -487,7 +487,29 @@ exports.checkForTierIntervention = async () => {
 
       console.log(`Intervention tier ${entite.toUpperCase()} pour le rapport ${r.identifiantRapport}`);
 
-      await exports.validerParTier(r.id, tierId, entite);
+await notificationService.notifyUser({
+  toId: tierId,
+  toRole: "TierDebloqueur",
+  subject: "Intervention requise",
+  templateName: "tier_intervention",
+  templateData: {
+    etudiantPrenom: r.prenom,
+    etudiantNom: r.nom,
+    identifiantRapport: r.identifiantRapport,
+    dashboardUrl: buildUrl("/tier/rapports")
+  },
+  message: `Un encadrant n’a pas validé le rapport de ${r.prenom} ${r.nom} à temps. Merci d’intervenir manuellement.`
+});
+
+await historiqueService.logAction({
+  rapportId: r.id,
+  stageId: r.stageId,
+  utilisateurId: tierId,
+  role: "TierDebloqueur",
+  action: `Demande d’intervention tier`,
+  commentaire: `Tier notifié pour valider manuellement le rapport ${r.identifiantRapport}`,
+  origine: "automatique"
+});
 
       await historiqueService.logAction({
         rapportId: r.id,
