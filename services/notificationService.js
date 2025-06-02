@@ -104,7 +104,7 @@ Accédez à votre espace personnel : ${globalTemplateVars.loginUrl}
 //
 exports.getNotifications = async (userId, role) => {
   const [rows] = await db.execute(
-    `SELECT id, subject, message, createdAt FROM Notification 
+    `SELECT id, subject, message, createdAt FROM notifications
      WHERE userId = ? AND userRole = ? 
      ORDER BY createdAt DESC LIMIT 10`,
     [userId, role]
