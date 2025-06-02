@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
@@ -40,22 +39,16 @@ function DashboardEncadrantAca() {
     setLoading(true);
     try {
       const [propRes, notifRes, rapRes] = await Promise.all([
-        axios.get(`${API_URL}/stage/propositions`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API_URL}/stage/notifications`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API_URL}/rapport/encadrant`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        axios.get(`${API_URL}/stage/propositions`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/stage/notifications`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/rapport/encadrant`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
-      setPropositions(propRes.data);
-      setNotifications(notifRes.data);
-      setRapports(rapRes.data);
+      setPropositions(propRes.data || []);
+      setNotifications(notifRes.data || []);
+      setRapports(Array.isArray(rapRes.data) ? rapRes.data : []);
     } catch (err) {
       console.error(err);
-      setMessage('Erreur lors du chargement des données.');
+      setMessage("Erreur lors du chargement des données.");
     } finally {
       setLoading(false);
     }
@@ -69,34 +62,34 @@ function DashboardEncadrantAca() {
       setMessage(`Proposition ${action === 'accepter' ? 'acceptée' : 'refusée'}.`);
       loadData();
     } catch {
-      setMessage("Erreur lors de la validation de la proposition.");
+      setMessage("Erreur lors de la validation.");
     }
   };
 
-  const validerRapport = async (rapportId) => {
+  const validerRapport = async (id) => {
     try {
-      await axios.post(`${API_URL}/rapport/valider`, { rapportId }, {
+      await axios.post(`${API_URL}/rapport/valider`, { rapportId: id }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setMessage('Rapport validé.');
+      setMessage("Rapport validé.");
       loadData();
     } catch {
-      setMessage('Erreur lors de la validation du rapport.');
+      setMessage("Erreur validation.");
     }
   };
 
-  const commenterRapport = async (rapportId) => {
-    const texte = commentaires[rapportId];
+  const commenterRapport = async (id) => {
+    const texte = commentaires[id];
     if (!texte?.trim()) return;
     try {
-      await axios.post(`${API_URL}/rapport/comment`, { rapportId, commentaire: texte }, {
+      await axios.post(`${API_URL}/rapport/comment`, { rapportId: id, commentaire: texte }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setMessage("Commentaire ajouté.");
-      setCommentaires(prev => ({ ...prev, [rapportId]: '' }));
+      setCommentaires(prev => ({ ...prev, [id]: '' }));
+      setMessage("Commentaire envoyé.");
       loadData();
     } catch {
-      setMessage("Erreur lors de l'envoi du commentaire.");
+      setMessage("Erreur commentaire.");
     }
   };
 
@@ -111,9 +104,7 @@ function DashboardEncadrantAca() {
         <Header title="Encadrant Académique" />
         <main className="main-content">
           {message && <Alert variant="info">{message}</Alert>}
-          {loading ? (
-            <SkeletonLoader />
-          ) : (
+          {loading ? <SkeletonLoader /> : (
             <div className="dashboard-grid">
               <Card className="dashboard-card">
                 <Card.Header className="d-flex justify-content-between align-items-center">
@@ -123,45 +114,30 @@ function DashboardEncadrantAca() {
                   </Button>
                 </Card.Header>
                 <Collapse in={showNotif}>
-                  <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  <Card.Body>
                     {notifications.length > 0 ? (
-                      <ul className="notification-list">
-                        {notifications.map(n => (
-                          <li key={n.id}>
-                            <strong>{n.message}</strong>{' '}
-                            <small className="notification-date">({new Date(n.date_envoi).toLocaleDateString()})</small>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-muted">Aucune notification disponible.</p>
-                    )}
+                      <ul>{notifications.map(n => (
+                        <li key={n.id}>{n.message} <small>({new Date(n.date_envoi).toLocaleDateString()})</small></li>
+                      ))}</ul>
+                    ) : <p>Aucune notification.</p>}
                   </Card.Body>
                 </Collapse>
               </Card>
 
               <Card className="dashboard-card">
-                <Card.Header>Propositions de Stage</Card.Header>
+                <Card.Header>Propositions</Card.Header>
                 <Card.Body>
-                  {propositions.length === 0 ? (
-                    <p className="text-muted">Aucune proposition en attente.</p>
-                  ) : (
-                    <Table bordered responsive hover>
-                      <thead>
-                        <tr>
-                          <th>Titre</th>
-                          <th>Dates</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
+                  {propositions.length === 0 ? <p>Aucune proposition.</p> : (
+                    <Table striped bordered>
+                      <thead><tr><th>Titre</th><th>Dates</th><th>Actions</th></tr></thead>
                       <tbody>
                         {propositions.map(p => (
                           <tr key={p.id}>
                             <td>{p.titre}</td>
-                            <td>{new Date(p.dateDebut).toLocaleDateString()} → {new Date(p.dateFin).toLocaleDateString()}</td>
+                            <td>{new Date(p.dateDebut).toLocaleDateString()} - {new Date(p.dateFin).toLocaleDateString()}</td>
                             <td>
-                              <Button variant="success" size="sm" className="me-2" onClick={() => handleDecision(p.id, 'accepter')}>Accepter</Button>
-                              <Button variant="danger" size="sm" onClick={() => handleDecision(p.id, 'rejeter')}>Refuser</Button>
+                              <Button size="sm" variant="success" className="me-2" onClick={() => handleDecision(p.id, 'accepter')}>Accepter</Button>
+                              <Button size="sm" variant="danger" onClick={() => handleDecision(p.id, 'rejeter')}>Refuser</Button>
                             </td>
                           </tr>
                         ))}
@@ -175,15 +151,14 @@ function DashboardEncadrantAca() {
                 <Card.Header>Rapports à Valider</Card.Header>
                 <Card.Body>
                   {rapports.filter(r => !r.statutAcademique).length === 0 ? (
-                    <p className="text-muted">Aucun rapport en attente.</p>
+                    <p>Aucun rapport.</p>
                   ) : (
                     rapports.filter(r => !r.statutAcademique).map(r => (
-                      <Card key={r.id} className="inner-card mb-3">
+                      <Card key={r.id} className="inner-card">
                         <Card.Body>
                           <strong>{r.prenomEtudiant} {r.nomEtudiant}</strong>
                           <p><a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">📄 Voir le rapport</a></p>
-                          <Form.Control as="textarea" rows={2} placeholder="Ajouter un commentaire..."
-                            value={commentaires[r.id] || ''} onChange={e => handleCommentChange(r.id, e.target.value)} />
+                          <Form.Control as="textarea" value={commentaires[r.id] || ''} onChange={e => handleCommentChange(r.id, e.target.value)} rows={2} />
                           <div className="mt-2 d-flex gap-2">
                             <Button size="sm" onClick={() => commenterRapport(r.id)}>Commenter</Button>
                             <Button size="sm" variant="success" onClick={() => validerRapport(r.id)}>Valider</Button>
@@ -196,21 +171,14 @@ function DashboardEncadrantAca() {
               </Card>
 
               <Card className="dashboard-card mt-4">
-                <Card.Header> Rapports Validés</Card.Header>
+                <Card.Header>Rapports Validés</Card.Header>
                 <Card.Body>
                   {rapports.filter(r => r.statutAcademique).length === 0 ? (
-                    <p className="text-muted">Aucun rapport validé.</p>
+                    <p>Aucun rapport validé.</p>
                   ) : (
-                    <ul>
-                      {rapports.filter(r => r.statutAcademique).map(r => (
-                        <li key={r.id}>
-                          <strong>{r.identifiantRapport}</strong> — {r.titre} —
-                          <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer" style={{ marginLeft: '10px' }}>
-                            Voir PDF
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
+                    <ul>{rapports.filter(r => r.statutAcademique).map(r => (
+                      <li key={r.id}><strong>{r.identifiantRapport}</strong> — {r.titre} — <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir PDF</a></li>
+                    ))}</ul>
                   )}
                 </Card.Body>
               </Card>
