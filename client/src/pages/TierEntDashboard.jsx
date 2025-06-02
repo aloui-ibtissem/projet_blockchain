@@ -1,120 +1,92 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Button, Alert } from "react-bootstrap";
-import "./DashboardTierEnt.css";
+import { Button, Spinner, Alert } from "react-bootstrap";
+import { jwtDecode } from "jwt-decode";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:3000";
+const BASE = process.env.REACT_APP_BACKEND_URL || "http://localhost:3000";
+const API_URL = BASE.includes("/api") ? BASE : `${BASE}/api`;
 
 function TierEntDashboard() {
-  const [rapports, setRapports] = useState([]);
-  const [message, setMessage] = useState("");
-  const [notifications, setNotifications] = useState([]);
   const token = localStorage.getItem("token");
+  const [rapportsAca, setRapportsAca] = useState([]);
+  const [rapportsPro, setRapportsPro] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [refreshFlag, setRefreshFlag] = useState(false);
 
-  useEffect(() => {
-    fetchRapports();
-    fetchNotifications();
-  }, []);
+  const decoded = token ? jwtDecode(token) : null;
+  const role = decoded?.role;
 
   const fetchRapports = async () => {
+    setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/api/rapport/tier/rapports-assignes`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (Array.isArray(res.data)) {
-        setRapports(res.data);
-      } else {
-        setRapports([]);
-        console.warn("Format inattendu:", res.data);
-      }
+      setRapportsAca(res.data.enAttenteAcademique || []);
+      setRapportsPro(res.data.enAttenteProfessionnel || []);
     } catch (err) {
-      console.error(err);
-      setMessage("Erreur lors du chargement des rapports.");
+      setErrorMsg("Erreur de chargement des rapports.");
+    }
+    setLoading(false);
+  };
+
+  const validerRapport = async (rapportId) => {
+    try {
+      await axios.post(
+        `${API_URL}/api/rapport/tier/valider`,
+        { rapportId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSuccessMsg("Rapport validé avec succès.");
+      setRefreshFlag(!refreshFlag);
+    } catch (err) {
+      setErrorMsg("Erreur lors de la validation.");
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/notifications/mes`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotifications(res.data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  useEffect(() => {
+    fetchRapports();
+  }, [refreshFlag]);
 
-  const validerRapport = async (id) => {
-    if (!window.confirm("Confirmez-vous la validation de ce rapport ?")) return;
-    try {
-      await axios.post(`${API_URL}/api/rapport/valider-tier`, {
-        rapportId: id,
-        structureType: "entreprise",
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMessage("Rapport validé avec succès.");
-      fetchRapports();
-    } catch (err) {
-      console.error(err);
-      setMessage("Échec lors de la validation.");
-    }
-  };
+  const renderRapportCard = (r, type) => (
+    <div key={r.id} className="dashboard-card p-3 mb-3 shadow-sm border rounded">
+      <h6>
+        <strong>{r.identifiantRapport}</strong> — {r.titre}
+      </h6>
+      <p className="mb-1">Étudiant : {r.prenomEtudiant} {r.nomEtudiant}</p>
+      <p className="mb-1">Date fin de stage : {new Date(r.dateFin).toLocaleDateString()}</p>
+      <p className="mb-1">Soumis le : {new Date(r.dateSoumission).toLocaleDateString()}</p>
+      <p className="mb-1"><strong>Type de validation attendue : </strong>{type}</p>
+      <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">
+        Voir le rapport PDF
+      </a>
+      <div className="mt-2">
+        <Button variant="success" size="sm" onClick={() => validerRapport(r.id)}>
+          Valider ce rapport
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="dashboard-tier">
-      <div className="dashboard-header">
-        <h5>Tableau de bord — Tier Entreprise</h5>
-      </div>
+    <div className="container mt-4">
+      <h4 className="mb-4 text-center">Tableau de bord – Tier Validateur</h4>
 
-      {message && <Alert variant="info">{message}</Alert>}
-      {notifications.length > 0 && (
-        <Alert variant="warning">
-          Vous avez {notifications.length} nouvelle(s) notification(s).
-        </Alert>
+      {successMsg && <Alert variant="success" onClose={() => setSuccessMsg("")} dismissible>{successMsg}</Alert>}
+      {errorMsg && <Alert variant="danger" onClose={() => setErrorMsg("")} dismissible>{errorMsg}</Alert>}
+      {loading ? <Spinner animation="border" /> : (
+        <>
+          <h5 className="text-primary mb-2">📘 Rapports à valider – Université</h5>
+          {rapportsAca.length === 0 ? <p>Aucun rapport académique à valider.</p> :
+            rapportsAca.map(r => renderRapportCard(r, "Académique"))}
+
+          <h5 className="text-success mt-4 mb-2">🏢 Rapports à valider – Entreprise</h5>
+          {rapportsPro.length === 0 ? <p>Aucun rapport professionnel à valider.</p> :
+            rapportsPro.map(r => renderRapportCard(r, "Professionnel"))}
+        </>
       )}
-
-      {/*  Rapports à valider */}
-      <div className="mt-4">
-        <h5 className="mb-3"> Rapports à valider</h5>
-        {rapports.filter(r => !r.statutProfessionnel).length === 0 ? (
-          <p className="text-muted">Aucun rapport en attente.</p>
-        ) : (
-          rapports.filter(r => !r.statutProfessionnel).map((r) => (
-            <div key={r.id} className="dashboard-card p-3 mb-3 shadow-sm border rounded">
-              <h6><strong>{r.identifiantRapport}</strong> — {r.titre}</h6>
-              <p className="mb-1">Étudiant : {r.prenomEtudiant} {r.nomEtudiant}</p>
-              <p className="mb-1">Date de fin : {new Date(r.dateFin).toLocaleDateString()}</p>
-              <p className="mb-1">Soumis le : {new Date(r.dateSoumission).toLocaleDateString()}</p>
-              <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">
-                Voir le fichier PDF
-              </a>
-              <div className="mt-2">
-                <Button variant="success" size="sm" onClick={() => validerRapport(r.id)}>
-                   Valider ce rapport
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/*  Historique */}
-      <div className="mt-5">
-        <h5 className="mb-3"> Rapports validés</h5>
-        {rapports.filter(r => r.statutProfessionnel).length === 0 ? (
-          <p className="text-muted">Aucun rapport validé.</p>
-        ) : (
-          rapports.filter(r => r.statutProfessionnel).map((r) => (
-            <div key={r.id} className="dashboard-card p-3 mb-3 shadow-sm border rounded bg-light">
-              <strong>{r.identifiantRapport}</strong> — {r.titre}<br />
-              <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">
-                Voir le PDF
-              </a>
-            </div>
-          ))
-        )}
-      </div>
     </div>
   );
 }

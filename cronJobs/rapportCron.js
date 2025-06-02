@@ -2,32 +2,32 @@
 const cron = require("node-cron");
 const rapportService = require("../services/rapportService");
 
-// Tous les jours 
+// Rappel étudiants toutes les 10 minutes
 cron.schedule("*/10 * * * *", async () => {
   try {
-    console.log(" CRON: Vérification rappels étudiants...");
-    await rapportService.remindersCheck(); // Rappel aux étudiants
+    console.log("CRON: Rappel — Étudiants");
+    await rapportService.remindersCheck();
   } catch (err) {
-    console.error("Erreur dans remindersCheck:", err);
+    console.error("Erreur remindersCheck:", err);
   }
 });
 
-// Tous les jours "*/10 * * * *": chaque 10 minutes pour le développement //08*** si on passe au production a 8h par exemple
+// Rappel encadrants toutes les 10 minutes
 cron.schedule("*/10 * * * *", async () => {
   try {
-    console.log(" CRON: Vérification rappels encadrants...");
-    await rapportService.remindersValidationCheck(); // Rappel aux encadrants
+    console.log("CRON: Rappel — Encadrants");
+    await rapportService.remindersValidationCheck();
   } catch (err) {
-    console.error("Erreur dans remindersValidationCheck:", err);
+    console.error("Erreur remindersValidationCheck:", err);
   }
 });
 
-// Tous les jours 
+// Vérification tier chaque 10 minutes
 cron.schedule("*/10 * * * *", async () => {
   try {
-    console.log(" CRON: Vérification intervention tier...");
-    await rapportService.checkForTierIntervention(); // Intervention automatique
+    console.log("CRON: Intervention — Tier");
+    await rapportService.checkForTierIntervention();
   } catch (err) {
-    console.error("Erreur dans checkForTierIntervention:", err);
+    console.error("Erreur checkForTierIntervention:", err);
   }
 });
