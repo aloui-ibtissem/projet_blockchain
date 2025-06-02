@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { Alert, Card, Button, Form, Table } from 'react-bootstrap';
-import './DashboardEncadrantPro.css';
+import './DashboardEncadrantAca.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL?.includes('/api')
   ? process.env.REACT_APP_BACKEND_URL
