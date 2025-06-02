@@ -48,7 +48,6 @@ AND (
   OR (R.statutProfessionnel = TRUE AND R.tierIntervenantAcademiqueId IS NOT NULL)
   OR (R.tierIntervenantAcademiqueId IS NOT NULL AND R.tierIntervenantProfessionnelId IS NOT NULL)
 )
-
   `, [responsableId, stageId]);
 
   if (!stageRows.length) throw new Error("Rapport non validé par les deux encadrants");
@@ -63,7 +62,7 @@ AND (
     identifiantStage: stage.identifiant_unique,
     attestationId,
     dateGeneration: new Date().toLocaleDateString(),
-    verificationUrl: "", // sera mis à jour plus tard (auto)
+    verificationUrl: "",
     responsableNom: modifs.responsableNom || stage.responsableNom,
     lieu: modifs.lieu || stage.nomEntreprise,
     logoPath: modifs.logoPath || stage.logoPath,
@@ -85,10 +84,12 @@ AND (
     timestamp: Date.now(),
     event: "AttestationPublished"
   });
-  const htmlUrl = await uploadHTMLToIPFS(htmlContent);
+
+  const htmlUpload = await uploadHTMLToIPFS(htmlContent);
+  const htmlUrl = htmlUpload.publicUrl;
 
   console.log("[StageChain]  Régénération PDF avec URL de vérification...");
-  pdfData.verificationUrl = htmlUrl;
+  pdfData.verificationUrl = htmlUpload.localUrl || htmlUpload.publicUrl;
   const finalPdfPath = await generatePDFWithQR(pdfData);
   const finalHash = await hashFile(finalPdfPath);
   const finalIpfsUrl = await uploadToIPFS(finalPdfPath);
@@ -100,21 +101,19 @@ AND (
     VALUES (?, ?, ?, ?, ?, ?, NOW(), TRUE)
   `, [stageId, attestationId, finalHash, finalIpfsUrl, responsableId, stage.etudiantId]);
 
- await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
+  await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
 
-// Ajout au journal des actions (historique)
-const [[rapportRow]] = await db.execute("SELECT id FROM RapportStage WHERE stageId = ?", [stageId]);
-if (rapportRow?.id) {
-  await historiqueService.logAction({
-    rapportId: rapportRow.id,
-    utilisateurId: responsableId,
-    role: "ResponsableEntreprise",
-    action: "Attestation générée",
-    commentaire: `Attestation générée et publiée sur la blockchain pour ${stage.etudiantPrenom} ${stage.etudiantNom}.`,
-    origine: "automatique"
-  });
-}
-
+  const [[rapportRow]] = await db.execute("SELECT id FROM RapportStage WHERE stageId = ?", [stageId]);
+  if (rapportRow?.id) {
+    await historiqueService.logAction({
+      rapportId: rapportRow.id,
+      utilisateurId: responsableId,
+      role: "ResponsableEntreprise",
+      action: "Attestation générée",
+      commentaire: `Attestation générée et publiée sur la blockchain pour ${stage.etudiantPrenom} ${stage.etudiantNom}.`,
+      origine: "automatique"
+    });
+  }
 
   console.log("[StageChain]  Publication sur la blockchain...");
   await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, finalHash);
@@ -176,6 +175,7 @@ if (rapportRow?.id) {
     verificationPage: htmlUrl
   };
 };
+
 
 exports.getAttestationsByUniversite = async (responsableUniId) => {
   const [[responsable]] = await db.execute(`
