@@ -1,4 +1,6 @@
 const rapportService = require("../services/rapportService");
+const db = require('../config/db');
+
 
 //  Soumettre un rapport
 exports.submitRapport = async (req, res) => {
