@@ -147,15 +147,13 @@ const stageId = req.params.stageId;
   }
 };
 
-//
-exports.getStagesHistoriques = async (req, res) => {
-  try {
-    const email = req.user.email;
-    const stages = await stageService.getStagesHistoriquesByEmail(email);
-    res.status(200).json(stages);
-  } catch (err) {
-    console.error("Erreur dans getStagesHistoriques :", err);
-    res.status(500).json({ error: "Erreur interne serveur" });
-  }
+exports.getStagesHistoriques = async (req,res)=>{
+  const search = req.query.search || "";
+  const data   = await stageService.getStagesHistoriquesByEmail(
+                   req.user.email,
+                   search
+                 );
+  res.json(data);
 };
+
 

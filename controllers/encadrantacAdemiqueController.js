@@ -33,3 +33,16 @@ exports.update = (req, res) => {
 exports.delete = (req, res) => {
     // Appel de la méthode 'delete' du modèle pour supprimer un encadrant 
 }
+
+//
+exports.getRapportsEncadrantAcademique = async (req, res) => {
+  const encadrantId = req.params.id;
+  const search = req.query.search || '';
+
+  try {
+    const rapports = await rapportService.getRapportsPourEncadrant(encadrantId, 'academique', search);
+    res.json(rapports);
+  } catch (err) {
+    res.status(500).json({ error: "Erreur récupération rapports académique" });
+  }
+};

@@ -25,3 +25,4 @@ exports.update = (req, res) => {
 exports.delete = (req, res) => {
     EncadrantProfessionnel.delete(req.params.id, (err) => res.json({ message: 'Suppression réussie' }));
 };
+//

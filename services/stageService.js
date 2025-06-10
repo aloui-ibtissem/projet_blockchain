@@ -288,27 +288,35 @@ exports.getCurrentStageByEmail = async (email) => {
 // ===============================
 
 
- exports.getStagesHistoriquesByEmail = async (email) => {
+exports.getStagesHistoriquesByEmail = async (email, search = "") => {
+   const extra = search ? `AND (S.identifiant_unique LIKE ? OR R.identifiantRapport LIKE ?)` : "";
+  const params = search ? [etudiant.id, `%${search}%`, `%${search}%`] : [etudiant.id];
   const [[etudiant]] = await db.execute("SELECT id FROM Etudiant WHERE email = ?", [email]);
   if (!etudiant) return [];
 
   const [rows] = await db.execute(`
+    
     SELECT 
       S.*, 
       E.nom AS entreprise,
       A.prenom AS acaPrenom, A.nom AS acaNom,
       P.prenom AS proPrenom, P.nom AS proNom,
       R.identifiantRapport, R.fichier,
-      A2.identifiant AS attestationId, A2.ipfsUrl
+      A2.identifiant AS attestationId, A2.ipfsUrl,
+     
     FROM Stage S
     JOIN Entreprise E ON S.entrepriseId = E.id
     JOIN EncadrantAcademique A ON S.encadrantAcademiqueId = A.id
     JOIN EncadrantProfessionnel P ON S.encadrantProfessionnelId = P.id
     LEFT JOIN RapportStage R ON R.stageId = S.id
     LEFT JOIN Attestation A2 ON A2.stageId = S.id
-    WHERE S.etudiantId = ? AND S.estHistorique = TRUE
-    ORDER BY S.dateDebut DESC
-  `, [etudiant.id]);
+WHERE S.etudiantId = ? AND S.estHistorique = TRUE ${extra}
+     ORDER BY S.dateDebut DESC
+  `, params);
+ 
+  
+ 
+
 
   return rows;
 };

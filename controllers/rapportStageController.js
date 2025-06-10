@@ -131,4 +131,34 @@ exports.getHistoriqueUtilisateur = async (req, res) => {
   }
 };
 
+//
+exports.getRapportsByEncadrantAcademiqueEmail = async (req, res) => {
+  const { email } = req.params;
+  const [rows] = await db.execute(`
+    SELECT rs.*, s.titre, e.nom AS etudiantNom, e.prenom AS etudiantPrenom
+    FROM RapportStage rs
+    JOIN Stage s ON s.id = rs.stageId
+    JOIN EncadrantAcademique ea ON ea.id = s.encadrantAcademiqueId
+    JOIN Etudiant e ON e.id = s.etudiantId
+    WHERE ea.email = ?
+    ORDER BY rs.dateSoumission DESC
+  `, [email]);
+  res.json(rows);
+};
+
+//
+exports.getRapportsByEncadrantProfessionnelEmail = async (req, res) => {
+  const { email } = req.params;
+  const [rows] = await db.execute(`
+    SELECT rs.*, s.titre, e.nom AS etudiantNom, e.prenom AS etudiantPrenom
+    FROM RapportStage rs
+    JOIN Stage s ON s.id = rs.stageId
+    JOIN EncadrantProfessionnel ep ON ep.id = s.encadrantProfessionnelId
+    JOIN Etudiant e ON e.id = s.etudiantId
+    WHERE ep.email = ?
+    ORDER BY rs.dateSoumission DESC
+  `, [email]);
+  res.json(rows);
+};
+
 
