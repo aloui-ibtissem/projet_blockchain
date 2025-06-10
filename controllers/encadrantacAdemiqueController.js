@@ -30,9 +30,16 @@ exports.update = (req, res) => {
 };
 
 // Fonction pour supprimer un encadrant académique
+
+// Fonction pour supprimer un encadrant académique
 exports.delete = (req, res) => {
-    // Appel de la méthode 'delete' du modèle pour supprimer un encadrant 
-}
+    EncadrantAcademique.delete(req.params.id, (err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Erreur lors de la suppression' });
+        }
+        res.json({ message: 'Suppression réussie' });
+    });
+};
 
 //
 exports.getRapportsEncadrantAcademique = async (req, res) => {

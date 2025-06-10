@@ -2,7 +2,6 @@ const express = require('express');
 const controller = require('../controllers/encadrantProfessionnelController');
 const stageController = require('../controllers/stageController');
 const rapportController = require('../controllers/rapportStageController');
-const EncadrantProfessionnel = require('../models/EncadrantProfessionnel');
 
 const router = express.Router();
 
@@ -13,7 +12,6 @@ router.put('/:id', controller.update);
 router.delete('/:id', controller.delete);
 
 router.get('/stages/:email', stageController.getStagesByEncadrantProfessionnelEmail);
-//
-router.get('/rapports/:id', controller.getRapportsEncadrantProfessionnel);
+router.get('/rapports/:email', rapportController.getRapportsByEncadrantProfessionnelEmail);
 
 module.exports = router;

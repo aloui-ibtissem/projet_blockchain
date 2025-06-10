@@ -1,5 +1,5 @@
 const express = require('express');
-const controller = require('../controllers/encadrantacAdemiqueController');
+const controller = require('../controllers/encadrantAcademiqueController');
 const stageController = require('../controllers/stageController');
 const rapportController = require('../controllers/rapportStageController');
 
@@ -14,8 +14,9 @@ router.delete('/:id', controller.delete);
 
 // Obtenir stages actuels et historiques encadrés par cet encadrant
 router.get('/stages/:email', stageController.getStagesByEncadrantAcademiqueEmail);
-//
-router.get('/rapports/:id', controller.getRapportsEncadrantAcademique);
+
+// Obtenir rapports encadrés par email
+router.get('/rapports/:email', rapportController.getRapportsByEncadrantAcademiqueEmail);
 
 module.exports = router;
 

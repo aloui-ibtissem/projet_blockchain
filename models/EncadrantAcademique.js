@@ -20,6 +20,8 @@ class EncadrantAcademique{
     static delete(id, callback) {
         db.query('DELETE FROM EncadrantAcademique WHERE id = ?', [id], callback);
     }
+    
+
 }
 
 module.exports = EncadrantAcademique;
