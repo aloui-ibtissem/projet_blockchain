@@ -17,11 +17,13 @@ class EncadrantAcademique{
         db.query('UPDATE EncadrantAcademique SET ? WHERE id = ?', [data, id], callback);
     }
 
-    static delete(id, callback) {
-        db.query('DELETE FROM EncadrantAcademique WHERE id = ?', [id], callback);
-    }
-    
+   
+   
 
 }
+ EncadrantAcademique.delete = (id, callback) => {
+    db.query('DELETE FROM encadrant_academique WHERE id = ?', [id], callback);
+};
+
 
 module.exports = EncadrantAcademique;

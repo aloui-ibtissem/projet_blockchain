@@ -29,7 +29,6 @@ exports.update = (req, res) => {
     EncadrantAcademique.update(req.params.id, req.body, (err) => res.json({ message: 'Mise à jour réussie' }));
 };
 
-// Fonction pour supprimer un encadrant académique
 
 // Fonction pour supprimer un encadrant académique
 exports.delete = (req, res) => {
@@ -40,6 +39,16 @@ exports.delete = (req, res) => {
         res.json({ message: 'Suppression réussie' });
     });
 };
+// Fonction pour supprimer un encadrant académique
+exports.delete = (req, res) => {
+    EncadrantAcademique.delete(req.params.id, (err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Erreur lors de la suppression' });
+        }
+        res.json({ message: 'Suppression réussie' });
+    });
+};
+
 
 //
 exports.getRapportsEncadrantAcademique = async (req, res) => {
