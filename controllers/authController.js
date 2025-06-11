@@ -141,16 +141,19 @@ exports.verifyEmailToken = async (req, res) => {
     };
     const roleEnum = mapEnum[role];
     if (!roleEnum) throw new Error(`Rôle '${role}' non reconnu.`);
+try {
+  const existing = await authContract.getRole(recoveredAddr);
+  if (existing.toString() !== "0") {
+    console.log("Adresse déjà enregistrée sur la blockchain. Aucun enregistrement nécessaire.");
+  } else {
+    const tx = await authContract.selfRegister(roleEnum);
+    await tx.wait();
+    console.log("Enregistrement blockchain effectué.");
+  }
+} catch (err) {
+  console.error("Erreur lors de la vérification ou de l'enregistrement sur la blockchain :", err.reason || err);
+}
 
-    try {
-      const existing = await authContract.getRole(recoveredAddr);
-      if (existing.toString() === "0") {
-        const tx = await authContract.selfRegister(roleEnum);
-        await tx.wait();
-      }
-    } catch (err) {
-      console.warn("On-chain registration skipped:", err.reason || err);
-    }
 
     const structId = structureType === "entreprise" ? entrepriseId : universiteId;
     const identifiant = await genererIdentifiantActeur({
