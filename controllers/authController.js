@@ -89,7 +89,6 @@ exports.register = async (req, res) => {
     );
 
     //
-    const { buildUrl } = require("../utils/urlUtils");
 const confirmationUrl = buildUrl(`/api/auth/verify-email/${token}`);
 
 
@@ -211,9 +210,8 @@ try {
     await db.execute(q, params);
     await db.execute("UPDATE TokenVerif SET utilisé = TRUE WHERE id = ?", [tokenId]);
     //
-    const frontend = process.env.PUBLIC_FRONTEND_URL || process.env.FRONTEND_URL;
     //
-     return res.redirect(`${frontend}/verified`);
+     return res.redirect(`${process.env.PUBLIC_URL}/verified`);
   } catch (err) {
     console.error("verifyEmailToken error:", err);
     return res.status(500).json({ error: err.message });
