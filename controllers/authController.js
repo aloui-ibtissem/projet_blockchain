@@ -7,6 +7,8 @@ const db = require("../config/db");
 const sendEmail = require("../utils/sendEmail");
 const { genererIdentifiantActeur } = require("../utils/identifiantUtils");
 const AuthAbi = require("../abis/Auth.json");
+const { buildUrl } = require("../utils/urlUtils");
+
 require("dotenv").config();
 
 const provider = new ethers.providers.JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL);
@@ -86,8 +88,9 @@ exports.register = async (req, res) => {
       [prenom, nom, email, role, signature, token, uniId, entId, structureType]
     );
 
-    // Choisir l’URL (public ou local)
-    const confirmationUrl = `${process.env.PUBLIC_URL}/api/auth/verify-email/${token}`;
+    //
+    const { buildUrl } = require("../utils/urlUtils");
+const confirmationUrl = buildUrl(`/api/auth/verify-email/${token}`);
 
 
     // Lecture et personnalisation du template
