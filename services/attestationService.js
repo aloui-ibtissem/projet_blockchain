@@ -12,7 +12,7 @@ const historiqueService = require("./historiqueService");
 require("dotenv").config();
 
 exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, responsableId, forcer = false }) => {
-  console.log(`[StageChain]  Démarrage génération attestation pour stageId=${stageId}, responsableId=${responsableId}`);
+  console.log(`[StageChain] Démarrage génération attestation pour stageId=${stageId}, responsableId=${responsableId}`);
 
   const [existingRows] = await db.execute(
     "SELECT fileHash AS hash, ipfsUrl, identifiant FROM Attestation WHERE stageId = ?",
@@ -20,7 +20,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   );
 
   if (existingRows.length && !forcer) {
-    console.log(`[StageChain]  Attestation déjà existante pour stageId=${stageId}`);
+    console.log(`[StageChain] Attestation déjà existante pour stageId=${stageId}`);
     return existingRows[0];
   }
 
@@ -41,13 +41,13 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     JOIN Entreprise ENT ON S.entrepriseId = ENT.id
     JOIN RapportStage R ON R.stageId = S.id
     JOIN ResponsableEntreprise RE ON RE.id = ?
-   WHERE S.id = ?
-   AND (
-     (R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE)
-     OR (R.statutAcademique = TRUE AND R.tierIntervenantProfessionnelId IS NOT NULL)
-     OR (R.statutProfessionnel = TRUE AND R.tierIntervenantAcademiqueId IS NOT NULL)
-     OR (R.tierIntervenantAcademiqueId IS NOT NULL AND R.tierIntervenantProfessionnelId IS NOT NULL)
-   )
+    WHERE S.id = ?
+    AND (
+      (R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE)
+      OR (R.statutAcademique = TRUE AND R.tierIntervenantProfessionnelId IS NOT NULL)
+      OR (R.statutProfessionnel = TRUE AND R.tierIntervenantAcademiqueId IS NOT NULL)
+      OR (R.tierIntervenantAcademiqueId IS NOT NULL AND R.tierIntervenantProfessionnelId IS NOT NULL)
+    )
   `, [responsableId, stageId]);
 
   if (!stageRows.length) throw new Error("Rapport non validé par les deux encadrants");
@@ -62,19 +62,35 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     identifiantStage: stage.identifiant_unique,
     attestationId,
     dateGeneration: new Date().toLocaleDateString(),
-    verificationUrl: "", // sera inséré après génération HTML
+    verificationUrl: "", // sera rempli après génération HTML
     responsableNom: modifs.responsableNom || stage.responsableNom,
     lieu: modifs.lieu || stage.nomEntreprise,
     logoPath: modifs.logoPath || stage.logoPath,
     signature: modifs.signature || ""
   };
 
-  // 1. Générer PDF sans QR juste pour obtenir hash
+  // 1. Générer un PDF temporaire sans QR pour obtenir hash
   const tempPdfPath = await generatePDFWithQR({ ...baseData, verificationUrl: "" });
-  const finalHash = await hashFile(tempPdfPath);
-  const finalPdfIpfs = await uploadToIPFS(tempPdfPath);
+  const tempHash = await hashFile(tempPdfPath);
 
-  // 2. Générer page HTML de vérification avec vrai lien vers PDF
+  // 2. Générer une page HTML temporaire (lien fictif)
+  const tempHtml = generateVerificationHTML({
+    attestationId,
+    fileHash: tempHash,
+    ipfsUrl: "EN ATTENTE DU PDF FINAL",
+    issuer: responsableId,
+    timestamp: Date.now(),
+    event: "AttestationPublished"
+  });
+  const tempHtmlUpload = await uploadHTMLToIPFS(tempHtml);
+
+  // 3. Générer le PDF final avec le QR pointant vers cette page
+  baseData.verificationUrl = tempHtmlUpload.publicUrl;
+  const finalPdfPath = await generatePDFWithQR(baseData);
+  const finalHash = await hashFile(finalPdfPath);
+  const finalPdfIpfs = await uploadToIPFS(finalPdfPath); // ✅ contient QR intégré
+
+  // 4. Générer la page HTML finale avec lien correct vers PDF final
   const finalHtml = generateVerificationHTML({
     attestationId,
     fileHash: finalHash,
@@ -85,11 +101,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   });
   const finalHtmlUpload = await uploadHTMLToIPFS(finalHtml);
 
-  // 3. Générer PDF final avec QR pointant vers la page HTML
-  baseData.verificationUrl = finalHtmlUpload.publicUrl;
-  const finalPdfPath = await generatePDFWithQR(baseData);
-
-  // 4. Enregistrer l'attestation dans la base
+  // 5. Enregistrement dans la base de données
   await db.execute(`
     INSERT INTO Attestation
       (stageId, identifiant, fileHash, ipfsUrl, responsableId, etudiantId, dateCreation, publishedOnChain)
@@ -110,10 +122,10 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     });
   }
 
-  // 5. Publier sur la blockchain
+  // 6. Publier sur blockchain
   await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, finalHash);
 
-  // 6. Envoyer notification à l'étudiant
+  // 7. Notifications
   await notificationService.notifyUser({
     toId: stage.etudiantId,
     toRole: "Etudiant",
@@ -138,13 +150,12 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     message: "Votre attestation de stage est prête."
   });
 
-  // 7. Envoyer notification au responsable universitaire
   const [respUniRows] = await db.execute(
     "SELECT id, email, prenom, nom FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
     [stage.universiteId]
   );
-  const respUni = respUniRows[0];
 
+  const respUni = respUniRows[0];
   if (respUni?.id) {
     await notificationService.notifyUser({
       toId: respUni.id,
@@ -162,7 +173,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     });
   }
 
-  console.log("[StageChain]  Attestation générée avec succès.");
+  console.log("[StageChain] Attestation générée avec succès.");
 
   return {
     hash: finalHash,
@@ -171,6 +182,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     verificationPage: finalHtmlUpload.publicUrl
   };
 };
+
 
 
 
@@ -238,6 +250,7 @@ await db.execute("UPDATE Stage SET etat = 'validé', estHistorique = TRUE WHERE 
         etudiantPrenom: etudiant.prenom,
         etudiantNom: etudiant.nom,
         stageId,
+        titreStage:stage.titre,
         year: new Date().getFullYear()
       },
       message: `Votre stage a été validé par votre université.`
