@@ -22,8 +22,6 @@ function DashboardEncadrantPro() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [historique, setHistorique] = useState([]);
-
-  // Ajouts
   const [rapportsHistoriques, setRapportsHistoriques] = useState([]);
   const [stagiaires, setStagiaires] = useState([]);
 
@@ -54,12 +52,12 @@ function DashboardEncadrantPro() {
         axios.get(`${API_URL}/encadrant/mes-stagiaires`, { headers }),
       ]);
 
-      setPropositions(propRes.data || []);
-      setNotifications(notifRes.data || []);
-      setRapports(rapRes.data?.enAttente || []);
-      setHistorique(histRes.data || []);
-      setRapportsHistoriques(rapHistRes.data || []);
-      setStagiaires(stagiairesRes.data || []);
+      setPropositions(Array.isArray(propRes.data) ? propRes.data : []);
+      setNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
+      setRapports(Array.isArray(rapRes.data?.enAttente) ? rapRes.data.enAttente : []);
+      setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
+      setRapportsHistoriques(Array.isArray(rapHistRes.data) ? rapHistRes.data : []);
+      setStagiaires(Array.isArray(stagiairesRes.data) ? stagiairesRes.data : []);
     } catch (err) {
       console.error(err);
       setMessage("Erreur lors du chargement des données.");
@@ -78,6 +76,12 @@ function DashboardEncadrantPro() {
     } catch {
       setMessage("Erreur lors de l'action sur la proposition.");
     }
+    finally {
+    setCommentaires({});
+    await loadData();
+  }
+  await loadData();
+
   };
 
   const validerRapport = async (id) => {
@@ -90,6 +94,8 @@ function DashboardEncadrantPro() {
     } catch {
       setMessage("Erreur lors de la validation.");
     }
+    await loadData();
+
   };
 
   const commenterRapport = async (id) => {
@@ -214,9 +220,7 @@ function DashboardEncadrantPro() {
                       <li key={i}>
                         <strong>{r.identifiantRapport}</strong> — {r.titre}
                         {" | "}
-                        <a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">
-                          Voir PDF
-                        </a>
+                        <a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir PDF</a>
                       </li>
                     ))}
                   </ul>

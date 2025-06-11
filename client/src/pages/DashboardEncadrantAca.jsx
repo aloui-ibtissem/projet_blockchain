@@ -23,15 +23,18 @@ function DashboardEncadrantAca() {
   const [loading, setLoading] = useState(true);
   const [showNotif, setShowNotif] = useState(false);
   const [historique, setHistorique] = useState([]);
-
-  // Ajouts
   const [rapportsHistoriques, setRapportsHistoriques] = useState([]);
   const [stagiaires, setStagiaires] = useState([]);
 
   useEffect(() => {
     if (!token || role !== 'EncadrantAcademique') return navigate('/login');
-    const decoded = jwtDecode(token);
-    if (decoded.exp < Date.now() / 1000) {
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.exp < Date.now() / 1000) {
+        localStorage.clear();
+        return navigate('/login');
+      }
+    } catch {
       localStorage.clear();
       return navigate('/login');
     }
@@ -50,12 +53,13 @@ function DashboardEncadrantAca() {
         axios.get(`${API_URL}/rapport/encadrant/historique`, { headers }),
         axios.get(`${API_URL}/encadrant/mes-stagiaires`, { headers }),
       ]);
-      setPropositions(propRes.data || []);
-      setNotifications(notifRes.data || []);
-      setRapports(rapRes.data?.enAttente || []);
-      setHistorique(histRes.data || []);
-      setRapportsHistoriques(rapHistRes.data || []);
-      setStagiaires(stagiairesRes.data || []);
+
+      setPropositions(Array.isArray(propRes.data) ? propRes.data : []);
+      setNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
+      setRapports(Array.isArray(rapRes.data?.enAttente) ? rapRes.data.enAttente : []);
+      setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
+      setRapportsHistoriques(Array.isArray(rapHistRes.data) ? rapHistRes.data : []);
+      setStagiaires(Array.isArray(stagiairesRes.data) ? stagiairesRes.data : []);
     } catch (err) {
       console.error(err);
       setMessage("Erreur lors du chargement des données.");
@@ -70,10 +74,14 @@ function DashboardEncadrantAca() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage(`Proposition ${action === 'accepter' ? 'acceptée' : 'refusée'}.`);
-      await loadData();
     } catch {
       setMessage("Erreur lors de la validation.");
+    } finally {
+      setCommentaires({});
+      await loadData();
     }
+    await loadData();
+
   };
 
   const validerRapport = async (id) => {
@@ -86,6 +94,8 @@ function DashboardEncadrantAca() {
     } catch {
       setMessage("Erreur validation.");
     }
+    await loadData();
+
   };
 
   const commenterRapport = async (id) => {
@@ -125,7 +135,7 @@ function DashboardEncadrantAca() {
               </Card.Header>
               <Collapse in={showNotif}>
                 <Card.Body style={{ maxHeight: 200, overflowY: 'auto' }}>
-                  {notifications.length > 0 ? (
+                  {Array.isArray(notifications) && notifications.length > 0 ? (
                     <ul>
                       {notifications.map(n => (
                         <li key={n.id}>
@@ -145,11 +155,11 @@ function DashboardEncadrantAca() {
             <Card className="dashboard-card">
               <Card.Header>Propositions</Card.Header>
               <Card.Body>
-                {propositions.length === 0 ? <p>Aucune proposition.</p> : (
+                {Array.isArray(propositions) && propositions.length === 0 ? <p>Aucune proposition.</p> : (
                   <Table striped bordered>
                     <thead><tr><th>Titre</th><th>Dates</th><th>Actions</th></tr></thead>
                     <tbody>
-                      {propositions.map(p => (
+                      {Array.isArray(propositions) && propositions.map(p => (
                         <tr key={p.id}>
                           <td>{p.titre}</td>
                           <td>{new Date(p.dateDebut).toLocaleDateString()} - {new Date(p.dateFin).toLocaleDateString()}</td>
@@ -165,11 +175,11 @@ function DashboardEncadrantAca() {
               </Card.Body>
             </Card>
 
-            {/* Rapports en attente */}
+            {/* Rapports à valider */}
             <Card className="dashboard-card">
               <Card.Header>Rapports à Valider</Card.Header>
               <Card.Body>
-                {rapports.length === 0 ? (
+                {Array.isArray(rapports) && rapports.length === 0 ? (
                   <p>Aucun rapport.</p>
                 ) : (
                   rapports.map(r => (
@@ -189,15 +199,15 @@ function DashboardEncadrantAca() {
               </Card.Body>
             </Card>
 
-            {/* Historique des actions */}
+            {/* Historique */}
             <Card className="dashboard-card">
               <Card.Header>Historique des actions</Card.Header>
               <Card.Body>
-                {historique.length === 0 ? (
+                {Array.isArray(historique) && historique.length === 0 ? (
                   <p className="text-muted">Aucune action enregistrée.</p>
                 ) : (
                   <ListGroup>
-                    {historique.map((entry) => (
+                    {Array.isArray(historique) && historique.map((entry) => (
                       <ListGroup.Item key={entry.id}>
                         [{new Date(entry.dateAction).toLocaleString()}] — {entry.description}
                       </ListGroup.Item>
@@ -211,11 +221,11 @@ function DashboardEncadrantAca() {
             <Card className="dashboard-card">
               <Card.Header>Rapports Validés</Card.Header>
               <Card.Body>
-                {rapportsHistoriques.length === 0 ? (
+                {Array.isArray(rapportsHistoriques) && rapportsHistoriques.length === 0 ? (
                   <p className="text-muted">Aucun rapport validé.</p>
                 ) : (
                   <ul>
-                    {rapportsHistoriques.map((r, i) => (
+                    {Array.isArray(rapportsHistoriques) && rapportsHistoriques.map((r, i) => (
                       <li key={i}>
                         <strong>{r.identifiantRapport}</strong> — {r.titre}
                         {" | "}
@@ -233,11 +243,11 @@ function DashboardEncadrantAca() {
             <Card className="dashboard-card">
               <Card.Header>Mes Stagiaires</Card.Header>
               <Card.Body>
-                {stagiaires.length === 0 ? (
+                {Array.isArray(stagiaires) && stagiaires.length === 0 ? (
                   <p className="text-muted">Aucun stagiaire affecté.</p>
                 ) : (
                   <ul>
-                    {stagiaires.map((s, i) => (
+                    {Array.isArray(stagiaires) && stagiaires.map((s, i) => (
                       <li key={i}>
                         <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
                         Stage : <em>{s.titreStage}</em> ({new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()})
