@@ -21,20 +21,20 @@ function DashboardRespUniversitaire() {
   const [showNotif, setShowNotif] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [historique, setHistorique] = useState([]);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [attestRes, notifRes] = await Promise.all([
-        axios.get(`${API_URL}/api/attestation/attestations/universite`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API_URL}/api/stage/notifications`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      const headers = { Authorization: `Bearer ${token}` };
+      const [attestRes, notifRes, histRes] = await Promise.all([
+        axios.get(`${API_URL}/api/attestation/attestations/universite`, { headers }),
+        axios.get(`${API_URL}/api/stage/notifications`, { headers }),
+        axios.get(`${API_URL}/api/historique/mes`, { headers })
       ]);
-      setAttestations(attestRes.data);
-      setNotifications(notifRes.data);
+      setAttestations(attestRes.data || []);
+      setNotifications(notifRes.data || []);
+      setHistorique(histRes.data || []);
     } catch (err) {
       setMessage("Erreur lors du chargement des données.");
     } finally {
@@ -145,6 +145,25 @@ function DashboardRespUniversitaire() {
                           </Card>
                         ))}
                       </div>
+                    )}
+                  </Card.Body>
+                </Card>
+
+                <Card className="shadow-sm border-0 mt-4">
+                  <Card.Header className="bg-secondary text-white fw-bold">
+                    Historique des Actions
+                  </Card.Header>
+                  <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {historique.length === 0 ? (
+                      <p className="text-muted">Aucune action enregistrée.</p>
+                    ) : (
+                      <ListGroup>
+                        {historique.map((histo) => (
+                          <ListGroup.Item key={histo.id}>
+                            [{new Date(histo.dateAction).toLocaleString()}] — {histo.description}
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
                     )}
                   </Card.Body>
                 </Card>

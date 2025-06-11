@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../components/Header';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { Alert, Card, Button, Form, Table, Badge, Collapse } from 'react-bootstrap';
+import { Alert, Card, Button, Form, Table, Badge, Collapse, ListGroup } from 'react-bootstrap';
 import './DashboardEncadrantAca.css';
 
 const BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
@@ -22,6 +22,11 @@ function DashboardEncadrantAca() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [showNotif, setShowNotif] = useState(false);
+  const [historique, setHistorique] = useState([]);
+
+  // Ajouts
+  const [rapportsHistoriques, setRapportsHistoriques] = useState([]);
+  const [stagiaires, setStagiaires] = useState([]);
 
   useEffect(() => {
     if (!token || role !== 'EncadrantAcademique') return navigate('/login');
@@ -36,20 +41,21 @@ function DashboardEncadrantAca() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache'
-      };
-
-      const [propRes, notifRes, rapRes] = await Promise.all([
+      const headers = { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' };
+      const [propRes, notifRes, rapRes, histRes, rapHistRes, stagiairesRes] = await Promise.all([
         axios.get(`${API_URL}/stage/propositions`, { headers }),
         axios.get(`${API_URL}/notifications/mes`, { headers }),
-        axios.get(`${API_URL}/rapport/encadrant`, { headers })
+        axios.get(`${API_URL}/rapport/encadrant`, { headers }),
+        axios.get(`${API_URL}/historique/mes`, { headers }),
+        axios.get(`${API_URL}/rapport/encadrant/historique`, { headers }),
+        axios.get(`${API_URL}/encadrant/mes-stagiaires`, { headers }),
       ]);
-
       setPropositions(propRes.data || []);
       setNotifications(notifRes.data || []);
       setRapports(rapRes.data?.enAttente || []);
+      setHistorique(histRes.data || []);
+      setRapportsHistoriques(rapHistRes.data || []);
+      setStagiaires(stagiairesRes.data || []);
     } catch (err) {
       console.error(err);
       setMessage("Erreur lors du chargement des données.");
@@ -64,7 +70,7 @@ function DashboardEncadrantAca() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage(`Proposition ${action === 'accepter' ? 'acceptée' : 'refusée'}.`);
-      loadData();
+      await loadData();
     } catch {
       setMessage("Erreur lors de la validation.");
     }
@@ -76,7 +82,7 @@ function DashboardEncadrantAca() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage("Rapport validé.");
-      loadData();
+      await loadData();
     } catch {
       setMessage("Erreur validation.");
     }
@@ -91,7 +97,7 @@ function DashboardEncadrantAca() {
       });
       setCommentaires(prev => ({ ...prev, [id]: '' }));
       setMessage("Commentaire envoyé.");
-      loadData();
+      await loadData();
     } catch {
       setMessage("Erreur commentaire.");
     }
@@ -109,6 +115,7 @@ function DashboardEncadrantAca() {
         {loading ? <SkeletonLoader /> : (
           <div className="dashboard-grid">
 
+            {/* Notifications */}
             <Card className="dashboard-card">
               <Card.Header className="d-flex justify-content-between align-items-center">
                 Notifications <Badge bg="secondary">{notifications.length}</Badge>
@@ -117,16 +124,24 @@ function DashboardEncadrantAca() {
                 </Button>
               </Card.Header>
               <Collapse in={showNotif}>
-                <Card.Body>
+                <Card.Body style={{ maxHeight: 200, overflowY: 'auto' }}>
                   {notifications.length > 0 ? (
-                    <ul>{notifications.map(n => (
-                      <li key={n.id}>{n.message} <small>({new Date(n.date_envoi).toLocaleDateString()})</small></li>
-                    ))}</ul>
-                  ) : <p>Aucune notification.</p>}
+                    <ul>
+                      {notifications.map(n => (
+                        <li key={n.id}>
+                          <strong>{n.message}</strong>
+                          <small> ({new Date(n.date_envoi).toLocaleDateString()})</small>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted">Aucune notification.</p>
+                  )}
                 </Card.Body>
               </Collapse>
             </Card>
 
+            {/* Propositions */}
             <Card className="dashboard-card">
               <Card.Header>Propositions</Card.Header>
               <Card.Body>
@@ -150,6 +165,7 @@ function DashboardEncadrantAca() {
               </Card.Body>
             </Card>
 
+            {/* Rapports en attente */}
             <Card className="dashboard-card">
               <Card.Header>Rapports à Valider</Card.Header>
               <Card.Body>
@@ -172,6 +188,66 @@ function DashboardEncadrantAca() {
                 )}
               </Card.Body>
             </Card>
+
+            {/* Historique des actions */}
+            <Card className="dashboard-card">
+              <Card.Header>Historique des actions</Card.Header>
+              <Card.Body>
+                {historique.length === 0 ? (
+                  <p className="text-muted">Aucune action enregistrée.</p>
+                ) : (
+                  <ListGroup>
+                    {historique.map((entry) => (
+                      <ListGroup.Item key={entry.id}>
+                        [{new Date(entry.dateAction).toLocaleString()}] — {entry.description}
+                      </ListGroup.Item>
+                    ))}
+                  </ListGroup>
+                )}
+              </Card.Body>
+            </Card>
+
+            {/* Rapports validés */}
+            <Card className="dashboard-card">
+              <Card.Header>Rapports Validés</Card.Header>
+              <Card.Body>
+                {rapportsHistoriques.length === 0 ? (
+                  <p className="text-muted">Aucun rapport validé.</p>
+                ) : (
+                  <ul>
+                    {rapportsHistoriques.map((r, i) => (
+                      <li key={i}>
+                        <strong>{r.identifiantRapport}</strong> — {r.titre}
+                        {" | "}
+                        <a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">
+                          Voir PDF
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card.Body>
+            </Card>
+
+            {/* Stagiaires encadrés */}
+            <Card className="dashboard-card">
+              <Card.Header>Mes Stagiaires</Card.Header>
+              <Card.Body>
+                {stagiaires.length === 0 ? (
+                  <p className="text-muted">Aucun stagiaire affecté.</p>
+                ) : (
+                  <ul>
+                    {stagiaires.map((s, i) => (
+                      <li key={i}>
+                        <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
+                        Stage : <em>{s.titreStage}</em> ({new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card.Body>
+            </Card>
+
           </div>
         )}
       </main>

@@ -22,6 +22,8 @@ function DashboardRespEntreprise() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState(null);
+  const [historique, setHistorique] = useState([]);
+  const [rapportsValidés, setRapportsValidés] = useState([]);
 
   const [formData, setFormData] = useState({
     appreciation: '',
@@ -53,19 +55,21 @@ function DashboardRespEntreprise() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [dashRes, infoRes] = await Promise.all([
-        axios.get(`${API_URL}/entreprises/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API_URL}/entreprises/info`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const [dashRes, infoRes, histRes, rapValRes] = await Promise.all([
+        axios.get(`${API_URL}/entreprises/dashboard`, { headers }),
+        axios.get(`${API_URL}/entreprises/info`, { headers }),
+        axios.get(`${API_URL}/historique/mes`, { headers }),
+        axios.get(`${API_URL}/rapport/entreprise/valides`, { headers })
       ]);
 
       const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
 
       setStagiaires(dashRes.data.stagiaires || []);
       setNotifications(dashRes.data.notifications || []);
+      setHistorique(histRes.data || []);
+      setRapportsValidés(rapValRes.data || []);
 
       setFormData(prev => ({
         ...prev,
@@ -150,6 +154,7 @@ function DashboardRespEntreprise() {
             <SkeletonLoader />
           ) : (
             <div className="dashboard-grid">
+
               <Card className="dashboard-card">
                 <Card.Header>Stagiaires à générer leurs attestations</Card.Header>
                 <Card.Body>
@@ -184,6 +189,43 @@ function DashboardRespEntreprise() {
                   )) : <p className="text-muted">Aucune notification</p>}
                 </Card.Body>
               </Card>
+
+              <Card className="dashboard-card">
+                <Card.Header>Rapports Validés (Entreprise)</Card.Header>
+                <Card.Body>
+                  {rapportsValidés.length === 0 ? (
+                    <p className="text-muted">Aucun rapport validé pour l'entreprise.</p>
+                  ) : (
+                    <ul>
+                      {rapportsValidés.map((r, i) => (
+                        <li key={i}>
+                          <strong>{r.identifiantRapport}</strong> — {r.titre}
+                          {" | "}
+                          <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir PDF</a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card.Body>
+              </Card>
+
+              <Card className="dashboard-card">
+                <Card.Header>Historique des actions</Card.Header>
+                <Card.Body>
+                  {historique.length === 0 ? (
+                    <p className="text-muted">Aucune action enregistrée.</p>
+                  ) : (
+                    <ListGroup>
+                      {historique.map(entry => (
+                        <ListGroup.Item key={entry.id}>
+                          [{new Date(entry.dateAction).toLocaleString()}] — {entry.description}
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  )}
+                </Card.Body>
+              </Card>
+
             </div>
           )}
         </main>
