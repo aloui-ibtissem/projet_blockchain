@@ -22,11 +22,10 @@ function TierEntDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data && Array.isArray(res.data.enAttente)) {
-  setRapports(res.data.enAttente);
-} else {
-  setRapports([]);
-}
- 
+        setRapports(res.data.enAttente);
+      } else {
+        setRapports([]);
+      }
     } catch (err) {
       console.error(err);
       setMessage("Erreur lors du chargement des rapports.");
@@ -67,9 +66,7 @@ function TierEntDashboard() {
       <p className="mb-1">Étudiant : {r.prenomEtudiant} {r.nomEtudiant}</p>
       <p className="mb-1">Date de fin : {new Date(r.dateFin).toLocaleDateString()}</p>
       <p className="mb-1">Soumis le : {new Date(r.dateSoumission).toLocaleDateString()}</p>
-      <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">
-        Voir le fichier PDF
-      </a>
+      <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir le fichier PDF</a>
       {!isHistorique && (
         <div className="mt-2">
           <Button variant="success" size="sm" onClick={() => validerRapport(r.id)}>
@@ -95,19 +92,19 @@ function TierEntDashboard() {
 
       <div className="mt-4">
         <h5 className="mb-3">Rapports à valider</h5>
-        {rapports.filter(r => !r.statutProfessionnel).length === 0 ? (
+        {rapports.filter(r => r.statutProfessionnel !== true).length === 0 ? (
           <p className="text-muted">Aucun rapport en attente.</p>
         ) : (
-          rapports.filter(r => !r.statutProfessionnel).map(r => renderRapport(r, false))
+          rapports.filter(r => r.statutProfessionnel !== true).map(r => renderRapport(r, false))
         )}
       </div>
 
       <div className="mt-5">
         <h5 className="mb-3">Rapports validés</h5>
-        {rapports.filter(r => r.statutProfessionnel).length === 0 ? (
+        {rapports.filter(r => r.statutProfessionnel === true).length === 0 ? (
           <p className="text-muted">Aucun rapport validé.</p>
         ) : (
-          rapports.filter(r => r.statutProfessionnel).map(r => renderRapport(r, true))
+          rapports.filter(r => r.statutProfessionnel === true).map(r => renderRapport(r, true))
         )}
       </div>
     </div>

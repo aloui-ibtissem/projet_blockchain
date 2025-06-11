@@ -573,28 +573,55 @@ exports.checkForTierIntervention = async () => {
 
 //
 exports.getRapportsPourTier = async (tierId) => {
-  const [[tier]] = await db.execute("SELECT universiteId, entrepriseId FROM TierDebloqueur WHERE id = ?", [tierId]);
+  const [[tier]] = await db.execute(
+    "SELECT universiteId, entrepriseId FROM TierDebloqueur WHERE id = ?",
+    [tierId]
+  );
   if (!tier) return { enAttente: [], valides: [] };
 
-  const [rows] = await db.execute(`
-    SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
-           r.statutAcademique, r.statutProfessionnel,
-           e.nom AS nomEtudiant, e.prenom AS prenomEtudiant,
-           s.dateFin, s.titre,
-           u.nom AS nomUniversite, ent.nom AS nomEntreprise
-    FROM RapportStage r
-    JOIN Stage s ON r.stageId = s.id
-    JOIN Etudiant e ON s.etudiantId = e.id
-    LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
-    LEFT JOIN Universite u ON s.universiteId = u.id
-    WHERE (s.universiteId = ? AND r.statutAcademique = FALSE AND r.tierIntervenantAcademiqueId = ?)
-   OR (s.entrepriseId = ? AND r.statutProfessionnel = FALSE AND r.tierIntervenantProfessionnelId = ?)
+  let rows = [];
 
-  `, [tier.universiteId, tier.id, tier.entrepriseId, tier.id]);
+  // Cas académique
+  if (tier.universiteId) {
+    const [uniRows] = await db.execute(`
+      SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
+             r.statutAcademique, r.statutProfessionnel,
+             e.nom AS nomEtudiant, e.prenom AS prenomEtudiant,
+             s.dateFin, s.titre,
+             u.nom AS nomUniversite, ent.nom AS nomEntreprise
+      FROM RapportStage r
+      JOIN Stage s ON r.stageId = s.id
+      JOIN Etudiant e ON s.etudiantId = e.id
+      LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
+      LEFT JOIN Universite u ON s.universiteId = u.id
+      WHERE r.statutAcademique = FALSE AND r.tierIntervenantAcademiqueId = ?
+    `, [tierId]);
+
+    rows = rows.concat(uniRows);
+  }
+
+  // Cas professionnel
+  if (tier.entrepriseId) {
+    const [entRows] = await db.execute(`
+      SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
+             r.statutAcademique, r.statutProfessionnel,
+             e.nom AS nomEtudiant, e.prenom AS prenomEtudiant,
+             s.dateFin, s.titre,
+             u.nom AS nomUniversite, ent.nom AS nomEntreprise
+      FROM RapportStage r
+      JOIN Stage s ON r.stageId = s.id
+      JOIN Etudiant e ON s.etudiantId = e.id
+      LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
+      LEFT JOIN Universite u ON s.universiteId = u.id
+      WHERE r.statutProfessionnel = FALSE AND r.tierIntervenantProfessionnelId = ?
+    `, [tierId]);
+
+    rows = rows.concat(entRows);
+  }
 
   return {
     enAttente: rows,
-    valides: []
+    valides: [] // pas encore implémenté
   };
 };
 
