@@ -4,11 +4,6 @@ const path = require("path");
 const db = require("./config/db");
 const app = express();
 
-// Supprimer l'avertissement ngrok dans la console
-app.use((req, res, next) => {
-  res.setHeader("ngrok-skip-browser-warning", "true");
-  next();
-});
 
 // === Middleware CORS MANUEL pour une seule URL publique (ngrok)
 app.use((req, res, next) => {
@@ -16,7 +11,7 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     "http://localhost:3001", // accès local dev
     "https://projet-blockchain-blush.vercel.app", // vercel frontend
-    "https://c4f7-102-173-91-120.ngrok-free.app"  //  lien ngrok 
+    "https://b050-102-173-60-99.ngrok-free.app"  //  lien ngrok 
   ];
 
   if (allowedOrigins.includes(origin)) {
@@ -33,6 +28,11 @@ app.use((req, res, next) => {
 });
 
 
+// Supprimer l'avertissement ngrok dans la console
+app.use((req, res, next) => {
+  res.setHeader("ngrok-skip-browser-warning", "true");
+  next();
+});
 
 app.use(express.json());
 
