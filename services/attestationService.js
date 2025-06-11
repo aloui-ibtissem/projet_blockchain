@@ -62,35 +62,36 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     identifiantStage: stage.identifiant_unique,
     attestationId,
     dateGeneration: new Date().toLocaleDateString(),
-    verificationUrl: "", // sera rempli après génération HTML
+    verificationUrl: "", // rempli plus tard
     responsableNom: modifs.responsableNom || stage.responsableNom,
     lieu: modifs.lieu || stage.nomEntreprise,
     logoPath: modifs.logoPath || stage.logoPath,
     signature: modifs.signature || ""
   };
 
-  // 1. Générer un PDF temporaire sans QR pour obtenir hash
-  const tempPdfPath = await generatePDFWithQR({ ...baseData, verificationUrl: "" });
+  // 1. PDF temporaire (QR vide), uploadé pour 1er hash
+  const tempPdfPath = await generatePDFWithQR({ ...baseData, verificationUrl: "QR_PLACEHOLDER" });
   const tempHash = await hashFile(tempPdfPath);
+  const tempPdfIpfs = await uploadToIPFS(tempPdfPath);
 
-  // 2. Générer une page HTML temporaire (lien fictif)
+  // 2. Page HTML initiale pour inclure le hash et lien temporaire PDF
   const tempHtml = generateVerificationHTML({
     attestationId,
     fileHash: tempHash,
-    ipfsUrl: "EN ATTENTE DU PDF FINAL",
+    ipfsUrl: tempPdfIpfs.publicUrl,
     issuer: responsableId,
     timestamp: Date.now(),
     event: "AttestationPublished"
   });
   const tempHtmlUpload = await uploadHTMLToIPFS(tempHtml);
 
-  // 3. Générer le PDF final avec le QR pointant vers cette page
+  // 3. PDF final avec QR vers page HTML temporaire
   baseData.verificationUrl = tempHtmlUpload.publicUrl;
   const finalPdfPath = await generatePDFWithQR(baseData);
   const finalHash = await hashFile(finalPdfPath);
-  const finalPdfIpfs = await uploadToIPFS(finalPdfPath); // ✅ contient QR intégré
+  const finalPdfIpfs = await uploadToIPFS(finalPdfPath);
 
-  // 4. Générer la page HTML finale avec lien correct vers PDF final
+  // 4. Génération de la VRAIE page HTML avec lien vers PDF final
   const finalHtml = generateVerificationHTML({
     attestationId,
     fileHash: finalHash,
@@ -101,12 +102,18 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   });
   const finalHtmlUpload = await uploadHTMLToIPFS(finalHtml);
 
-  // 5. Enregistrement dans la base de données
+  // 5. PDF définitif avec QR vers page HTML FINALE
+  baseData.verificationUrl = finalHtmlUpload.publicUrl;
+  const pdfDefinitifPath = await generatePDFWithQR(baseData);
+  const pdfDefinitifHash = await hashFile(pdfDefinitifPath);
+  const pdfDefinitifIpfs = await uploadToIPFS(pdfDefinitifPath);
+
+  // 6. Enregistrement final
   await db.execute(`
     INSERT INTO Attestation
       (stageId, identifiant, fileHash, ipfsUrl, responsableId, etudiantId, dateCreation, publishedOnChain)
     VALUES (?, ?, ?, ?, ?, ?, NOW(), TRUE)
-  `, [stageId, attestationId, finalHash, finalPdfIpfs.publicUrl, responsableId, stage.etudiantId]);
+  `, [stageId, attestationId, pdfDefinitifHash, pdfDefinitifIpfs.publicUrl, responsableId, stage.etudiantId]);
 
   await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE stageId = ?", [stageId]);
 
@@ -122,10 +129,10 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     });
   }
 
-  // 6. Publier sur blockchain
-  await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, finalHash);
+  // 7. Blockchain
+  await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, pdfDefinitifHash);
 
-  // 7. Notifications
+  // 8. Notification Étudiant
   await notificationService.notifyUser({
     toId: stage.etudiantId,
     toRole: "Etudiant",
@@ -143,15 +150,16 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
       encadrantProPrenom: stage.proPrenom,
       encadrantProNom: stage.proNom,
       identifiantAttestation: attestationId,
-      hash: finalHash,
+      hash: pdfDefinitifHash,
       attestationUrl: finalHtmlUpload.publicUrl,
       year: new Date().getFullYear()
     },
     message: "Votre attestation de stage est prête."
   });
 
+  // 9. Notification Responsable Universitaire
   const [respUniRows] = await db.execute(
-    "SELECT id, email, prenom, nom FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
+    "SELECT id FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
     [stage.universiteId]
   );
 
@@ -176,8 +184,8 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   console.log("[StageChain] Attestation générée avec succès.");
 
   return {
-    hash: finalHash,
-    ipfsUrl: finalPdfIpfs.publicUrl,
+    hash: pdfDefinitifHash,
+    ipfsUrl: pdfDefinitifIpfs.publicUrl,
     identifiant: attestationId,
     verificationPage: finalHtmlUpload.publicUrl
   };
