@@ -62,36 +62,19 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     identifiantStage: stage.identifiant_unique,
     attestationId,
     dateGeneration: new Date().toLocaleDateString(),
-    verificationUrl: "", // À insérer après génération de la page HTML
+    verificationUrl: "", // sera inséré après génération HTML
     responsableNom: modifs.responsableNom || stage.responsableNom,
     lieu: modifs.lieu || stage.nomEntreprise,
     logoPath: modifs.logoPath || stage.logoPath,
     signature: modifs.signature || ""
   };
 
-  // Génération temporaire (inutile d'upload)
-  const tempPdfPath = await generatePDFWithQR(baseData);
-  const tempHash = await hashFile(tempPdfPath);
+  // 1. Générer PDF sans QR juste pour obtenir hash
+  const tempPdfPath = await generatePDFWithQR({ ...baseData, verificationUrl: "" });
+  const finalHash = await hashFile(tempPdfPath);
+  const finalPdfIpfs = await uploadToIPFS(tempPdfPath);
 
-  // Génère page HTML temporaire pour obtenir URL
-  const tempHtml = generateVerificationHTML({
-    attestationId,
-    fileHash: tempHash,
-    ipfsUrl: "EN ATTENTE DU PDF FINAL",
-    issuer: responsableId,
-    timestamp: Date.now(),
-    event: "AttestationPublished"
-  });
-  const tempHtmlUpload = await uploadHTMLToIPFS(tempHtml);
-  const verificationUrl = tempHtmlUpload.publicUrl;
-
-  // Génération du PDF FINAL avec le bon QR
-  baseData.verificationUrl = verificationUrl;
-  const finalPdfPath = await generatePDFWithQR(baseData);
-  const finalHash = await hashFile(finalPdfPath);
-  const finalPdfIpfs = await uploadToIPFS(finalPdfPath);
-
-  // Génération de la version FINALE de la page HTML (avec lien vers PDF correct)
+  // 2. Générer page HTML de vérification avec vrai lien vers PDF
   const finalHtml = generateVerificationHTML({
     attestationId,
     fileHash: finalHash,
@@ -102,7 +85,11 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   });
   const finalHtmlUpload = await uploadHTMLToIPFS(finalHtml);
 
-  // Enregistrement dans la base de données
+  // 3. Générer PDF final avec QR pointant vers la page HTML
+  baseData.verificationUrl = finalHtmlUpload.publicUrl;
+  const finalPdfPath = await generatePDFWithQR(baseData);
+
+  // 4. Enregistrer l'attestation dans la base
   await db.execute(`
     INSERT INTO Attestation
       (stageId, identifiant, fileHash, ipfsUrl, responsableId, etudiantId, dateCreation, publishedOnChain)
@@ -123,16 +110,10 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     });
   }
 
-  // Blockchain publishing
+  // 5. Publier sur la blockchain
   await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, finalHash);
 
-  // Notification
-  const [respUniRows] = await db.execute(
-    "SELECT id, email, prenom, nom FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
-    [stage.universiteId]
-  );
-  const respUni = respUniRows[0];
-
+  // 6. Envoyer notification à l'étudiant
   await notificationService.notifyUser({
     toId: stage.etudiantId,
     toRole: "Etudiant",
@@ -156,6 +137,13 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
     },
     message: "Votre attestation de stage est prête."
   });
+
+  // 7. Envoyer notification au responsable universitaire
+  const [respUniRows] = await db.execute(
+    "SELECT id, email, prenom, nom FROM ResponsableUniversitaire WHERE universiteId = ? LIMIT 1",
+    [stage.universiteId]
+  );
+  const respUni = respUniRows[0];
 
   if (respUni?.id) {
     await notificationService.notifyUser({

@@ -66,10 +66,10 @@ function DashboardRespEntreprise() {
 
       const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
 
-      setStagiaires(dashRes.data.stagiaires || []);
-      setNotifications(dashRes.data.notifications || []);
-      setHistorique(histRes.data || []);
-      setRapportsValidés(rapValRes.data || []);
+      setStagiaires(Array.isArray(dashRes.data.stagiaires) ? dashRes.data.stagiaires : []);
+      setNotifications(Array.isArray(dashRes.data.notifications) ? dashRes.data.notifications : []);
+      setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
+      setRapportsValidés(Array.isArray(rapValRes.data) ? rapValRes.data : []);
 
       setFormData(prev => ({
         ...prev,
@@ -159,7 +159,7 @@ function DashboardRespEntreprise() {
                 <Card.Header>Stagiaires à générer leurs attestations</Card.Header>
                 <Card.Body>
                   <ListGroup variant="flush">
-                    {stagiaires.length > 0 ? stagiaires.map(stag => (
+                    {Array.isArray(stagiaires) && stagiaires.length > 0 ? stagiaires.map(stag => (
                       <ListGroup.Item key={stag.stageId}>
                         <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}
                         <Button
@@ -179,7 +179,7 @@ function DashboardRespEntreprise() {
               <Card className="dashboard-card">
                 <Card.Header>Notifications</Card.Header>
                 <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {notifications.length > 0 ? notifications.map(n => (
+                  {Array.isArray(notifications) && notifications.length > 0 ? notifications.map(n => (
                     <div key={n.id}>
                       {n.message}
                       <span className="notification-date">
@@ -193,9 +193,7 @@ function DashboardRespEntreprise() {
               <Card className="dashboard-card">
                 <Card.Header>Rapports Validés (Entreprise)</Card.Header>
                 <Card.Body>
-                  {rapportsValidés.length === 0 ? (
-                    <p className="text-muted">Aucun rapport validé pour l'entreprise.</p>
-                  ) : (
+                  {Array.isArray(rapportsValidés) && rapportsValidés.length > 0 ? (
                     <ul>
                       {rapportsValidés.map((r, i) => (
                         <li key={i}>
@@ -205,6 +203,8 @@ function DashboardRespEntreprise() {
                         </li>
                       ))}
                     </ul>
+                  ) : (
+                    <p className="text-muted">Aucun rapport validé pour l'entreprise.</p>
                   )}
                 </Card.Body>
               </Card>
@@ -212,9 +212,7 @@ function DashboardRespEntreprise() {
               <Card className="dashboard-card">
                 <Card.Header>Historique des actions</Card.Header>
                 <Card.Body>
-                  {historique.length === 0 ? (
-                    <p className="text-muted">Aucune action enregistrée.</p>
-                  ) : (
+                  {Array.isArray(historique) && historique.length > 0 ? (
                     <ListGroup>
                       {historique.map(entry => (
                         <ListGroup.Item key={entry.id}>
@@ -222,6 +220,8 @@ function DashboardRespEntreprise() {
                         </ListGroup.Item>
                       ))}
                     </ListGroup>
+                  ) : (
+                    <p className="text-muted">Aucune action enregistrée.</p>
                   )}
                 </Card.Body>
               </Card>

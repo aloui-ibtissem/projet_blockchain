@@ -32,9 +32,9 @@ function DashboardRespUniversitaire() {
         axios.get(`${API_URL}/api/stage/notifications`, { headers }),
         axios.get(`${API_URL}/api/historique/mes`, { headers })
       ]);
-      setAttestations(attestRes.data || []);
-      setNotifications(notifRes.data || []);
-      setHistorique(histRes.data || []);
+      setAttestations(Array.isArray(attestRes.data) ? attestRes.data : []);
+      setNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
+      setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
     } catch (err) {
       setMessage("Erreur lors du chargement des données.");
     } finally {
@@ -102,11 +102,11 @@ function DashboardRespUniversitaire() {
                     Attestations Générées
                   </Card.Header>
                   <Card.Body>
-                    {attestations.length === 0 ? (
+                    {Array.isArray(attestations) && attestations.length === 0 ? (
                       <p className="text-muted">Aucune attestation pour l’instant.</p>
                     ) : (
                       <div className="vstack gap-3">
-                        {attestations.map(att => (
+                        {Array.isArray(attestations) && attestations.map(att => (
                           <Card
                             key={att.stageId}
                             className="p-3 border-start border-4 border-primary bg-white rounded shadow-sm"
@@ -154,11 +154,11 @@ function DashboardRespUniversitaire() {
                     Historique des Actions
                   </Card.Header>
                   <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    {historique.length === 0 ? (
+                    {Array.isArray(historique) && historique.length === 0 ? (
                       <p className="text-muted">Aucune action enregistrée.</p>
                     ) : (
                       <ListGroup>
-                        {historique.map((histo) => (
+                        {Array.isArray(historique) && historique.map((histo) => (
                           <ListGroup.Item key={histo.id}>
                             [{new Date(histo.dateAction).toLocaleString()}] — {histo.description}
                           </ListGroup.Item>
@@ -178,11 +178,11 @@ function DashboardRespUniversitaire() {
                           Notifications
                         </Card.Header>
                         <Card.Body style={{ maxHeight: '420px', overflowY: 'auto' }}>
-                          {notifications.length === 0 ? (
+                          {Array.isArray(notifications) && notifications.length === 0 ? (
                             <p className="text-muted">Aucune notification</p>
                           ) : (
                             <ListGroup>
-                              {notifications.map((notif, idx) => (
+                              {Array.isArray(notifications) && notifications.map((notif, idx) => (
                                 <ListGroup.Item key={idx}>
                                   <strong>{notif.subject}</strong><br />
                                   {notif.message}<br />
