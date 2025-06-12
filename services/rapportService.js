@@ -1,6 +1,8 @@
 const db = require("../config/db");
 const path = require("path");
 const notificationService = require("./notificationService");
+const attestationService = require("./attestationService");
+
 const {
   validateAsEncadrant,
   validateAsTier,
