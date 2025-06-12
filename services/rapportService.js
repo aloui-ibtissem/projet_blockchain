@@ -17,13 +17,19 @@ const isDoubleValidationOk = (rapport) => {
     tierIntervenantProfessionnelId
   } = rapport;
 
-  return (
-    (statutAcademique && statutProfessionnel) ||
-    (statutAcademique && tierIntervenantProfessionnelId) ||
-    (statutProfessionnel && tierIntervenantAcademiqueId) ||
-    (tierIntervenantAcademiqueId && tierIntervenantProfessionnelId)
-  );
+  // Cas 1 : les deux encadrants valident
+  if (statutAcademique && statutProfessionnel) return true;
+
+  // Cas 2 : ACA valide + PRO bloqué → tier entreprise intervient
+  if (statutAcademique && tierIntervenantProfessionnelId) return true;
+
+  // Cas 3 : PRO valide + ACA bloqué → tier université intervient
+  if (statutProfessionnel && tierIntervenantAcademiqueId) return true;
+
+  //  Cas refusé : deux tiers sans aucun encadrant
+  return false;
 };
+
 
 
 const { hashFile } = require("../utils/hashUtils");
