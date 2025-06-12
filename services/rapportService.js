@@ -233,7 +233,7 @@ exports.validerParTier = async (rapportId, tierId) => {
     throw new Error("Rapport déjà validé pour ce statut.");
   }
 
-  // Validation explicite du rapport par le tier
+  // Mise à jour de la validation par tier
   await db.execute(`
     UPDATE RapportStage
     SET ${statutField} = TRUE, ${tierField} = ?
@@ -249,34 +249,40 @@ exports.validerParTier = async (rapportId, tierId) => {
     origine: "tier"
   });
 
-  // Vérifier explicitement si les deux validations sont désormais effectuées
+  // Vérifie si deux validations sont désormais atteintes
   const [[updatedRapport]] = await db.execute(`
-    SELECT statutAcademique, statutProfessionnel, stageId
+    SELECT statutAcademique, statutProfessionnel, stageId, identifiantRapport
     FROM RapportStage WHERE id = ?
   `, [rapportId]);
 
   if (isDoubleValidationOk(updatedRapport)) {
-  await confirmDoubleValidation(rapport.identifiantRapport);
+    try {
+      await confirmDoubleValidation(updatedRapport.identifiantRapport);
+    } catch (err) {
+      console.error(`[Blockchain] Erreur confirmDoubleValidation :`, err.message);
+    }
 
-  await attestationService.genererAttestation({
-    stageId: updatedRapport.stageId,
-    responsableId: null,
-    appreciation: "Validé automatiquement après double validation (encadrants ou tiers)",
-    forcer: true
-  });
+    await attestationService.genererAttestation({
+      stageId: updatedRapport.stageId,
+      responsableId: null,
+      appreciation: "Validé automatiquement après double validation (encadrants ou tiers)",
+      forcer: true
+    });
 
-  await db.execute(`
-    UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?
-  `, [rapportId]);
+    await db.execute(`
+      UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?
+    `, [rapportId]);
 
-  await historiqueService.logAction({
-    rapportId,
-    utilisateurId: null,
-    role: 'System',
-    action: 'Attestation générée automatiquement',
-    origine: 'automatique'
-  });
-}}
+    await historiqueService.logAction({
+      rapportId,
+      utilisateurId: null,
+      role: 'System',
+      action: 'Attestation générée automatiquement',
+      origine: 'automatique'
+    });
+  }
+};
+
 
 
     
