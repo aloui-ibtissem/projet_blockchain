@@ -276,7 +276,7 @@ exports.validerParTier = async (rapportId, tierId) => {
     action: 'Attestation générée automatiquement',
     origine: 'automatique'
   });
-}
+}}
 
 
     
@@ -687,3 +687,4 @@ exports.getRapportsPourEncadrant = async (encadrantId, type, search = '') => {
 
   return rapports;
 };
+
