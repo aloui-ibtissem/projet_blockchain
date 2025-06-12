@@ -233,7 +233,7 @@ exports.validerParTier = async (rapportId, tierId) => {
     throw new Error("Rapport déjà validé pour ce statut.");
   }
 
-  // Mise à jour de la validation par tier
+  // Validation explicite du rapport par le tier
   await db.execute(`
     UPDATE RapportStage
     SET ${statutField} = TRUE, ${tierField} = ?
@@ -249,40 +249,34 @@ exports.validerParTier = async (rapportId, tierId) => {
     origine: "tier"
   });
 
-  // Vérifie si deux validations sont désormais atteintes
+  // Vérifier explicitement si les deux validations sont désormais effectuées
   const [[updatedRapport]] = await db.execute(`
-    SELECT statutAcademique, statutProfessionnel, stageId, identifiantRapport
+    SELECT statutAcademique, statutProfessionnel, stageId
     FROM RapportStage WHERE id = ?
   `, [rapportId]);
 
   if (isDoubleValidationOk(updatedRapport)) {
-    try {
-      await confirmDoubleValidation(updatedRapport.identifiantRapport);
-    } catch (err) {
-      console.error(`[Blockchain] Erreur confirmDoubleValidation :`, err.message);
-    }
+  await confirmDoubleValidation(rapport.identifiantRapport);
 
-    await attestationService.genererAttestation({
-      stageId: updatedRapport.stageId,
-      responsableId: null,
-      appreciation: "Validé automatiquement après double validation (encadrants ou tiers)",
-      forcer: true
-    });
+  await attestationService.genererAttestation({
+    stageId: updatedRapport.stageId,
+    responsableId: null,
+    appreciation: "Validé automatiquement après double validation (encadrants ou tiers)",
+    forcer: true
+  });
 
-    await db.execute(`
-      UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?
-    `, [rapportId]);
+  await db.execute(`
+    UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?
+  `, [rapportId]);
 
-    await historiqueService.logAction({
-      rapportId,
-      utilisateurId: null,
-      role: 'System',
-      action: 'Attestation générée automatiquement',
-      origine: 'automatique'
-    });
-  }
-};
-
+  await historiqueService.logAction({
+    rapportId,
+    utilisateurId: null,
+    role: 'System',
+    action: 'Attestation générée automatiquement',
+    origine: 'automatique'
+  });
+}}
 
 
     
