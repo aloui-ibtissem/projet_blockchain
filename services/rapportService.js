@@ -111,78 +111,85 @@ const rapportHash = await hashFile(fullPath);
   return { identifiantRapport };
 };
 
-exports.validerRapport = async (email, role, rapportId) => {
-  const champ = role === "EncadrantAcademique" ? "statutAcademique" : "statutProfessionnel";
-  const blockchainRole = role === "EncadrantAcademique" ? "ACA" : "PRO";
+exports.validerParTier = async (rapportId, tierId) => {
+  const [[rapport]] = await db.execute(`
+    SELECT rs.*, s.id AS stageId
+    FROM RapportStage rs
+    JOIN Stage s ON s.id = rs.stageId
+    WHERE rs.id = ?
+  `, [rapportId]);
 
-  const [[encadrant]] = await db.execute(`SELECT id, prenom, nom FROM ${role} WHERE email = ?`, [email]);
-  const [[rapport]] = await db.execute("SELECT * FROM RapportStage WHERE id = ?", [rapportId]);
-  const [[stage]] = await db.execute("SELECT * FROM Stage WHERE id = ?", [rapport.stageId]);
-  const [[etudiant]] = await db.execute("SELECT prenom, nom FROM Etudiant WHERE id = ?", [rapport.etudiantId]);
+  if (!rapport) throw new Error("Rapport introuvable.");
 
-  if ((champ === "statutAcademique" && rapport.statutAcademique) ||
-      (champ === "statutProfessionnel" && rapport.statutProfessionnel)) {
-    throw new Error("Ce rapport est déjà validé par cet encadrant.");
+  const [tiers] = await db.execute(`
+    SELECT * FROM TierDebloqueur WHERE id = ?
+  `, [tierId]);
+
+  if (!tiers.length) throw new Error("Tier introuvable.");
+  const tier = tiers[0];
+
+  let colonneTier = "", colonneStatut = "", colonneEncadrantStatut = "", role = "", action = "";
+
+  if (tier.structureType === 'universite' && rapport.tierIntervenantAcademiqueId == tierId) {
+    colonneTier = "tierIntervenantAcademiqueId";
+    colonneStatut = "statutAcademique";
+    colonneEncadrantStatut = "statutProfessionnel";
+    role = "TierDebloqueur";
+    action = "Validation académique par tier";
+  } else if (tier.structureType === 'entreprise' && rapport.tierIntervenantProfessionnelId == tierId) {
+    colonneTier = "tierIntervenantProfessionnelId";
+    colonneStatut = "statutProfessionnel";
+    colonneEncadrantStatut = "statutAcademique";
+    role = "TierDebloqueur";
+    action = "Validation professionnelle par tier";
+  } else {
+    throw new Error("Aucune validation requise ou tier non autorisé à intervenir.");
   }
 
-  await db.execute(`UPDATE RapportStage SET ${champ} = TRUE WHERE id = ?`, [rapportId]);
-  await validateAsEncadrant(rapport.identifiantRapport, blockchainRole);
+  // Marquer comme validé par ce Tier
+  await db.execute(`
+    UPDATE RapportStage 
+    SET ${colonneStatut} = TRUE
+    WHERE id = ?
+  `, [rapportId]);
+
+  // Historique
   await historiqueService.logAction({
-  rapportId: rapportId,
-  utilisateurId: encadrant.id,
-  role,
-  action: `Validation du rapport`,
-  commentaire: `Rapport : ${rapport.identifiantRapport}`,
-  origine: "manuelle"
-});
-
-
-  await notificationService.notifyUser({
-    toId: rapport.etudiantId,
-    toRole: "Etudiant",
-    subject: "Rapport validé",
-    templateName: champ === "statutAcademique" ? "rapport_validated_academique" : "rapport_validated_professionnel",
-    templateData: {
-      etudiantPrenom: etudiant.prenom,
-       etudiantNom: etudiant.nom,
-      encadrantPrenom: encadrant.prenom,
-      encadrantNom: encadrant.nom,
-      titreStage:stage.titre,
-      rapportUrl: `${baseUrl}/uploads/${rapport.fichier}`,
-       dashboardUrl: buildUrl("/login")
-    },
-    message: `Votre rapport a été validé par ${encadrant.prenom} ${encadrant.nom}.`
+    rapportId,
+    stageId: rapport.stageId,
+    utilisateurId: tierId,
+    role,
+    action,
+    commentaire: "Validation par tier débloqueur",
+    origine: "tier"
   });
 
-  const [[refreshed]] = await db.execute("SELECT statutAcademique, statutProfessionnel, attestationGeneree FROM RapportStage WHERE id = ?", [rapportId]);
+  // Vérifier si les deux validations (académique ET pro) sont faites
+  const [updatedRapportRows] = await db.execute(`
+    SELECT statutAcademique, statutProfessionnel 
+    FROM RapportStage 
+    WHERE id = ?
+  `, [rapportId]);
 
-  if (refreshed.statutAcademique && refreshed.statutProfessionnel && !refreshed.attestationGeneree) {
-    await confirmDoubleValidation(rapport.identifiantRapport);
+  const updatedRapport = updatedRapportRows[0];
+  if (updatedRapport.statutAcademique && updatedRapport.statutProfessionnel) {
+    // Générer l’attestation
+    await attestationService.genererAttestation({
+      stageId: rapport.stageId,
+      responsableId: null,
+      appreciation: "Validé automatiquement suite à intervention des tiers",
+      forcer: true
+    });
 
-    const [[responsable]] = await db.execute(
-      `SELECT id, prenom, nom FROM ResponsableEntreprise WHERE entrepriseId = ? LIMIT 1`,
-      [stage.entrepriseId]
-    );
-
-    if (responsable) {
-      await notificationService.notifyUser({
-        toId: responsable.id,
-        toRole: "ResponsableEntreprise",
-        subject: "Attestation à générer",
-        templateName: "attestation_ready",
-        templateData: {
-          etudiantPrenom: etudiant.prenom,
-          etudiantNom: etudiant.nom,
-          titreStage: stage.titre,
-          identifiantRapport: rapport.identifiantRapport,
-          attestationFormUrl: `${baseUrl}/entreprise/attestation/${rapport.identifiantRapport}`,
-           dashboardUrl: buildUrl("/login")
-        },
-        message: `L'attestation de ${etudiant.prenom} ${etudiant.nom} est prête à être générée.`
-      });
-    }
+    // Marquer attestation comme générée
+    await db.execute(`
+      UPDATE RapportStage 
+      SET attestationGeneree = 1 
+      WHERE id = ?
+    `, [rapportId]);
   }
 };
+
 
 exports.validerParTier = async (rapportId, tierId) => {
   // Récupération du rapport et du stage associé
