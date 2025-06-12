@@ -483,87 +483,88 @@ const notifierTier = async (tierId, type, idRapport, prenomEtu, nomEtu) =>
  *  ---------------------------------------------------------*/
 exports.checkForTierIntervention = async () => {
   const [rapports] = await db.execute(`
-    SELECT r.id  AS rapportId,
-           r.identifiantRapport,
-           r.statutAcademique,
-           r.statutProfessionnel,
-           r.tierIntervenantAcademiqueId,
-           r.tierIntervenantProfessionnelId,
-           s.id  AS stageId,
-           s.dateFin,
-           s.universiteId,
-           s.entrepriseId,
-           e.prenom, e.nom
-    FROM   RapportStage r
-    JOIN   Stage s   ON s.id = r.stageId
-    JOIN   Etudiant e ON e.id = s.etudiantId
-    WHERE  DATEDIFF(CURDATE(), s.dateFin) > 10
+    SELECT 
+      r.id AS rapportId,
+      r.identifiantRapport,
+      r.statutAcademique,
+      r.statutProfessionnel,
+      r.tierIntervenantAcademiqueId,
+      r.tierIntervenantProfessionnelId,
+      s.id AS stageId,
+      s.dateFin,
+      s.universiteId,
+      s.entrepriseId,
+      e.prenom, e.nom
+    FROM RapportStage r
+    JOIN Stage s ON s.id = r.stageId
+    JOIN Etudiant e ON e.id = s.etudiantId
+    WHERE DATEDIFF(CURDATE(), s.dateFin) > 10
       AND (r.statutAcademique = 0 OR r.statutProfessionnel = 0)
   `);
 
-  const now = new Date();
-
   for (const rep of rapports) {
-    /* ---------- retard côté université ---------- */
+    // 🚨 Retard côté université
     if (!rep.statutAcademique && !rep.tierIntervenantAcademiqueId) {
-      const [[tierUni]] = await db.execute(
-        `SELECT id FROM TierDebloqueur
-         WHERE structureType = 'universite' AND universiteId = ?
-         LIMIT 1`,
-        [rep.universiteId]
-      );
+      const [[tierUni]] = await db.execute(`
+        SELECT id FROM TierDebloqueur
+        WHERE structureType = 'universite' AND universiteId = ?
+        LIMIT 1
+      `, [rep.universiteId]);
+
       if (tierUni) {
-        await db.execute(
-          `UPDATE RapportStage
-           SET tierIntervenantAcademiqueId = ?
-           WHERE id = ?`,
-          [tierUni.id, rep.rapportId]
-        );
+        await db.execute(`
+          UPDATE RapportStage
+          SET tierIntervenantAcademiqueId = ?
+          WHERE id = ?
+        `, [tierUni.id, rep.rapportId]);
+
         await notifierTier(
           tierUni.id, 'universite',
           rep.identifiantRapport,
           rep.prenom, rep.nom
         );
+
         await historiqueService.logAction({
-          rapportId   : rep.rapportId,
-          stageId     : rep.stageId,
+          rapportId: rep.rapportId,
+          stageId: rep.stageId,
           utilisateurId: tierUni.id,
-          role        : 'TierDebloqueur',
-          action      : 'Attribution automatique (académique)',
-          commentaire : 'Encadrant académique hors délai',
-          origine     : 'automatique'
+          role: 'TierDebloqueur',
+          action: 'Attribution automatique (académique)',
+          commentaire: 'Encadrant académique hors délai',
+          origine: 'automatique'
         });
       }
     }
 
-    /* ---------- retard côté entreprise ---------- */
+    // 🚨 Retard côté entreprise
     if (!rep.statutProfessionnel && !rep.tierIntervenantProfessionnelId) {
-      const [[tierEnt]] = await db.execute(
-        `SELECT id FROM TierDebloqueur
-         WHERE structureType = 'entreprise' AND entrepriseId = ?
-         LIMIT 1`,
-        [rep.entrepriseId]
-      );
+      const [[tierEnt]] = await db.execute(`
+        SELECT id FROM TierDebloqueur
+        WHERE structureType = 'entreprise' AND entrepriseId = ?
+        LIMIT 1
+      `, [rep.entrepriseId]);
+
       if (tierEnt) {
-        await db.execute(
-          `UPDATE RapportStage
-           SET tierIntervenantProfessionnelId = ?
-           WHERE id = ?`,
-          [tierEnt.id, rep.rapportId]
-        );
+        await db.execute(`
+          UPDATE RapportStage
+          SET tierIntervenantProfessionnelId = ?
+          WHERE id = ?
+        `, [tierEnt.id, rep.rapportId]);
+
         await notifierTier(
           tierEnt.id, 'entreprise',
           rep.identifiantRapport,
           rep.prenom, rep.nom
         );
+
         await historiqueService.logAction({
-          rapportId   : rep.rapportId,
-          stageId     : rep.stageId,
+          rapportId: rep.rapportId,
+          stageId: rep.stageId,
           utilisateurId: tierEnt.id,
-          role        : 'TierDebloqueur',
-          action      : 'Attribution automatique (professionnel)',
-          commentaire : 'Encadrant professionnel hors délai',
-          origine     : 'automatique'
+          role: 'TierDebloqueur',
+          action: 'Attribution automatique (professionnel)',
+          commentaire: 'Encadrant professionnel hors délai',
+          origine: 'automatique'
         });
       }
     }
@@ -571,59 +572,78 @@ exports.checkForTierIntervention = async () => {
 };
 
 
+
 //
 exports.getRapportsPourTier = async (tierId) => {
-  const [[tier]] = await db.execute(
-    "SELECT universiteId, entrepriseId FROM TierDebloqueur WHERE id = ?",
+  // Récupérer les infos du tier (type et ID structure)
+  const [tiers] = await db.execute(
+    `SELECT structureType, universiteId, entrepriseId 
+     FROM TierDebloqueur 
+     WHERE id = ?`,
     [tierId]
   );
-  if (!tier) return { enAttente: [], valides: [] };
 
-  let rows = [];
+  if (!tiers.length) throw new Error("Tier introuvable.");
+  const tier = tiers[0];
 
-  // Cas académique
-  if (tier.universiteId) {
-    const [uniRows] = await db.execute(`
-      SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
-             r.statutAcademique, r.statutProfessionnel,
-             e.nom AS nomEtudiant, e.prenom AS prenomEtudiant,
-             s.dateFin, s.titre,
-             u.nom AS nomUniversite, ent.nom AS nomEntreprise
-      FROM RapportStage r
-      JOIN Stage s ON r.stageId = s.id
-      JOIN Etudiant e ON s.etudiantId = e.id
-      LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
-      LEFT JOIN Universite u ON s.universiteId = u.id
-      WHERE r.statutAcademique = FALSE AND r.tierIntervenantAcademiqueId = ?
-    `, [tierId]);
+  // Filtrage selon le type
+  let condition = "";
+  let join = "";
 
-    rows = rows.concat(uniRows);
+  if (tier.structureType === "universite") {
+    join = `
+      JOIN EncadrantAcademique ea ON ea.id = s.encadrantAcademiqueId
+      JOIN Universite u ON u.id = ea.universiteId
+    `;
+    condition = `u.id = ${tier.universiteId}`;
+  } else {
+    join = `
+      JOIN EncadrantProfessionnel ep ON ep.id = s.encadrantProfessionnelId
+      JOIN Entreprise e ON e.id = ep.entrepriseId
+    `;
+    condition = `e.id = ${tier.entrepriseId}`;
   }
 
-  // Cas professionnel
-  if (tier.entrepriseId) {
-    const [entRows] = await db.execute(`
-      SELECT r.id, r.identifiantRapport, r.fichier, r.dateSoumission,
-             r.statutAcademique, r.statutProfessionnel,
-             e.nom AS nomEtudiant, e.prenom AS prenomEtudiant,
-             s.dateFin, s.titre,
-             u.nom AS nomUniversite, ent.nom AS nomEntreprise
-      FROM RapportStage r
-      JOIN Stage s ON r.stageId = s.id
-      JOIN Etudiant e ON s.etudiantId = e.id
-      LEFT JOIN Entreprise ent ON s.entrepriseId = ent.id
-      LEFT JOIN Universite u ON s.universiteId = u.id
-      WHERE r.statutProfessionnel = FALSE AND r.tierIntervenantProfessionnelId = ?
-    `, [tierId]);
+  const [rapports] = await db.execute(
+    `SELECT rs.*, s.titre, s.dateFin, 
+            et.prenom AS prenomEtudiant, et.nom AS nomEtudiant
+     FROM RapportStage rs
+     JOIN Stage s ON s.id = rs.stageId
+     JOIN Etudiant et ON et.id = s.etudiantId
+     ${join}
+     WHERE ${condition}
+       AND (
+         (rs.statutAcademique = FALSE AND '${tier.structureType}' = 'universite')
+         OR
+         (rs.statutProfessionnel = FALSE AND '${tier.structureType}' = 'entreprise')
+         OR
+         (rs.tierIntervenantAcademiqueId = ? AND '${tier.structureType}' = 'universite')
+         OR
+         (rs.tierIntervenantProfessionnelId = ? AND '${tier.structureType}' = 'entreprise')
+       )`,
+    [tierId, tierId]
+  );
 
-    rows = rows.concat(entRows);
-  }
+  // Séparer en deux groupes : en attente vs validés par ce tier
+  const enAttente = rapports.filter(r => {
+    if (tier.structureType === "universite") {
+      return !r.statutAcademique && r.tierIntervenantAcademiqueId === null;
+    } else {
+      return !r.statutProfessionnel && r.tierIntervenantProfessionnelId === null;
+    }
+  });
 
-  return {
-    enAttente: rows,
-    valides: [] // pas encore implémenté
-  };
+  const valides = rapports.filter(r => {
+    if (tier.structureType === "universite") {
+      return r.tierIntervenantAcademiqueId === tierId;
+    } else {
+      return r.tierIntervenantProfessionnelId === tierId;
+    }
+  });
+
+  return { enAttente, valides };
 };
+
 
 //
 exports.getRapportsPourEncadrant = async (encadrantId, type, search = '') => {

@@ -150,8 +150,8 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
       encadrantProPrenom: stage.proPrenom,
       encadrantProNom: stage.proNom,
       identifiantAttestation: attestationId,
-      hash: pdfDefinitifHash,
-      attestationUrl: pdfDefinitifPath.publicUrl,
+      hash:ss,
+      attestationUrl: finalHtmlUpload.publicUrl,
       year: new Date().getFullYear()
     },
     message: "Votre attestation de stage est prête."

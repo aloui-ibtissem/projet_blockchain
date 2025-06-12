@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Button, Alert, ListGroup } from "react-bootstrap";
+import { Button, Alert } from "react-bootstrap";
 import "./DashboardTierEnt.css";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:3000";
 
 function TierEntDashboard() {
-  const [rapports, setRapports] = useState([]);
+  const [rapports, setRapports] = useState({ enAttente: [], valides: [] });
   const [message, setMessage] = useState("");
   const [notifications, setNotifications] = useState([]);
   const token = localStorage.getItem("token");
@@ -21,7 +21,7 @@ function TierEntDashboard() {
       const res = await axios.get(`${API_URL}/api/rapport/tier/rapports-assignes`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRapports(Array.isArray(res.data?.enAttente) ? res.data.enAttente : []);
+      setRapports(res.data || { enAttente: [], valides: [] });
     } catch (err) {
       console.error(err);
       setMessage("Erreur lors du chargement des rapports.");
@@ -80,7 +80,7 @@ function TierEntDashboard() {
       </div>
 
       {message && <Alert variant="info">{message}</Alert>}
-      {Array.isArray(notifications) && notifications.length > 0 && (
+      {notifications.length > 0 && (
         <Alert variant="warning">
           Vous avez {notifications.length} nouvelle(s) notification(s).
         </Alert>
@@ -88,19 +88,19 @@ function TierEntDashboard() {
 
       <div className="mt-4">
         <h5 className="mb-3">Rapports à valider</h5>
-        {Array.isArray(rapports) && rapports.filter(r => r.statutProfessionnel !== true).length === 0 ? (
+        {rapports.enAttente.length === 0 ? (
           <p className="text-muted">Aucun rapport en attente.</p>
         ) : (
-          rapports.filter(r => r.statutProfessionnel !== true).map(r => renderRapport(r, false))
+          rapports.enAttente.map(r => renderRapport(r, false))
         )}
       </div>
 
       <div className="mt-5">
         <h5 className="mb-3">Rapports validés</h5>
-        {Array.isArray(rapports) && rapports.filter(r => r.statutProfessionnel === true).length === 0 ? (
+        {rapports.valides.length === 0 ? (
           <p className="text-muted">Aucun rapport validé.</p>
         ) : (
-          rapports.filter(r => r.statutProfessionnel === true).map(r => renderRapport(r, true))
+          rapports.valides.map(r => renderRapport(r, true))
         )}
       </div>
     </div>
@@ -108,4 +108,3 @@ function TierEntDashboard() {
 }
 
 export default TierEntDashboard;
-
