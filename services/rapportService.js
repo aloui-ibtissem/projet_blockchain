@@ -459,21 +459,6 @@ exports.remindersValidationCheck = async () => {
 };
 
 //
-/* -------- helpers internes ------------------------------------ */
-const notifierTier = async (tierId, type, idRapport, prenomEtu, nomEtu) =>
-  notificationService.notifyUser({
-    toId      : tierId,
-    toRole    : 'TierDebloqueur',
-    subject   : `Rapport ${idRapport} à valider (${type})`,
-    templateName: 'tier_intervention',
-    templateData: {
-      etudiantPrenom   : prenomEtu,
-      etudiantNom      : nomEtu,
-      identifiantRapport: idRapport,
-      dashboardUrl     : buildUrl('/login')
-    },
-    message   : `Le rapport ${idRapport} nécessite votre validation (${type}).`
-  });
 
 
 
@@ -482,6 +467,21 @@ const notifierTier = async (tierId, type, idRapport, prenomEtu, nomEtu) =>
  *  Après J+10 : bascule le rapport vers le(s) Tier(s) inactifs
  *  ---------------------------------------------------------*/
 // --- Fonction : Intervention des Tiers (corrigée) ---
+const notifierTier = async (tierId, type, idRapport, prenomEtu, nomEtu) =>
+  notificationService.notifyUser({
+    toId: tierId,
+    toRole: 'TierDebloqueur',
+    subject: `Rapport ${idRapport} à valider (${type})`,
+    templateName: 'tier_intervention',
+    templateData: {
+      etudiantPrenom: prenomEtu,
+      etudiantNom: nomEtu,
+      identifiantRapport: idRapport,
+      dashboardUrl: buildUrl('/login')
+    },
+    message: `Le rapport ${idRapport} n'est pas validé depuis 10 jours. Intervention tier requise (${type}).`
+  });
+
 exports.checkForTierIntervention = async () => {
   const [rapports] = await db.execute(`
     SELECT 
@@ -502,75 +502,67 @@ exports.checkForTierIntervention = async () => {
     WHERE DATEDIFF(CURDATE(), s.dateFin) > 10
   `);
 
+  console.log(`[CRON] ${rapports.length} rapports à vérifier pour intervention Tier.`);
+
   for (const rep of rapports) {
-    const actions = [];
+    const { rapportId, identifiantRapport, prenom, nom } = rep;
 
-    // Vérifie si intervention nécessaire côté université
+    // Côté universitaire
     if (!rep.statutAcademique && !rep.tierIntervenantAcademiqueId) {
-      const [[tierUni]] = await db.execute(`
-        SELECT id FROM TierDebloqueur
-        WHERE structureType = 'universite' AND universiteId = ?
-        LIMIT 1
-      `, [rep.universiteId]);
-
+      console.log(`[Tier] Intervention demandée (universite) pour rapport ${identifiantRapport}`);
+      const [[tierUni]] = await db.execute(
+        `SELECT id FROM TierDebloqueur WHERE structureType = 'universite' AND universiteId = ? LIMIT 1`,
+        [rep.universiteId]
+      );
       if (tierUni) {
-        await db.execute(`
-          UPDATE RapportStage
-          SET tierIntervenantAcademiqueId = ?
-          WHERE id = ?
-        `, [tierUni.id, rep.rapportId]);
-
-        await notifierTier(tierUni.id, 'universite', rep.identifiantRapport, rep.prenom, rep.nom);
-
-        actions.push({
+        await db.execute(
+          `UPDATE RapportStage SET tierIntervenantAcademiqueId = ? WHERE id = ?`,
+          [tierUni.id, rapportId]
+        );
+        await notifierTier(tierUni.id, 'universite', identifiantRapport, prenom, nom);
+        await historiqueService.logAction({
+          rapportId,
+          stageId: rep.stageId,
           utilisateurId: tierUni.id,
           role: 'TierDebloqueur',
           action: 'Attribution automatique (académique)',
-          commentaire: 'Encadrant académique hors délai'
+          commentaire: 'Encadrant académique hors délai',
+          origine: 'automatique'
         });
+      } else {
+        console.warn(`[Tier] Aucun tier universitaire trouvé pour universiteId=${rep.universiteId}`);
       }
     }
 
-    // Vérifie si intervention nécessaire côté entreprise
+    // Côté entreprise
     if (!rep.statutProfessionnel && !rep.tierIntervenantProfessionnelId) {
-      const [[tierEnt]] = await db.execute(`
-        SELECT id FROM TierDebloqueur
-        WHERE structureType = 'entreprise' AND entrepriseId = ?
-        LIMIT 1
-      `, [rep.entrepriseId]);
-
+      console.log(`[Tier] Intervention demandée (entreprise) pour rapport ${identifiantRapport}`);
+      const [[tierEnt]] = await db.execute(
+        `SELECT id FROM TierDebloqueur WHERE structureType = 'entreprise' AND entrepriseId = ? LIMIT 1`,
+        [rep.entrepriseId]
+      );
       if (tierEnt) {
-        await db.execute(`
-          UPDATE RapportStage
-          SET tierIntervenantProfessionnelId = ?
-          WHERE id = ?
-        `, [tierEnt.id, rep.rapportId]);
-
-        await notifierTier(tierEnt.id, 'entreprise', rep.identifiantRapport, rep.prenom, rep.nom);
-
-        actions.push({
+        await db.execute(
+          `UPDATE RapportStage SET tierIntervenantProfessionnelId = ? WHERE id = ?`,
+          [tierEnt.id, rapportId]
+        );
+        await notifierTier(tierEnt.id, 'entreprise', identifiantRapport, prenom, nom);
+        await historiqueService.logAction({
+          rapportId,
+          stageId: rep.stageId,
           utilisateurId: tierEnt.id,
           role: 'TierDebloqueur',
           action: 'Attribution automatique (professionnel)',
-          commentaire: 'Encadrant professionnel hors délai'
+          commentaire: 'Encadrant professionnel hors délai',
+          origine: 'automatique'
         });
+      } else {
+        console.warn(`[Tier] Aucun tier entreprise trouvé pour entrepriseId=${rep.entrepriseId}`);
       }
-    }
-
-    // Historique
-    for (const a of actions) {
-      await historiqueService.logAction({
-        rapportId: rep.rapportId,
-        stageId: rep.stageId,
-        utilisateurId: a.utilisateurId,
-        role: a.role,
-        action: a.action,
-        commentaire: a.commentaire,
-        origine: 'automatique'
-      });
     }
   }
 };
+
 
 
 
