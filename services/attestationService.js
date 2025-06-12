@@ -150,7 +150,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
       encadrantProPrenom: stage.proPrenom,
       encadrantProNom: stage.proNom,
       identifiantAttestation: attestationId,
-      hash:ss,
+      hash:pdfDefinitifHash,
       attestationUrl: finalHtmlUpload.publicUrl,
       year: new Date().getFullYear()
     },
