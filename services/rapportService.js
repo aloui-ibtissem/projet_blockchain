@@ -466,7 +466,6 @@ exports.remindersValidationCheck = async () => {
 /* -----------------------------------------------------------
  *  Après J+10 : bascule le rapport vers le(s) Tier(s) inactifs
  *  ---------------------------------------------------------*/
-// --- Fonction : Intervention des Tiers (corrigée) ---
 const notifierTier = async (tierId, type, idRapport, prenomEtu, nomEtu) =>
   notificationService.notifyUser({
     toId: tierId,
@@ -562,11 +561,6 @@ exports.checkForTierIntervention = async () => {
     }
   }
 };
-
-
-
-
-
 
 //
 exports.getRapportsPourTier = async (tierId) => {
