@@ -481,6 +481,7 @@ const notifierTier = async (tierId, type, idRapport, prenomEtu, nomEtu) =>
 /* -----------------------------------------------------------
  *  Après J+10 : bascule le rapport vers le(s) Tier(s) inactifs
  *  ---------------------------------------------------------*/
+// --- Fonction : Intervention des Tiers (corrigée) ---
 exports.checkForTierIntervention = async () => {
   const [rapports] = await db.execute(`
     SELECT 
@@ -502,81 +503,75 @@ exports.checkForTierIntervention = async () => {
   `);
 
   for (const rep of rapports) {
-    //  Si déjà doublement validé, inutile d’intervenir
-    if (rep.statutAcademique && rep.statutProfessionnel) continue;
+    const actions = [];
 
-    //  Retard côté université
-    if (!rep.statutAcademique) {
-      // Vérifie si déjà un tier a été affecté
-      if (!rep.tierIntervenantAcademiqueId) {
-        const [[tierUni]] = await db.execute(`
-          SELECT id FROM TierDebloqueur
-          WHERE structureType = 'universite' AND universiteId = ?
-          LIMIT 1
-        `, [rep.universiteId]);
+    // Vérifie si intervention nécessaire côté université
+    if (!rep.statutAcademique && !rep.tierIntervenantAcademiqueId) {
+      const [[tierUni]] = await db.execute(`
+        SELECT id FROM TierDebloqueur
+        WHERE structureType = 'universite' AND universiteId = ?
+        LIMIT 1
+      `, [rep.universiteId]);
 
-        if (tierUni) {
-          await db.execute(`
-            UPDATE RapportStage
-            SET tierIntervenantAcademiqueId = ?
-            WHERE id = ?
-          `, [tierUni.id, rep.rapportId]);
+      if (tierUni) {
+        await db.execute(`
+          UPDATE RapportStage
+          SET tierIntervenantAcademiqueId = ?
+          WHERE id = ?
+        `, [tierUni.id, rep.rapportId]);
 
-          await notifierTier(
-            tierUni.id, 'universite',
-            rep.identifiantRapport,
-            rep.prenom, rep.nom
-          );
+        await notifierTier(tierUni.id, 'universite', rep.identifiantRapport, rep.prenom, rep.nom);
 
-          await historiqueService.logAction({
-            rapportId: rep.rapportId,
-            stageId: rep.stageId,
-            utilisateurId: tierUni.id,
-            role: 'TierDebloqueur',
-            action: 'Attribution automatique (académique)',
-            commentaire: 'Encadrant académique hors délai',
-            origine: 'automatique'
-          });
-        }
+        actions.push({
+          utilisateurId: tierUni.id,
+          role: 'TierDebloqueur',
+          action: 'Attribution automatique (académique)',
+          commentaire: 'Encadrant académique hors délai'
+        });
       }
     }
 
-    //  Retard côté entreprise
-    if (!rep.statutProfessionnel) {
-      if (!rep.tierIntervenantProfessionnelId) {
-        const [[tierEnt]] = await db.execute(`
-          SELECT id FROM TierDebloqueur
-          WHERE structureType = 'entreprise' AND entrepriseId = ?
-          LIMIT 1
-        `, [rep.entrepriseId]);
+    // Vérifie si intervention nécessaire côté entreprise
+    if (!rep.statutProfessionnel && !rep.tierIntervenantProfessionnelId) {
+      const [[tierEnt]] = await db.execute(`
+        SELECT id FROM TierDebloqueur
+        WHERE structureType = 'entreprise' AND entrepriseId = ?
+        LIMIT 1
+      `, [rep.entrepriseId]);
 
-        if (tierEnt) {
-          await db.execute(`
-            UPDATE RapportStage
-            SET tierIntervenantProfessionnelId = ?
-            WHERE id = ?
-          `, [tierEnt.id, rep.rapportId]);
+      if (tierEnt) {
+        await db.execute(`
+          UPDATE RapportStage
+          SET tierIntervenantProfessionnelId = ?
+          WHERE id = ?
+        `, [tierEnt.id, rep.rapportId]);
 
-          await notifierTier(
-            tierEnt.id, 'entreprise',
-            rep.identifiantRapport,
-            rep.prenom, rep.nom
-          );
+        await notifierTier(tierEnt.id, 'entreprise', rep.identifiantRapport, rep.prenom, rep.nom);
 
-          await historiqueService.logAction({
-            rapportId: rep.rapportId,
-            stageId: rep.stageId,
-            utilisateurId: tierEnt.id,
-            role: 'TierDebloqueur',
-            action: 'Attribution automatique (professionnel)',
-            commentaire: 'Encadrant professionnel hors délai',
-            origine: 'automatique'
-          });
-        }
+        actions.push({
+          utilisateurId: tierEnt.id,
+          role: 'TierDebloqueur',
+          action: 'Attribution automatique (professionnel)',
+          commentaire: 'Encadrant professionnel hors délai'
+        });
       }
+    }
+
+    // Historique
+    for (const a of actions) {
+      await historiqueService.logAction({
+        rapportId: rep.rapportId,
+        stageId: rep.stageId,
+        utilisateurId: a.utilisateurId,
+        role: a.role,
+        action: a.action,
+        commentaire: a.commentaire,
+        origine: 'automatique'
+      });
     }
   }
 };
+
 
 
 
