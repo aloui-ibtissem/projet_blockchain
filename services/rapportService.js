@@ -192,94 +192,77 @@ exports.validerParTier = async (rapportId, tierId) => {
 
 
 exports.validerParTier = async (rapportId, tierId) => {
-  // Récupération du rapport et du stage associé
   const [[rapport]] = await db.execute(`
-    SELECT 
-      r.statutAcademique,
-      r.statutProfessionnel,
-      r.tierIntervenantAcademiqueId,
-      r.tierIntervenantProfessionnelId,
-      s.id AS stageId,
-      s.encadrantAcademiqueId,
-      s.encadrantProfessionnelId
-    FROM RapportStage r
-    JOIN Stage s ON s.id = r.stageId
-    WHERE r.id = ?
+    SELECT * FROM RapportStage WHERE id = ?
   `, [rapportId]);
 
   if (!rapport) throw new Error("Rapport introuvable.");
 
-  let validationEffectuee = false;
+  const [[tier]] = await db.execute(`SELECT * FROM TierDebloqueur WHERE id = ?`, [tierId]);
+  if (!tier) throw new Error("Tier introuvable.");
 
-  // Cas : validation côté universitaire par le tier
-  if (!rapport.statutAcademique && rapport.tierIntervenantAcademiqueId === tierId) {
-    await db.execute(`
-      UPDATE RapportStage
-      SET statutAcademique = TRUE
-      WHERE id = ?
-    `, [rapportId]);
+  let statutField, tierField, roleAction;
 
-    await historiqueService.logAction({
-      rapportId,
-      stageId: rapport.stageId,
-      utilisateurId: tierId,
-      role: 'TierDebloqueur',
-      action: 'Validation rapport (à la place encadrant académique)',
-      origine: 'tier'
-    });
-
-    validationEffectuee = true;
+  if (tier.structureType === 'universite') {
+    statutField = 'statutAcademique';
+    tierField = 'tierIntervenantAcademiqueId';
+    roleAction = 'Validation académique par tier';
+  } else if (tier.structureType === 'entreprise') {
+    statutField = 'statutProfessionnel';
+    tierField = 'tierIntervenantProfessionnelId';
+    roleAction = 'Validation professionnelle par tier';
+  } else {
+    throw new Error("Structure Tier inconnue.");
   }
 
-  // Cas : validation côté entreprise par le tier
-  if (!rapport.statutProfessionnel && rapport.tierIntervenantProfessionnelId === tierId) {
-    await db.execute(`
-      UPDATE RapportStage
-      SET statutProfessionnel = TRUE
-      WHERE id = ?
-    `, [rapportId]);
-
-    await historiqueService.logAction({
-      rapportId,
-      stageId: rapport.stageId,
-      utilisateurId: tierId,
-      role: 'TierDebloqueur',
-      action: 'Validation rapport (à la place encadrant professionnel)',
-      origine: 'tier'
-    });
-
-    validationEffectuee = true;
+  if (rapport[statutField]) {
+    throw new Error("Rapport déjà validé pour ce statut.");
   }
 
-  if (!validationEffectuee) {
-    throw new Error("Aucune validation requise ou tier non autorisé à intervenir.");
-  }
+  // Validation explicite du rapport par le tier
+  await db.execute(`
+    UPDATE RapportStage
+    SET ${statutField} = TRUE, ${tierField} = ?
+    WHERE id = ?
+  `, [tierId, rapportId]);
 
-  // Vérifie si le rapport est désormais doublement validé
-  const [[rFinal]] = await db.execute(`
-    SELECT statutAcademique, statutProfessionnel
+  await historiqueService.logAction({
+    rapportId,
+    utilisateurId: tierId,
+    role: "TierDebloqueur",
+    action: roleAction,
+    commentaire: "Intervention tier suite à retard",
+    origine: "tier"
+  });
+
+  // Vérifier explicitement si les deux validations sont désormais effectuées
+  const [[updatedRapport]] = await db.execute(`
+    SELECT statutAcademique, statutProfessionnel, stageId
     FROM RapportStage WHERE id = ?
   `, [rapportId]);
 
-  if (rFinal.statutAcademique && rFinal.statutProfessionnel) {
-    // Générer automatiquement l’attestation
+  if (updatedRapport.statutAcademique && updatedRapport.statutProfessionnel) {
     await attestationService.genererAttestation({
-      stageId: rapport.stageId,
-      responsableId: null,
+      stageId: updatedRapport.stageId,
+      responsableId: null, 
       appreciation: "Validé automatiquement suite à intervention des tiers",
       forcer: true
     });
 
+    await db.execute(`
+      UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?
+    `, [rapportId]);
+
     await historiqueService.logAction({
       rapportId,
-      stageId: rapport.stageId,
       utilisateurId: null,
       role: 'System',
-      action: 'Attestation générée automatiquement (tiers)',
+      action: 'Attestation générée automatiquement (intervention tiers)',
       origine: 'automatique'
     });
   }
 };
+
 
 exports.commenterRapport = async (email, rapportId, commentaire) => {
   const [[rapport]] = await db.execute("SELECT * FROM RapportStage WHERE id = ?", [rapportId]);
@@ -617,71 +600,52 @@ exports.checkForTierIntervention = async () => {
 
 //
 exports.getRapportsPourTier = async (tierId) => {
-  // Récupérer les infos du tier (type et ID structure)
-  const [tiers] = await db.execute(
-    `SELECT structureType, universiteId, entrepriseId 
-     FROM TierDebloqueur 
-     WHERE id = ?`,
-    [tierId]
-  );
+  const [tiers] = await db.execute(`
+    SELECT structureType, universiteId, entrepriseId 
+    FROM TierDebloqueur 
+    WHERE id = ?
+  `, [tierId]);
 
   if (!tiers.length) throw new Error("Tier introuvable.");
   const tier = tiers[0];
 
-  // Filtrage selon le type
   let condition = "";
-  let join = "";
-
+  
   if (tier.structureType === "universite") {
-    join = `
-      JOIN EncadrantAcademique ea ON ea.id = s.encadrantAcademiqueId
-      JOIN Universite u ON u.id = ea.universiteId
+    condition = `
+      rs.tierIntervenantAcademiqueId = ${tierId}
+      AND rs.statutAcademique = FALSE
     `;
-    condition = `u.id = ${tier.universiteId}`;
   } else {
-    join = `
-      JOIN EncadrantProfessionnel ep ON ep.id = s.encadrantProfessionnelId
-      JOIN Entreprise e ON e.id = ep.entrepriseId
+    condition = `
+      rs.tierIntervenantProfessionnelId = ${tierId}
+      AND rs.statutProfessionnel = FALSE
     `;
-    condition = `e.id = ${tier.entrepriseId}`;
   }
 
-  const [rapports] = await db.execute(
-    `SELECT rs.*, s.titre, s.dateFin, 
-            et.prenom AS prenomEtudiant, et.nom AS nomEtudiant
-     FROM RapportStage rs
-     JOIN Stage s ON s.id = rs.stageId
-     JOIN Etudiant et ON et.id = s.etudiantId
-     ${join}
-     WHERE ${condition}
-       AND (
-         (rs.statutAcademique = FALSE AND '${tier.structureType}' = 'universite')
-         OR
-         (rs.statutProfessionnel = FALSE AND '${tier.structureType}' = 'entreprise')
-         OR
-         (rs.tierIntervenantAcademiqueId = ? AND '${tier.structureType}' = 'universite')
-         OR
-         (rs.tierIntervenantProfessionnelId = ? AND '${tier.structureType}' = 'entreprise')
-       )`,
-    [tierId, tierId]
-  );
+  const [rapports] = await db.execute(`
+    SELECT rs.*, s.titre, s.dateFin, 
+           et.prenom AS prenomEtudiant, et.nom AS nomEtudiant
+    FROM RapportStage rs
+    JOIN Stage s ON s.id = rs.stageId
+    JOIN Etudiant et ON et.id = s.etudiantId
+    WHERE ${condition}
+  `);
 
-  // Séparer en deux groupes : en attente vs validés par ce tier
-  const enAttente = rapports.filter(r => {
-    if (tier.structureType === "universite") {
-      return !r.statutAcademique && r.tierIntervenantAcademiqueId === null;
-    } else {
-      return !r.statutProfessionnel && r.tierIntervenantProfessionnelId === null;
-    }
-  });
+  // Tous ces rapports sont uniquement ceux assignés au tier explicitement en attente de validation
+  const enAttente = rapports;
 
-  const valides = rapports.filter(r => {
-    if (tier.structureType === "universite") {
-      return r.tierIntervenantAcademiqueId === tierId;
-    } else {
-      return r.tierIntervenantProfessionnelId === tierId;
-    }
-  });
+  // Rapports déjà validés explicitement par le tier
+  const [valides] = await db.execute(`
+    SELECT rs.*, s.titre, s.dateFin, 
+           et.prenom AS prenomEtudiant, et.nom AS nomEtudiant
+    FROM RapportStage rs
+    JOIN Stage s ON s.id = rs.stageId
+    JOIN Etudiant et ON et.id = s.etudiantId
+    WHERE ${tier.structureType === 'universite'
+      ? `rs.tierIntervenantAcademiqueId = ${tierId} AND rs.statutAcademique = TRUE`
+      : `rs.tierIntervenantProfessionnelId = ${tierId} AND rs.statutProfessionnel = TRUE`}
+  `);
 
   return { enAttente, valides };
 };
