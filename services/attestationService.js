@@ -46,7 +46,6 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
       (R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE)
       OR (R.statutAcademique = TRUE AND R.tierIntervenantProfessionnelId IS NOT NULL)
       OR (R.statutProfessionnel = TRUE AND R.tierIntervenantAcademiqueId IS NOT NULL)
-      OR (R.tierIntervenantAcademiqueId IS NOT NULL AND R.tierIntervenantProfessionnelId IS NOT NULL)
     )
   `, [responsableId, stageId]);
 
