@@ -31,7 +31,7 @@
     "react-hook-form": "^7.57.0",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.6.1",
-    "react-scripts": "^0.0.0",
+    "react-scripts": "^5.0.1",
     "shadcn-ui": "^0.9.5",
     "tailwind": "^2.3.1",
     "tailwind-variants": "^1.0.0",
