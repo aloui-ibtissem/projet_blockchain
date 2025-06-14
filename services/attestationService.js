@@ -129,8 +129,11 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   }
 
   // 7. Blockchain
+  try{
   await publishAttestation(attestationId, stage.identifiant_unique, stage.identifiantRapport, pdfDefinitifHash);
-
+  console.log("[StageChain] Publication sur blockchain réussie.");
+  }catch (err) {
+  console.error("[StageChain] ERREUR blockchain publication :", err.message || err);
   // 8. Notification Étudiant
   await notificationService.notifyUser({
     toId: stage.etudiantId,
@@ -179,9 +182,9 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
       message: `Une attestation est prête à être consultée et validée.`
     });
   }
-
+  
   console.log("[StageChain] Attestation générée avec succès.");
-
+  }
   return {
     hash: pdfDefinitifHash,
     ipfsUrl: pdfDefinitifIpfs.publicUrl,
