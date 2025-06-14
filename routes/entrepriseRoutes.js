@@ -21,17 +21,21 @@ router.get("/dashboard", checkToken, async (req, res) => {
   try {
     const { id } = req.user;
     const [stagiaires] = await db.execute(`
-      SELECT DISTINCT S.id AS stageId, E.prenom, E.nom, E.email
-      FROM Stage S
-      JOIN Etudiant E ON S.etudiantId = E.id
-      JOIN RapportStage R ON R.stageId = S.id
-      WHERE R.statutAcademique = TRUE
-        AND R.statutProfessionnel = TRUE
-        AND R.attestationGeneree = FALSE
-        AND S.entrepriseId = (
-          SELECT entrepriseId FROM ResponsableEntreprise WHERE id = ?
-        )
-    `, [id]);
+  SELECT DISTINCT S.id AS stageId, E.prenom, E.nom, E.email
+  FROM Stage S
+  JOIN Etudiant E ON S.etudiantId = E.id
+  JOIN RapportStage R ON R.stageId = S.id
+  WHERE R.attestationGeneree = FALSE
+    AND S.entrepriseId = (
+      SELECT entrepriseId FROM ResponsableEntreprise WHERE id = ?
+    )
+    AND (
+      (R.statutAcademique = TRUE AND R.statutProfessionnel = TRUE)
+      OR (R.statutAcademique = TRUE AND R.tierIntervenantProfessionnelId IS NOT NULL)
+      OR (R.statutProfessionnel = TRUE AND R.tierIntervenantAcademiqueId IS NOT NULL)
+    )
+`, [id]);
+
 
     const [notifications] = await db.execute(`
       SELECT id, message, date_envoi
