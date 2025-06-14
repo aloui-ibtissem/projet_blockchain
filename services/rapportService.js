@@ -214,14 +214,6 @@ exports.validerRapport = async (email, role, rapportId) => {
 exports.validerParTier = async (rapportId, tierId) => {
   const [[rapport]] = await db.execute(`SELECT * FROM RapportStage WHERE id = ?`, [rapportId]);
   if (!rapport) throw new Error("Rapport introuvable.");
-  // Vérification anti-double-tier : interdit si l'autre champ tier est déjà rempli
-if (
-  (tier.structureType === 'universite' && rapport.tierIntervenantProfessionnelId) ||
-  (tier.structureType === 'entreprise' && rapport.tierIntervenantAcademiqueId)
-) {
-  throw new Error("Validation par deux tiers interdite. Au moins un encadrant doit valider.");
-}
-
 
   const [[tier]] = await db.execute(`SELECT * FROM TierDebloqueur WHERE id = ?`, [tierId]);
   if (!tier) throw new Error("Tier introuvable.");
@@ -242,9 +234,8 @@ if (
   if (rapport[statutField]) throw new Error("Rapport déjà validé pour ce statut.");
 
   await db.execute(`UPDATE RapportStage SET ${statutField} = TRUE, ${tierField} = ? WHERE id = ?`, [tierId, rapportId]);
-  //
+  
   await validateAsTier(rapport.identifiantRapport, tier.structureType);
-
 
   await historiqueService.logAction({
     rapportId,
@@ -261,9 +252,6 @@ if (
 
   if (isDoubleValidationOk(updatedRapport) && !updatedRapport.attestationGeneree) {
     await confirmDoubleValidation(updatedRapport.identifiantRapport);
-    await attestationService.genererAttestation(rapport.identifiantRapport);
-
-
     await db.execute(`UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?`, [rapportId]);
 
     await historiqueService.logAction({
