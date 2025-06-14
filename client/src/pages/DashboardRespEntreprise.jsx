@@ -129,19 +129,29 @@ function DashboardRespEntreprise() {
     }
   };
 
-  const handleSubmit = async () => {
-    try {
-      const res = await axios.post(`${API_URL}/api/attestation/generer/${selectedStageId}`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      alert(`Attestation générée avec succès !\nHash: ${res.data.hash}`);
-      setShowModal(false);
-      fetchData();
-    } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la génération de l'attestation.");
+  
+const handleSubmit = async () => {
+  try {
+    const rapport = rapportsValidés.find(r => r.stageId === selectedStageId);
+    const identifiantRapport = rapport?.identifiantRapport;
+
+    if (!identifiantRapport) {
+      alert("Identifiant du rapport introuvable.");
+      return;
     }
-  };
+
+    const res = await axios.post(`${API_URL}/api/attestation/generer/${identifiantRapport}`, formData, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    alert(`Attestation générée avec succès !\nHash: ${res.data.hash}`);
+    setShowModal(false);
+    fetchData();
+  } catch (err) {
+    console.error(err);
+    alert("Erreur lors de la génération de l'attestation.");
+  }
+};
 
   return (
     <div className="dashboard-layout">
