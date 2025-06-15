@@ -214,10 +214,20 @@ exports.getEncadrantsAcademiquesUniversite = async (req, res) => {
   const email = req.user.email;
 
   try {
-    const [[{ universiteId }]] = await db.execute(
+    const [result] = await db.execute(
       "SELECT universiteId FROM ResponsableUniversitaire WHERE email = ?",
       [email]
     );
+
+    if (!result.length) {
+      return res.status(404).json({ error: "Responsable universitaire introuvable." });
+    }
+
+    const universiteId = result[0].universiteId;
+
+    if (!universiteId) {
+      return res.status(400).json({ error: "Aucune université associée à ce responsable." });
+    }
 
     const [rows] = await db.execute(`
       SELECT id, nom, prenom, email
@@ -231,6 +241,7 @@ exports.getEncadrantsAcademiquesUniversite = async (req, res) => {
     res.status(500).json({ error: "Erreur serveur." });
   }
 };
+
 exports.getStagiairesPourResponsableUniversitaire = async (req, res) => {
   const email = req.user.email;
 
