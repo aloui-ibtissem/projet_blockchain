@@ -93,13 +93,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   
 
   // 4. PDF définitif avec QR vers page HTML FINALE
-  baseData.verificationUrl = finalHtmlUpload.publicUrl;
-  console.log(`[StageChain] Page de vérification finale : ${finalHtmlUpload.publicUrl}`);
-
-  const pdfDefinitifPath = await generatePDFWithQR(baseData);
-  const pdfDefinitifHash = await hashFile(pdfDefinitifPath);
-  const pdfDefinitifIpfs = await uploadToIPFS(pdfDefinitifPath);
-
+  
   // 5. HTML finale avec les bons éléments (hash et lien IPFS réels)
 const finalHtml = generateVerificationHTML({
   attestationId,
@@ -110,6 +104,14 @@ const finalHtml = generateVerificationHTML({
   event: "AttestationPublished"
 });
 const finalHtmlUpload = await uploadHTMLToIPFS(finalHtml);
+
+baseData.verificationUrl = finalHtmlUpload.publicUrl;
+  console.log(`[StageChain] Page de vérification finale : ${finalHtmlUpload.publicUrl}`);
+
+  const pdfDefinitifPath = await generatePDFWithQR(baseData);
+  const pdfDefinitifHash = await hashFile(pdfDefinitifPath);
+  const pdfDefinitifIpfs = await uploadToIPFS(pdfDefinitifPath);
+
 
 // Met à jour le lien de vérification final dans baseData
 baseData.verificationUrl = finalHtmlUpload.publicUrl;
@@ -135,6 +137,7 @@ baseData.verificationUrl = finalHtmlUpload.publicUrl;
       origine: "automatique"
     });
   }
+
 
   // 7. Blockchain
   try{
