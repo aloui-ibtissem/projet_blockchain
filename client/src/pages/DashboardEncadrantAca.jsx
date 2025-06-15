@@ -50,7 +50,7 @@ function DashboardEncadrantAca() {
         axios.get(`${API_URL}/rapport/encadrant`, { headers }),
         axios.get(`${API_URL}/historique/mes`, { headers }),
         axios.get(`${API_URL}/rapport/encadrant/historique`, { headers }),
-        axios.get(`${API_URL}/encadrant/mes-stagiaires`, { headers })
+        axios.get(`${API_URL}/encadrant/stagiaires`, { headers })
       ]);
 
       setPropositions(Array.isArray(propRes.data) ? propRes.data : []);
