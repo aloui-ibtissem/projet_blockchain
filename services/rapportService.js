@@ -315,6 +315,7 @@ await notificationService.notifyUser({
     });
 
     const [[etudiant]] = await db.execute(`SELECT id, prenom, nom FROM Etudiant WHERE id = ?`, [updatedRapport.etudiantId]);
+    const [[stageRow]] = await db.execute("SELECT titre FROM Stage WHERE id = ?", [stageId]);
 
     await notificationService.notifyUser({
       toId: etudiant.id,
@@ -324,7 +325,7 @@ await notificationService.notifyUser({
       templateData: {
         etudiantPrenom: etudiant.prenom,
         etudiantNom: etudiant.nom,
-        titreStage: stage.titre,
+        titreStage: stageRow?.titre || "",
         year: new Date().getFullYear(),
         dashboardUrl: buildUrl("/login")
       },
