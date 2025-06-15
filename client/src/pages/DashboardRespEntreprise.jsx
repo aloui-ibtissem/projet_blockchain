@@ -140,9 +140,10 @@ const handleSubmit = async () => {
       return;
     }
 
-    const res = await axios.post(`${API_URL}/api/attestation/generer/${identifiantRapport}`, formData, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await axios.post(`${API_URL}/api/attestation/generer/${selectedStageId}`, formData, {
+  headers: { Authorization: `Bearer ${token}` }
+});
+
 
     alert(`Attestation générée avec succès !\nHash: ${res.data.hash}`);
     setShowModal(false);
