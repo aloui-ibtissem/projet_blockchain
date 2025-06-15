@@ -91,13 +91,15 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   const finalPdfIpfs = await uploadToIPFS(finalPdfPath);
 
   
+// 4. PDF définitif avec QR vers page HTML FINALE
+const pdfDefinitifPath = await generatePDFWithQR(baseData);
+const pdfDefinitifHash = await hashFile(pdfDefinitifPath);
+const pdfDefinitifIpfs = await uploadToIPFS(pdfDefinitifPath);
 
-  // 4. PDF définitif avec QR vers page HTML FINALE
-  
-  // 5. HTML finale avec les bons éléments (hash et lien IPFS réels)
+// 5. HTML finale avec les bons éléments (hash et lien IPFS réels)
 const finalHtml = generateVerificationHTML({
   attestationId,
-  fileHash: pdfDefinitifHash, //  bien défini
+  fileHash: pdfDefinitifHash,
   ipfsUrl: pdfDefinitifIpfs.publicUrl,
   issuer: responsableId,
   timestamp: Date.now(),
@@ -105,16 +107,9 @@ const finalHtml = generateVerificationHTML({
 });
 const finalHtmlUpload = await uploadHTMLToIPFS(finalHtml);
 
+// Mise à jour finale du QR avec le vrai lien de vérification
 baseData.verificationUrl = finalHtmlUpload.publicUrl;
-  console.log(`[StageChain] Page de vérification finale : ${finalHtmlUpload.publicUrl}`);
 
-  const pdfDefinitifPath = await generatePDFWithQR(baseData);
-  const pdfDefinitifHash = await hashFile(pdfDefinitifPath);
-  const pdfDefinitifIpfs = await uploadToIPFS(pdfDefinitifPath);
-
-
-// Met à jour le lien de vérification final dans baseData
-baseData.verificationUrl = finalHtmlUpload.publicUrl;
 
 
   // 6. Enregistrement final
