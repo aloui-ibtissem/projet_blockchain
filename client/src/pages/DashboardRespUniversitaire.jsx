@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { Alert, Card, Button, ListGroup, Badge, Row, Col, Collapse } from 'react-bootstrap';
+import { Alert, Card, ListGroup, Button, Collapse, Row, Col, Badge } from 'react-bootstrap';
 import { FaBell } from 'react-icons/fa';
 import './DashboardRespUniversite.css';
 
@@ -16,51 +16,46 @@ function DashboardRespUniversitaire() {
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
 
+  const [encadrants, setEncadrants] = useState([]);
   const [attestations, setAttestations] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [historique, setHistorique] = useState([]);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const headers = { Authorization: `Bearer ${token}` };
-      const [attestRes, notifRes, histRes] = await Promise.all([
-        axios.get(`${API_URL}/api/attestation/attestations/universite`, { headers }),
-        axios.get(`${API_URL}/api/stage/notifications`, { headers }),
-        axios.get(`${API_URL}/api/historique/mes`, { headers })
-      ]);
-      setAttestations(Array.isArray(attestRes.data) ? attestRes.data : []);
-      setNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
-      setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
-    } catch (err) {
-      setMessage("Erreur lors du chargement des données.");
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
 
   useEffect(() => {
     if (!token || role !== 'ResponsableUniversitaire') {
       navigate('/login');
       return;
     }
-    try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp < Date.now() / 1000) {
-        localStorage.clear();
-        navigate('/login');
-        return;
-      }
-    } catch {
+    const decoded = jwtDecode(token);
+    if (decoded.exp < Date.now() / 1000) {
       localStorage.clear();
       navigate('/login');
       return;
     }
     fetchData();
-  }, [token, role, navigate, fetchData]);
+  }, [navigate, token, role]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const headers = { Authorization: `Bearer ${token}` };
+      const [encadrantRes, notifRes, attestRes] = await Promise.all([
+        axios.get(`${API_URL}/resp-univ/encadrants`, { headers }),
+        axios.get(`${API_URL}/api/stage/notifications`, { headers }),
+        axios.get(`${API_URL}/api/attestation/attestations/universite`, { headers })
+      ]);
+      setEncadrants(Array.isArray(encadrantRes.data) ? encadrantRes.data : []);
+      setNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
+      setAttestations(Array.isArray(attestRes.data) ? attestRes.data : []);
+    } catch (err) {
+      console.error(err);
+      setMessage('Erreur lors du chargement des données.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const validerStage = async (stageId) => {
     try {
@@ -91,7 +86,7 @@ function DashboardRespUniversitaire() {
         </Header>
 
         <main className="main-content p-4">
-          {message && <Alert variant="info">{message}</Alert>}
+          {message && <Alert variant="danger">{message}</Alert>}
           {loading ? (
             <SkeletonLoader />
           ) : (
@@ -106,7 +101,7 @@ function DashboardRespUniversitaire() {
                       <p className="text-muted">Aucune attestation pour l’instant.</p>
                     ) : (
                       <div className="vstack gap-3">
-                        {Array.isArray(attestations) && attestations.map(att => (
+                        {attestations.map(att => (
                           <Card
                             key={att.stageId}
                             className="p-3 border-start border-4 border-primary bg-white rounded shadow-sm"
@@ -151,19 +146,19 @@ function DashboardRespUniversitaire() {
 
                 <Card className="shadow-sm border-0 mt-4">
                   <Card.Header className="bg-secondary text-white fw-bold">
-                    Historique des Actions
+                    Encadrants Académiques
                   </Card.Header>
-                  <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    {Array.isArray(historique) && historique.length === 0 ? (
-                      <p className="text-muted">Aucune action enregistrée.</p>
-                    ) : (
+                  <Card.Body>
+                    {encadrants.length > 0 ? (
                       <ListGroup>
-                        {Array.isArray(historique) && historique.map((histo) => (
-                          <ListGroup.Item key={histo.id}>
-                            [{new Date(histo.dateAction).toLocaleString()}] — {histo.description}
+                        {encadrants.map(e => (
+                          <ListGroup.Item key={e.id}>
+                            {e.nom} {e.prenom} — {e.email}
                           </ListGroup.Item>
                         ))}
                       </ListGroup>
+                    ) : (
+                      <p className="text-muted">Aucun encadrant académique trouvé.</p>
                     )}
                   </Card.Body>
                 </Card>
@@ -182,7 +177,7 @@ function DashboardRespUniversitaire() {
                             <p className="text-muted">Aucune notification</p>
                           ) : (
                             <ListGroup>
-                              {Array.isArray(notifications) && notifications.map((notif, idx) => (
+                              {notifications.map((notif, idx) => (
                                 <ListGroup.Item key={idx}>
                                   <strong>{notif.subject}</strong><br />
                                   {notif.message}<br />

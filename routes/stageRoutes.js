@@ -30,5 +30,12 @@ router.get("/details/:stageId", checkToken, stageController.getStageDetails);
 router.get("/historique", checkToken, stageController.getStagesHistoriques);
 
 
+//
+
+router.get("/encadrant/stagiaires", checkToken, stageController.getStagiairesPourEncadrant);
+router.get("/resp-univ/stagiaires", checkToken, stageController.getStagiairesPourResponsableUniversitaire);
+router.get("/resp-univ/encadrants", checkToken, stageController.getEncadrantsAcademiquesUniversite);
+router.get("/resp-ent/stagiaires", checkToken, stageController.getStagiairesPourResponsableEntreprise);
+router.get("/resp-ent/encadrants", checkToken, stageController.getEncadrantsProfessionnelsEntreprise);
 
 module.exports = router;

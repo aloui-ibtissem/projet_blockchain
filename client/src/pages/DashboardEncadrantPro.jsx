@@ -235,14 +235,26 @@ function DashboardEncadrantPro() {
                 {stagiaires.length === 0 ? (
                   <p className="text-muted">Aucun stagiaire affecté.</p>
                 ) : (
-                  <ul>
-                    {stagiaires.map((s, i) => (
-                      <li key={i}>
-                        <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
-                        Stage : <em>{s.titreStage}</em> ({new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()})
-                      </li>
-                    ))}
-                  </ul>
+                 <ListGroup>
+  {stagiaires.map((s, i) => (
+    <ListGroup.Item key={i}>
+      <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
+      <span><strong>Stage :</strong> {s.titreStage}</span><br />
+      <span><strong>Période :</strong> {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}</span><br />
+      {s.identifiantRapport ? (
+        <span>
+          <strong>Rapport :</strong>{" "}
+          <a href={`${BASE}/uploads/${s.identifiantRapport}.pdf`} target="_blank" rel="noreferrer">
+            Voir PDF
+          </a>
+        </span>
+      ) : (
+        <span className="text-muted">Rapport non disponible</span>
+      )}
+    </ListGroup.Item>
+  ))}
+</ListGroup>
+
                 )}
               </Card.Body>
             </Card>
