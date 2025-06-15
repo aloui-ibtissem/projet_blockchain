@@ -271,7 +271,8 @@ const [[stageRow]] = await db.execute("SELECT titre FROM Stage WHERE id = ?", [s
         etudiantNom: etudiant.nom,
         stageId,
       titreStage: stageRow?.titre || "",
-        year: new Date().getFullYear()
+      dashboardUrl: buildUrl("/login"),
+      year: new Date().getFullYear()
       },
       message: `Votre stage a été validé par votre université.`
     });

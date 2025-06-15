@@ -159,39 +159,48 @@ exports.getStagesHistoriques = async (req,res)=>{
 
 //
 exports.getStagiairesPourEncadrant = async (req, res) => {
-  const userId = req.user.id;
+  const email = req.user.email;
   const role = req.user.role;
 
-  let query = `
-    SELECT
-      S.id AS stageId,
-      S.titre AS titreStage,
-      S.identifiant_unique,
-      S.dateDebut,
-      S.dateFin,
-      E.prenom,
-      E.nom,
-      E.email,
-      R.identifiantRapport,
-      R.fichier AS fichierRapport,
-      A.identifiant AS attestationId,
-      A.ipfsUrl
-    FROM Stage S
-    JOIN Etudiant E ON S.etudiantId = E.id
-    LEFT JOIN RapportStage R ON R.stageId = S.id
-    LEFT JOIN Attestation A ON A.stageId = S.id
-  `;
-
+  let encadrantQuery = '';
   if (role === 'EncadrantAcademique') {
-    query += 'WHERE S.encadrantAcademiqueId = ?';
+    encadrantQuery = `SELECT id FROM EncadrantAcademique WHERE email = ?`;
   } else if (role === 'EncadrantProfessionnel') {
-    query += 'WHERE S.encadrantProfessionnelId = ?';
+    encadrantQuery = `SELECT id FROM EncadrantProfessionnel WHERE email = ?`;
   } else {
     return res.status(403).json({ error: 'Rôle non autorisé' });
   }
 
   try {
-    const [rows] = await db.execute(query, [userId]);
+    const [[encadrant]] = await db.execute(encadrantQuery, [email]);
+
+    if (!encadrant || !encadrant.id) {
+      return res.status(404).json({ error: "Encadrant introuvable dans la base." });
+    }
+
+    const encadrantId = encadrant.id;
+
+    const [rows] = await db.execute(`
+      SELECT
+        S.id AS stageId,
+        S.titre AS titreStage,
+        S.identifiant_unique,
+        S.dateDebut,
+        S.dateFin,
+        E.prenom,
+        E.nom,
+        E.email,
+        R.identifiantRapport,
+        R.fichier AS fichierRapport,
+        A.identifiant AS attestationId,
+        A.ipfsUrl
+      FROM Stage S
+      JOIN Etudiant E ON S.etudiantId = E.id
+      LEFT JOIN RapportStage R ON R.stageId = S.id
+      LEFT JOIN Attestation A ON A.stageId = S.id
+      WHERE ${role === 'EncadrantAcademique' ? 'S.encadrantAcademiqueId' : 'S.encadrantProfessionnelId'} = ?
+    `, [encadrantId]);
+
     res.json(rows);
   } catch (err) {
     console.error("Erreur dans getStagiairesPourEncadrant :", err);
@@ -200,61 +209,100 @@ exports.getStagiairesPourEncadrant = async (req, res) => {
 };
 
 
-exports.getStagiairesPourResponsableUniversitaire = async (req, res) => {
-  const userId = req.user.id;
-  const [[{ universiteId }]] = await db.execute("SELECT universiteId FROM ResponsableUniversitaire WHERE id = ?", [userId]);
-
-  const [rows] = await db.execute(`
-    SELECT S.id AS stageId, S.titre, S.identifiant_unique,
-           E.prenom, E.nom, R.identifiantRapport, R.fichier AS fichierRapport,
-           A.identifiant AS attestationId, A.fichierHash, A.ipfsUrl
-    FROM Stage S
-    JOIN Etudiant E ON S.etudiantId = E.id
-    LEFT JOIN RapportStage R ON R.stageId = S.id
-    LEFT JOIN Attestation A ON A.stageId = S.id
-    WHERE E.universiteId = ?
-  `, [universiteId]);
-
-  res.json(rows);
-};
 
 exports.getEncadrantsAcademiquesUniversite = async (req, res) => {
-  const userId = req.user.id;
-  const [[{ universiteId }]] = await db.execute("SELECT universiteId FROM ResponsableUniversitaire WHERE id = ?", [userId]);
+  const email = req.user.email;
 
-  const [rows] = await db.execute(`
-    SELECT id, nom, prenom, email FROM EncadrantAcademique WHERE universiteId = ?
-  `, [universiteId]);
+  try {
+    const [[{ universiteId }]] = await db.execute(
+      "SELECT universiteId FROM ResponsableUniversitaire WHERE email = ?",
+      [email]
+    );
 
-  res.json(rows);
+    const [rows] = await db.execute(`
+      SELECT id, nom, prenom, email
+      FROM EncadrantAcademique
+      WHERE universiteId = ?
+    `, [universiteId]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Erreur dans getEncadrantsAcademiquesUniversite :", err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
 };
+exports.getStagiairesPourResponsableUniversitaire = async (req, res) => {
+  const email = req.user.email;
 
+  try {
+    const [[{ universiteId }]] = await db.execute(
+      "SELECT universiteId FROM ResponsableUniversitaire WHERE email = ?",
+      [email]
+    );
+
+    const [rows] = await db.execute(`
+      SELECT S.id AS stageId, S.titre, S.identifiant_unique,
+             E.prenom, E.nom, R.identifiantRapport, R.fichier AS fichierRapport,
+             A.identifiant AS attestationId, A.fichierHash, A.ipfsUrl
+      FROM Stage S
+      JOIN Etudiant E ON S.etudiantId = E.id
+      LEFT JOIN RapportStage R ON R.stageId = S.id
+      LEFT JOIN Attestation A ON A.stageId = S.id
+      WHERE E.universiteId = ?
+    `, [universiteId]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Erreur dans getStagiairesPourResponsableUniversitaire :", err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
+};
 exports.getStagiairesPourResponsableEntreprise = async (req, res) => {
-  const userId = req.user.id;
-  const [[{ entrepriseId }]] = await db.execute("SELECT entrepriseId FROM ResponsableEntreprise WHERE id = ?", [userId]);
+  const email = req.user.email;
 
-  const [rows] = await db.execute(`
-    SELECT S.id AS stageId, S.titre, S.identifiant_unique, S.dateDebut, S.dateFin,
-           E.prenom, E.nom, E.email,
-           R.identifiantRapport, R.fichier AS fichierRapport,
-           A.identifiant AS attestationId, A.fichierHash, A.ipfsUrl
-    FROM Stage S
-    JOIN Etudiant E ON S.etudiantId = E.id
-    LEFT JOIN RapportStage R ON R.stageId = S.id
-    LEFT JOIN Attestation A ON A.stageId = S.id
-    WHERE S.entrepriseId = ?
-  `, [entrepriseId]);
+  try {
+    const [[{ entrepriseId }]] = await db.execute(
+      "SELECT entrepriseId FROM ResponsableEntreprise WHERE email = ?",
+      [email]
+    );
 
-  res.json(rows);
+    const [rows] = await db.execute(`
+      SELECT S.id AS stageId, S.titre, S.identifiant_unique, S.dateDebut, S.dateFin,
+             E.prenom, E.nom, E.email,
+             R.identifiantRapport, R.fichier AS fichierRapport,
+             A.identifiant AS attestationId, A.fichierHash, A.ipfsUrl
+      FROM Stage S
+      JOIN Etudiant E ON S.etudiantId = E.id
+      LEFT JOIN RapportStage R ON R.stageId = S.id
+      LEFT JOIN Attestation A ON A.stageId = S.id
+      WHERE S.entrepriseId = ?
+    `, [entrepriseId]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Erreur dans getStagiairesPourResponsableEntreprise :", err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
 };
 
 exports.getEncadrantsProfessionnelsEntreprise = async (req, res) => {
-  const userId = req.user.id;
-  const [[{ entrepriseId }]] = await db.execute("SELECT entrepriseId FROM ResponsableEntreprise WHERE id = ?", [userId]);
+  const email = req.user.email;
 
-  const [rows] = await db.execute(`
-    SELECT id, nom, prenom, email FROM EncadrantProfessionnel WHERE entrepriseId = ?
-  `, [entrepriseId]);
+  try {
+    const [[{ entrepriseId }]] = await db.execute(
+      "SELECT entrepriseId FROM ResponsableEntreprise WHERE email = ?",
+      [email]
+    );
 
-  res.json(rows);
+    const [rows] = await db.execute(`
+      SELECT id, nom, prenom, email
+      FROM EncadrantProfessionnel
+      WHERE entrepriseId = ?
+    `, [entrepriseId]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Erreur dans getEncadrantsProfessionnelsEntreprise :", err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
 };
