@@ -42,7 +42,7 @@ function DashboardRespUniversitaire() {
       setLoading(true);
       const headers = { Authorization: `Bearer ${token}` };
       const [encadrantRes, notifRes, attestRes] = await Promise.all([
-        axios.get(`${API_URL}/resp-univ/encadrants`, { headers }),
+        axios.get(`${API_URL}/api/stage/resp-univ/encadrants`, { headers }),
         axios.get(`${API_URL}/api/stage/notifications`, { headers }),
         axios.get(`${API_URL}/api/attestation/attestations/universite`, { headers })
       ]);
