@@ -67,22 +67,19 @@ function DashboardEncadrantPro() {
   };
 
   const handleDecision = async (id, action) => {
-    try {
-      await axios.post(`${API_URL}/stage/valider`, { sujetId: id, action }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
-      await loadData();
-    } catch {
-      setMessage("Erreur lors de l'action sur la proposition.");
-    }
-    finally {
+  try {
+    await axios.post(`${API_URL}/stage/valider`, { sujetId: id, action }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
+  } catch {
+    setMessage("Erreur lors de l'action sur la proposition.");
+  } finally {
     setCommentaires({});
-    await loadData();
+    await loadData(); // recharge les données sans double appel
   }
-  await loadData();
+};
 
-  };
 
   const validerRapport = async (id) => {
     try {
