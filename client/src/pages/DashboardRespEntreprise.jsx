@@ -24,6 +24,8 @@ function DashboardRespEntreprise() {
   const [selectedStageId, setSelectedStageId] = useState(null);
   const [historique, setHistorique] = useState([]);
   const [rapportsValidés, setRapportsValidés] = useState([]);
+  const [encadrantsPro, setEncadrantsPro] = useState([]);
+
 
   const [formData, setFormData] = useState({
     appreciation: '',
@@ -53,37 +55,40 @@ function DashboardRespEntreprise() {
   }, [navigate, token, role]);
 
   const fetchData = async () => {
-    try {
-      setLoading(true);
-      const headers = { Authorization: `Bearer ${token}` };
+  try {
+    setLoading(true);
+    const headers = { Authorization: `Bearer ${token}` };
 
-      const [dashRes, infoRes, histRes, rapValRes] = await Promise.all([
-        axios.get(`${API_URL}/entreprises/dashboard`, { headers }),
-        axios.get(`${API_URL}/entreprises/info`, { headers }),
-        axios.get(`${API_URL}/historique/mes`, { headers }),
-        axios.get(`${API_URL}/rapport/entreprise/valides`, { headers })
-      ]);
+    const [stagiairesRes, infoRes, histRes, rapValRes, encadrantsRes] = await Promise.all([
+      axios.get(`${API_URL}/stage/resp-ent/stagiaires`, { headers }),         // <-- correct
+      axios.get(`${API_URL}/entreprises/info`, { headers }),
+      axios.get(`${API_URL}/historique/mes`, { headers }),
+      axios.get(`${API_URL}/rapport/entreprise/valides`, { headers }),
+      axios.get(`${API_URL}/stage/resp-ent/encadrants`, { headers })          // <-- correct
+    ]);
 
-      const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
+    const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
 
-      setStagiaires(Array.isArray(dashRes.data.stagiaires) ? dashRes.data.stagiaires : []);
-      setNotifications(Array.isArray(dashRes.data.notifications) ? dashRes.data.notifications : []);
-      setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
-      setRapportsValidés(Array.isArray(rapValRes.data) ? rapValRes.data : []);
+    setStagiaires(Array.isArray(stagiairesRes.data) ? stagiairesRes.data : []);
+    setNotifications(Array.isArray(infoRes.data.notifications) ? infoRes.data.notifications : []);
+    setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
+    setRapportsValidés(Array.isArray(rapValRes.data) ? rapValRes.data : []);
+    setEncadrantsPro(Array.isArray(encadrantsRes.data) ? encadrantsRes.data : []);
 
-      setFormData(prev => ({
-        ...prev,
-        responsableNom: nomComplet,
-        lieu: infoRes.data.entrepriseNom || '',
-        logoPath: infoRes.data.logoPath || ''
-      }));
-    } catch (err) {
-      console.error(err);
-      setMessage('Erreur lors du chargement.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setFormData(prev => ({
+      ...prev,
+      responsableNom: nomComplet,
+      lieu: infoRes.data.entrepriseNom || '',
+      logoPath: infoRes.data.logoPath || ''
+    }));
+  } catch (err) {
+    console.error(err);
+    setMessage('Erreur lors du chargement.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const openForm = async (stageId) => {
     setSelectedStageId(stageId);
@@ -194,40 +199,41 @@ const handleSubmit = async () => {
               </Card>
 
               <Card className="dashboard-card">
-                <Card.Header>Rapports Validés (Entreprise)</Card.Header>
-                <Card.Body>
-                  {Array.isArray(rapportsValidés) && rapportsValidés.length > 0 ? (
-                    <ul>
-                      {rapportsValidés.map((r, i) => (
-                        <li key={i}>
-                          <strong>{r.identifiantRapport}</strong> — {r.titre}
-                          {" | "}
-                          <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir PDF</a>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-muted">Aucun rapport validé pour l'entreprise.</p>
-                  )}
-                </Card.Body>
-              </Card>
-
-              <Card className="dashboard-card">
-                <Card.Header>Historique des actions</Card.Header>
-                <Card.Body>
-                  {Array.isArray(historique) && historique.length > 0 ? (
-                    <ListGroup>
-                      {historique.map(entry => (
-                        <ListGroup.Item key={entry.id}>
-                          [{new Date(entry.dateAction).toLocaleString()}] — {entry.description}
-                        </ListGroup.Item>
-                      ))}
-                    </ListGroup>
-                  ) : (
-                    <p className="text-muted">Aucune action enregistrée.</p>
-                  )}
-                </Card.Body>
-              </Card>
+  <Card.Header>Stagiaires</Card.Header>
+  <Card.Body>
+    {stagiaires.length > 0 ? (
+      <ListGroup>
+        {stagiaires.map((stag, i) => (
+          <ListGroup.Item key={i}>
+            <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}<br />
+            <em>{stag.titre}</em><br />
+            <span>Encadrant Académique : <strong>{stag.acaPrenom} {stag.acaNom}</strong></span><br />
+            <span>Encadrant Professionnel : <strong>{stag.proPrenom} {stag.proNom}</strong></span>
+          </ListGroup.Item>
+        ))}
+      </ListGroup>
+    ) : (
+      <p className="text-muted">Aucun stagiaire assigné.</p>
+    )}
+  </Card.Body>
+</Card>
+<Card className="dashboard-card">
+  <Card.Header>Encadrants professionnels</Card.Header>
+  <Card.Body>
+    {encadrantsPro.length > 0 ? (
+      <ListGroup>
+        {encadrantsPro.map(enc => (
+          <ListGroup.Item key={enc.id}>
+            <strong>{enc.nom} {enc.prenom}</strong> — {enc.email}<br />
+            ID : {enc.identifiant_unique} | Stagiaires : {enc.nombreStagiaires}
+          </ListGroup.Item>
+        ))}
+      </ListGroup>
+    ) : (
+      <p className="text-muted">Aucun encadrant professionnel trouvé.</p>
+    )}
+  </Card.Body>
+</Card>
 
             </div>
           )}

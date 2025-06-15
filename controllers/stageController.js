@@ -230,9 +230,18 @@ exports.getEncadrantsAcademiquesUniversite = async (req, res) => {
     }
 
     const [rows] = await db.execute(`
-      SELECT id, nom, prenom, email
-      FROM EncadrantAcademique
-      WHERE universiteId = ?
+      SELECT 
+        EA.id,
+        EA.nom,
+        EA.prenom,
+        EA.email,
+        EA.identifiant_unique,
+        COUNT(S.id) AS nombreStagiaires
+      FROM EncadrantAcademique EA
+      LEFT JOIN Stage S ON S.encadrantAcademiqueId = EA.id
+      WHERE EA.universiteId = ?
+      GROUP BY EA.id
+      ORDER BY EA.nom, EA.prenom
     `, [universiteId]);
 
     res.json(rows);
@@ -241,6 +250,7 @@ exports.getEncadrantsAcademiquesUniversite = async (req, res) => {
     res.status(500).json({ error: "Erreur serveur." });
   }
 };
+
 
 exports.getStagiairesPourResponsableUniversitaire = async (req, res) => {
   const email = req.user.email;
@@ -300,15 +310,30 @@ exports.getEncadrantsProfessionnelsEntreprise = async (req, res) => {
   const email = req.user.email;
 
   try {
-    const [[{ entrepriseId }]] = await db.execute(
+    const [result] = await db.execute(
       "SELECT entrepriseId FROM ResponsableEntreprise WHERE email = ?",
       [email]
     );
 
+    if (!result.length) {
+      return res.status(404).json({ error: "Responsable entreprise introuvable." });
+    }
+
+    const entrepriseId = result[0].entrepriseId;
+
     const [rows] = await db.execute(`
-      SELECT id, nom, prenom, email
-      FROM EncadrantProfessionnel
-      WHERE entrepriseId = ?
+      SELECT 
+        EP.id,
+        EP.nom,
+        EP.prenom,
+        EP.email,
+        EP.identifiant_unique,
+        COUNT(S.id) AS nombreStagiaires
+      FROM EncadrantProfessionnel EP
+      LEFT JOIN Stage S ON S.encadrantProfessionnelId = EP.id
+      WHERE EP.entrepriseId = ?
+      GROUP BY EP.id
+      ORDER BY EP.nom, EP.prenom
     `, [entrepriseId]);
 
     res.json(rows);
@@ -317,3 +342,5 @@ exports.getEncadrantsProfessionnelsEntreprise = async (req, res) => {
     res.status(500).json({ error: "Erreur serveur." });
   }
 };
+
+

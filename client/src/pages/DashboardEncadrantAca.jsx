@@ -184,31 +184,9 @@ function DashboardEncadrantAca() {
             </Card.Body>
           </Card>
 
-          <Card className="mb-4">
-            <Card.Header>Historique des actions</Card.Header>
-            <Card.Body>
-              {historique.length === 0 ? <p className="text-muted">Aucune action enregistrée.</p> : (
-                <ListGroup>
-                  {historique.map(entry => (
-                    <ListGroup.Item key={entry.id}>[{new Date(entry.dateAction).toLocaleString()}] — {entry.description}</ListGroup.Item>
-                  ))}
-                </ListGroup>
-              )}
-            </Card.Body>
-          </Card>
-
-          <Card className="mb-4">
-            <Card.Header>Rapports Validés</Card.Header>
-            <Card.Body>
-              {rapportsHistoriques.length === 0 ? <p className="text-muted">Aucun rapport validé.</p> : (
-                <ul>
-                  {rapportsHistoriques.map((r, i) => (
-                    <li key={i}><strong>{r.identifiantRapport}</strong> — {r.titre} | <a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir PDF</a></li>
-                  ))}
-                </ul>
-              )}
-            </Card.Body>
-          </Card>
+       
+       
+  
 
           <Card className="mb-4">
   <Card.Header>Mes Stagiaires</Card.Header>

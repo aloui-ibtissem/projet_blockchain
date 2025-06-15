@@ -153,8 +153,10 @@ function DashboardRespUniversitaire() {
                       <ListGroup>
                         {encadrants.map(e => (
                           <ListGroup.Item key={e.id}>
-                            {e.nom} {e.prenom} — {e.email}
-                          </ListGroup.Item>
+  <strong>{e.nom} {e.prenom}</strong> — {e.email}<br />
+  ID : {e.identifiant_unique} | Stagiaires : {e.nombreStagiaires}
+</ListGroup.Item>
+
                         ))}
                       </ListGroup>
                     ) : (

@@ -309,7 +309,7 @@ function DashboardEtudiant() {
       </Card>
 
       <Card className="mb-4 shadow-sm">
-        <Card.Header>Rapports Validés</Card.Header>
+        <Card.Header>Rapports soumis</Card.Header>
         <Card.Body>
           {rapportsHistoriques.length > 0 ? (
             <ul>
