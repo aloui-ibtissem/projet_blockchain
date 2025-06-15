@@ -27,7 +27,10 @@ const isDoubleValidationOk = (rapport) => {
   if (statutProfessionnel && tierIntervenantAcademiqueId) return true;
 
   //  Cas refusé : deux tiers sans aucun encadrant
-  return false;
+if (!statutAcademique && !statutProfessionnel && tierIntervenantAcademiqueId && tierIntervenantProfessionnelId) return false;
+//cas non valide 
+return false;
+
 };
 
 
@@ -242,6 +245,23 @@ exports.validerParTier = async (rapportId, tierId) => {
     origine: "manuelle"
   });
 
+  // Notification immédiate à l'étudiant après validation par un tier
+await notificationService.notifyUser({
+  toId: rapport.etudiantId,
+  toRole: "Etudiant",
+  subject: "Validation par un tier débloqueur",
+  templateName: "validation_par_tier",
+  templateData: {
+    etudiantPrenom: etudiant.prenom,
+    etudiantNom: etudiant.nom,
+    titreStage: stage.titre,
+    encadrantManquant: tier.structureType === 'universite' ? "académique" : "professionnel",
+    dashboardUrl: buildUrl("/login")
+  },
+  message: `Votre rapport a été validé par un tier ${tier.structureType}, suite à l'absence de validation de votre encadrant ${tier.structureType}.`
+});
+
+
   // Vérification actualisée après validation tier
   const [[updatedRapport]] = await db.execute(`SELECT * FROM RapportStage WHERE id = ?`, [rapportId]);
 
@@ -268,11 +288,22 @@ exports.validerParTier = async (rapportId, tierId) => {
     }
 
     // Génération réelle de l'attestation
-    await attestationService.genererAttestation({
-      stageId: stage.id,
-      appreciation: "Attestation générée automatiquement suite validation tier",
-      responsableId: responsableEnt.id
-    });
+    await notificationService.notifyUser({
+  toId: responsableEnt.id,
+  toRole: "ResponsableEntreprise",
+  subject: "Attestation à générer (validation tier)",
+  templateName: "attestation_ready",
+  templateData: {
+    etudiantPrenom: etudiant.prenom,
+    etudiantNom: etudiant.nom,
+    titreStage: stage.titre,
+    identifiantRapport: updatedRapport.identifiantRapport,
+    attestationFormUrl: `${baseUrl}/entreprise/attestation/${updatedRapport.identifiantRapport}`,
+    dashboardUrl: buildUrl("/login")
+  },
+  message: `Le rapport a été validé par un tier. Veuillez compléter et générer l'attestation.`
+});
+
 
     await historiqueService.logAction({
       rapportId,

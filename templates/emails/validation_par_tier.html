@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';"/>
+  <title>Validation par un tier débloqueur</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+      background-color: #f1f5f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+    .header {
+      background: linear-gradient(90deg, #0f172a, #1d4ed8);
+      padding: 24px;
+      text-align: center;
+      border-radius: 12px 12px 0 0;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+    .content {
+      padding: 24px;
+      text-align: center;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .button {
+      display: inline-block;
+      margin: 16px auto;
+      background: #2563eb;
+      color: #ffffff !important;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+      transition: background 0.3s ease;
+    }
+    .button:hover {
+      background: #1e40af;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 16px;
+      border-radius: 0 0 12px 12px;
+    }
+    .footer a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Validation exceptionnelle de votre rapport</h2>
+    </div>
+    <div class="content">
+      <p>Bonjour {{etudiantPrenom}} {{etudiantNom}},</p>
+      <p>Votre rapport de stage intitulé <strong>{{titreStage}}</strong> a été validé par un <strong>tier débloqueur ({{encadrantManquant}})</strong>, en remplacement de votre encadrant qui n’a pas pu valider dans les délais impartis.</p>
+      <p>Vous pouvez suivre la suite du processus (génération de l’attestation, validation finale) depuis votre espace personnel.</p>
+
+      <a href="{{dashboardUrl}}" class="button" target="_blank">Accéder au tableau de bord</a>
+    </div>
+    <div class="footer">
+      <p><strong>StageChain</strong></p>
+      <p>© 2025 – Tous droits réservés</p>
+      <p>
+        <a href="{{homeUrl}}">Accueil</a> |
+        <a href="{{loginUrl}}">Connexion</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

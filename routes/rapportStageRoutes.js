@@ -32,6 +32,8 @@ router.get("/tier/rapports-assignes", checkToken, rapportController.getRapportsP
 // Historique des actions pour un utilisateur (filtrable par origine)
 router.get("/historique/:id/:role", checkToken, rapportController.getHistoriqueUtilisateur);
 
+//
+router.get("/entreprise/valides", checkToken, rapportController.getRapportsValidésPourEntreprise);
 
 
 module.exports = router;

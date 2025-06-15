@@ -35,9 +35,12 @@ exports.generatePDFWithQR = async (data) => {
   doc.moveDown();
 
   if (data.appreciation) {
-    doc.text(`Appréciation : ${data.appreciation}`);
-    doc.moveDown();
-  }
+  const appreciationText = data.appreciation.includes("automatiquement")
+    ? "Appréciation : à compléter par le responsable"
+    : `Appréciation : ${data.appreciation}`;
+  doc.text(appreciationText);
+  doc.moveDown();
+}
 
   doc.text("La présente attestation est délivrée pour servir et valoir ce que de droit.");
   doc.moveDown();

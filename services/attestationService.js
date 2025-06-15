@@ -90,22 +90,30 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   const finalHash = await hashFile(finalPdfPath);
   const finalPdfIpfs = await uploadToIPFS(finalPdfPath);
 
-  // 4. Génération de la VRAIE page HTML avec lien vers PDF final
-  const finalHtml = generateVerificationHTML({
-    attestationId,
-    fileHash: finalHash,
-    ipfsUrl: finalPdfIpfs.publicUrl,
-    issuer: responsableId,
-    timestamp: Date.now(),
-    event: "AttestationPublished"
-  });
-  const finalHtmlUpload = await uploadHTMLToIPFS(finalHtml);
+  
 
-  // 5. PDF définitif avec QR vers page HTML FINALE
+  // 4. PDF définitif avec QR vers page HTML FINALE
   baseData.verificationUrl = finalHtmlUpload.publicUrl;
+  console.log(`[StageChain] Page de vérification finale : ${finalHtmlUpload.publicUrl}`);
+
   const pdfDefinitifPath = await generatePDFWithQR(baseData);
   const pdfDefinitifHash = await hashFile(pdfDefinitifPath);
   const pdfDefinitifIpfs = await uploadToIPFS(pdfDefinitifPath);
+
+  // 5. HTML finale avec les bons éléments (hash et lien IPFS réels)
+const finalHtml = generateVerificationHTML({
+  attestationId,
+  fileHash: pdfDefinitifHash, //  bien défini
+  ipfsUrl: pdfDefinitifIpfs.publicUrl,
+  issuer: responsableId,
+  timestamp: Date.now(),
+  event: "AttestationPublished"
+});
+const finalHtmlUpload = await uploadHTMLToIPFS(finalHtml);
+
+// Met à jour le lien de vérification final dans baseData
+baseData.verificationUrl = finalHtmlUpload.publicUrl;
+
 
   // 6. Enregistrement final
   await db.execute(`
@@ -134,6 +142,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   console.log("[StageChain] Publication sur blockchain réussie.");
   }catch (err) {
   console.error("[StageChain] ERREUR blockchain publication :", err.message || err);
+}
   // 8. Notification Étudiant
   await notificationService.notifyUser({
     toId: stage.etudiantId,
@@ -184,14 +193,19 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   }
   
   console.log("[StageChain] Attestation générée avec succès.");
-  }
+
+
   return {
     hash: pdfDefinitifHash,
     ipfsUrl: pdfDefinitifIpfs.publicUrl,
     identifiant: attestationId,
     verificationPage: finalHtmlUpload.publicUrl
-  };
+  }
 };
+
+
+
+
 
 
 
@@ -229,6 +243,9 @@ exports.validerParUniversite = async (stageId, responsableId) => {
   if (!rows.length) throw new Error("Stage introuvable");
 
 await db.execute("UPDATE Stage SET etat = 'validé', estHistorique = TRUE WHERE id = ?", [stageId]);
+//
+
+const [[stageRow]] = await db.execute("SELECT titre FROM Stage WHERE id = ?", [stageId]);
 
   const [etudiantRow] = await db.execute(`
     SELECT E.id, E.prenom, E.nom FROM Etudiant E
@@ -260,7 +277,7 @@ await db.execute("UPDATE Stage SET etat = 'validé', estHistorique = TRUE WHERE 
         etudiantPrenom: etudiant.prenom,
         etudiantNom: etudiant.nom,
         stageId,
-        titreStage:stage.titre,
+      titreStage: stageRow?.titre || "",
         year: new Date().getFullYear()
       },
       message: `Votre stage a été validé par votre université.`

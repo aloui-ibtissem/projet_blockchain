@@ -163,4 +163,38 @@ exports.getRapportsByEncadrantProfessionnelEmail = async (req, res) => {
   res.json(rows);
 };
 
+//
+exports.getRapportsValidésPourEntreprise = async (req, res) => {
+  try {
+    const responsableId = req.user.id;
+
+    const [responsableRows] = await db.execute(`
+      SELECT entrepriseId FROM ResponsableEntreprise WHERE id = ?
+    `, [responsableId]);
+
+    if (!responsableRows.length) {
+      return res.status(404).json({ error: "Responsable introuvable." });
+    }
+
+    const entrepriseId = responsableRows[0].entrepriseId;
+
+    const [rapports] = await db.execute(`
+      SELECT r.*, s.titre
+      FROM RapportStage r
+      JOIN Stage s ON s.id = r.stageId
+      WHERE s.entrepriseId = ?
+        AND (
+          (r.statutAcademique = TRUE AND r.statutProfessionnel = TRUE)
+          OR (r.statutAcademique = TRUE AND r.tierIntervenantProfessionnelId IS NOT NULL)
+          OR (r.statutProfessionnel = TRUE AND r.tierIntervenantAcademiqueId IS NOT NULL)
+        )
+    `, [entrepriseId]);
+
+    res.json(rapports);
+  } catch (err) {
+    console.error("Erreur getRapportsValidésPourEntreprise:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 
