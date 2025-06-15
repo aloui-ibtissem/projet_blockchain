@@ -244,6 +244,7 @@ exports.validerParTier = async (rapportId, tierId) => {
     commentaire: "Validation manuelle par tier suite à retard",
     origine: "manuelle"
   });
+const [[etudiant]] = await db.execute(`SELECT prenom, nom FROM Etudiant WHERE id = ?`, [rapport.etudiantId]);
 
   // Notification immédiate à l'étudiant après validation par un tier
 await notificationService.notifyUser({
