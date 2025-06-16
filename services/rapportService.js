@@ -186,7 +186,11 @@ exports.validerRapport = async (email, role, rapportId) => {
 
  if (isDoubleValidationOk(refreshed) && !refreshed.attestationGeneree) {
   await confirmDoubleValidation(rapport.identifiantRapport);
-
+await db.execute(`
+    UPDATE RapportStage 
+    SET attestationGeneree = TRUE 
+    WHERE id = ?
+  `, [rapportId]);
 
     const [[responsable]] = await db.execute(
       `SELECT id, prenom, nom FROM ResponsableEntreprise WHERE entrepriseId = ? LIMIT 1`,
