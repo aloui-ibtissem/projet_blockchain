@@ -5,7 +5,9 @@ import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { Alert, Card, Button, ListGroup, Form, Modal } from 'react-bootstrap';
+import {
+  Container, Card, Button, ListGroup, Form, Modal, Alert, Collapse, Spinner, Badge
+} from 'react-bootstrap';
 import './DashboardRespEntreprise.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
@@ -25,7 +27,7 @@ function DashboardRespEntreprise() {
   const [historique, setHistorique] = useState([]);
   const [rapportsValidés, setRapportsValidés] = useState([]);
   const [encadrantsPro, setEncadrantsPro] = useState([]);
-
+  const [showNotif, setShowNotif] = useState(false);
 
   const [formData, setFormData] = useState({
     appreciation: '',
@@ -55,40 +57,39 @@ function DashboardRespEntreprise() {
   }, [navigate, token, role]);
 
   const fetchData = async () => {
-  try {
-    setLoading(true);
-    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      setLoading(true);
+      const headers = { Authorization: `Bearer ${token}` };
 
-    const [stagiairesRes, infoRes, histRes, rapValRes, encadrantsRes] = await Promise.all([
-      axios.get(`${API_URL}/stage/resp-ent/stagiaires`, { headers }),         // <-- correct
-      axios.get(`${API_URL}/entreprises/info`, { headers }),
-      axios.get(`${API_URL}/historique/mes`, { headers }),
-      axios.get(`${API_URL}/rapport/entreprise/valides`, { headers }),
-      axios.get(`${API_URL}/stage/resp-ent/encadrants`, { headers })          // <-- correct
-    ]);
+      const [stagiairesRes, infoRes, histRes, rapValRes, encadrantsRes] = await Promise.all([
+        axios.get(`${API_URL}/stage/resp-ent/stagiaires`, { headers }),
+        axios.get(`${API_URL}/entreprises/info`, { headers }),
+        axios.get(`${API_URL}/historique/mes`, { headers }),
+        axios.get(`${API_URL}/rapport/entreprise/valides`, { headers }),
+        axios.get(`${API_URL}/stage/resp-ent/encadrants`, { headers })
+      ]);
 
-    const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
+      const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
 
-    setStagiaires(Array.isArray(stagiairesRes.data) ? stagiairesRes.data : []);
-    setNotifications(Array.isArray(infoRes.data.notifications) ? infoRes.data.notifications : []);
-    setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
-    setRapportsValidés(Array.isArray(rapValRes.data) ? rapValRes.data : []);
-    setEncadrantsPro(Array.isArray(encadrantsRes.data) ? encadrantsRes.data : []);
+      setStagiaires(stagiairesRes.data || []);
+      setNotifications(infoRes.data.notifications || []);
+      setHistorique(histRes.data || []);
+      setRapportsValidés(rapValRes.data || []);
+      setEncadrantsPro(encadrantsRes.data || []);
 
-    setFormData(prev => ({
-      ...prev,
-      responsableNom: nomComplet,
-      lieu: infoRes.data.entrepriseNom || '',
-      logoPath: infoRes.data.logoPath || ''
-    }));
-  } catch (err) {
-    console.error(err);
-    setMessage('Erreur lors du chargement.');
-  } finally {
-    setLoading(false);
-  }
-};
-
+      setFormData(prev => ({
+        ...prev,
+        responsableNom: nomComplet,
+        lieu: infoRes.data.entrepriseNom || '',
+        logoPath: infoRes.data.logoPath || ''
+      }));
+    } catch (err) {
+      console.error(err);
+      setMessage('Erreur lors du chargement.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openForm = async (stageId) => {
     setSelectedStageId(stageId);
@@ -113,9 +114,7 @@ function DashboardRespEntreprise() {
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
@@ -134,22 +133,20 @@ function DashboardRespEntreprise() {
     }
   };
 
-  
-const handleSubmit = async () => {
-  try {
-    const res = await axios.post(`${API_URL}/api/attestation/generer/${selectedStageId}`, formData, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+  const handleSubmit = async () => {
+    try {
+      const res = await axios.post(`${API_URL}/api/attestation/generer/${selectedStageId}`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-    alert(`Attestation générée avec succès !\nHash: ${res.data.hash}`);
-    setShowModal(false);
-    fetchData();
-  } catch (err) {
-    console.error(err);
-    alert("Erreur lors de la génération de l'attestation.");
-  }
-};
-
+      alert(`Attestation générée avec succès !\nHash: ${res.data.hash}`);
+      setShowModal(false);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la génération de l'attestation.");
+    }
+  };
 
   return (
     <div className="dashboard-layout">
@@ -157,89 +154,96 @@ const handleSubmit = async () => {
       <div className="dashboard-content">
         <Header title="Responsable Entreprise" />
         <main className="main-content">
-          {message && <Alert variant="danger">{message}</Alert>}
-          {loading ? (
-            <SkeletonLoader />
-          ) : (
-            <div className="dashboard-grid">
+          <Container className="mt-4 dashboard-etudiant">
+            <h2 className="text-center mb-4">Tableau de Bord Responsable Entreprise</h2>
+            {message && <Alert variant="danger">{message}</Alert>}
+            {loading ? (
+              <div className="text-center"><Spinner animation="border" /></div>
+            ) : (
+              <>
+                {/* Notifications */}
+                <Card className="mb-4 shadow-sm">
+                  <Card.Header className="d-flex justify-content-between align-items-center">
+                    Notifications <Badge bg="secondary">{notifications.length}</Badge>
+                    <Button size="sm" variant="outline-primary" onClick={() => setShowNotif(!showNotif)}>
+                      {showNotif ? "Masquer" : "Afficher"}
+                    </Button>
+                  </Card.Header>
+                  <Collapse in={showNotif}>
+                    <Card.Body style={{ maxHeight: 200, overflowY: 'auto' }}>
+                      {notifications.length > 0 ? (
+                        <ul className="notification-list">
+                          {notifications.map((n, i) => (
+                            <li key={i}>
+                              <strong>{n.message}</strong>
+                              <small className="notification-date"> ({new Date(n.date_envoi).toLocaleString()})</small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="text-muted">Aucune notification</p>}
+                    </Card.Body>
+                  </Collapse>
+                </Card>
 
-              <Card className="dashboard-card">
-                <Card.Header>Stagiaires à générer leurs attestations</Card.Header>
-                <Card.Body>
-                  <ListGroup variant="flush">
-                    {Array.isArray(stagiaires) && stagiaires.length > 0 ? stagiaires.map(stag => (
-                      <ListGroup.Item key={stag.stageId}>
-                        <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}
-                        <Button
-                          variant="success"
-                          className="float-end"
-                          size="sm"
-                          onClick={() => openForm(stag.stageId)}
-                        >
-                          Générer Attestation
-                        </Button>
-                      </ListGroup.Item>
-                    )) : <ListGroup.Item>Aucun stagiaire à traiter.</ListGroup.Item>}
-                  </ListGroup>
-                </Card.Body>
-              </Card>
+                {/* Stagiaires à traiter */}
+                <Card className="mb-4 shadow-sm">
+                  <Card.Header>Stagiaires à générer leurs attestations</Card.Header>
+                  <Card.Body>
+                    <ListGroup variant="flush">
+                      {stagiaires.length > 0 ? stagiaires.map(stag => (
+                        <ListGroup.Item key={stag.stageId}>
+                          <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}
+                          <Button variant="success" className="float-end" size="sm" onClick={() => openForm(stag.stageId)}>
+                            Générer Attestation
+                          </Button>
+                        </ListGroup.Item>
+                      )) : <ListGroup.Item>Aucun stagiaire à traiter.</ListGroup.Item>}
+                    </ListGroup>
+                  </Card.Body>
+                </Card>
 
-              <Card className="dashboard-card">
-                <Card.Header>Notifications</Card.Header>
-                <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {Array.isArray(notifications) && notifications.length > 0 ? notifications.map(n => (
-                    <div key={n.id}>
-                      {n.message}
-                      <span className="notification-date">
-                        {new Date(n.date_envoi).toLocaleString()}
-                      </span>
-                    </div>
-                  )) : <p className="text-muted">Aucune notification</p>}
-                </Card.Body>
-              </Card>
+                {/* Liste des stagiaires */}
+                <Card className="mb-4 shadow-sm">
+                  <Card.Header>Stagiaires</Card.Header>
+                  <Card.Body>
+                    {stagiaires.length > 0 ? (
+                      <ListGroup>
+                        {stagiaires.map((stag, i) => (
+                          <ListGroup.Item key={i}>
+                            <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}<br />
+                            <em>{stag.titre}</em><br />
+                            <span>Encadrant Académique : <strong>{stag.acaPrenom} {stag.acaNom}</strong></span><br />
+                            <span>Encadrant Professionnel : <strong>{stag.proPrenom} {stag.proNom}</strong></span>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : <p className="text-muted">Aucun stagiaire assigné.</p>}
+                  </Card.Body>
+                </Card>
 
-              <Card className="dashboard-card">
-  <Card.Header>Stagiaires</Card.Header>
-  <Card.Body>
-    {stagiaires.length > 0 ? (
-      <ListGroup>
-        {stagiaires.map((stag, i) => (
-          <ListGroup.Item key={i}>
-            <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}<br />
-            <em>{stag.titre}</em><br />
-            <span>Encadrant Académique : <strong>{stag.acaPrenom} {stag.acaNom}</strong></span><br />
-            <span>Encadrant Professionnel : <strong>{stag.proPrenom} {stag.proNom}</strong></span>
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
-    ) : (
-      <p className="text-muted">Aucun stagiaire assigné.</p>
-    )}
-  </Card.Body>
-</Card>
-<Card className="dashboard-card">
-  <Card.Header>Encadrants professionnels</Card.Header>
-  <Card.Body>
-    {encadrantsPro.length > 0 ? (
-      <ListGroup>
-        {encadrantsPro.map(enc => (
-          <ListGroup.Item key={enc.id}>
-            <strong>{enc.nom} {enc.prenom}</strong> — {enc.email}<br />
-            ID : {enc.identifiant_unique} | Stagiaires : {enc.nombreStagiaires}
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
-    ) : (
-      <p className="text-muted">Aucun encadrant professionnel trouvé.</p>
-    )}
-  </Card.Body>
-</Card>
-
-            </div>
-          )}
+                {/* Encadrants professionnels */}
+                <Card className="mb-4 shadow-sm">
+                  <Card.Header>Encadrants Professionnels</Card.Header>
+                  <Card.Body>
+                    {encadrantsPro.length > 0 ? (
+                      <ListGroup>
+                        {encadrantsPro.map(enc => (
+                          <ListGroup.Item key={enc.id}>
+                            <strong>{enc.nom} {enc.prenom}</strong> — {enc.email}<br />
+                            ID : {enc.identifiant_unique} | Stagiaires : {enc.nombreStagiaires}
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : <p className="text-muted">Aucun encadrant professionnel trouvé.</p>}
+                  </Card.Body>
+                </Card>
+              </>
+            )}
+          </Container>
         </main>
       </div>
 
+      {/* Modal Attestation */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Formulaire Attestation</Modal.Title>
@@ -247,46 +251,41 @@ const handleSubmit = async () => {
         <Modal.Body>
           {uploadSuccess && <Alert variant="success">{uploadSuccess}</Alert>}
           <Form>
-            <Form.Group className="mb-2">
-              <Form.Label>Étudiant</Form.Label>
-              <Form.Control type="text" value={formData.etudiant} readOnly />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label>Titre</Form.Label>
-              <Form.Control type="text" value={formData.titre} readOnly />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label>Encadrants</Form.Label>
-              <Form.Control type="text" value={formData.encadrants} readOnly />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label>Dates</Form.Label>
-              <Form.Control type="text" value={formData.dates} readOnly />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label>Nom du Responsable</Form.Label>
-              <Form.Control type="text" name="responsableNom" value={formData.responsableNom} onChange={handleChange} />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label>Lieu</Form.Label>
-              <Form.Control type="text" name="lieu" value={formData.lieu} onChange={handleChange} />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label>En-tête personnalisé</Form.Label>
-              <Form.Control type="text" name="headerText" value={formData.headerText} onChange={handleChange} />
-            </Form.Group>
+            {[
+              { label: "Étudiant", name: "etudiant", readonly: true },
+              { label: "Titre", name: "titre", readonly: true },
+              { label: "Encadrants", name: "encadrants", readonly: true },
+              { label: "Dates", name: "dates", readonly: true },
+              { label: "Nom du Responsable", name: "responsableNom" },
+              { label: "Lieu", name: "lieu" },
+              { label: "En-tête personnalisé", name: "headerText" },
+              { label: "Signature numérique", name: "signature" }
+            ].map(({ label, name, readonly }) => (
+              <Form.Group className="mb-2" key={name}>
+                <Form.Label>{label}</Form.Label>
+                <Form.Control
+                  type="text"
+                  name={name}
+                  value={formData[name]}
+                  onChange={handleChange}
+                  readOnly={readonly}
+                />
+              </Form.Group>
+            ))}
             <Form.Group className="mb-2">
               <Form.Label>Logo (chemin local)</Form.Label>
               <Form.Control type="text" name="logoPath" value={formData.logoPath} readOnly />
               <Form.Control type="file" accept="image/*" onChange={handleLogoUpload} className="mt-1" />
             </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label>Signature numérique</Form.Label>
-              <Form.Control type="text" name="signature" value={formData.signature} onChange={handleChange} />
-            </Form.Group>
             <Form.Group>
               <Form.Label>Appréciation</Form.Label>
-              <Form.Control as="textarea" name="appreciation" rows={3} value={formData.appreciation} onChange={handleChange} />
+              <Form.Control
+                as="textarea"
+                name="appreciation"
+                rows={3}
+                value={formData.appreciation}
+                onChange={handleChange}
+              />
             </Form.Group>
           </Form>
         </Modal.Body>
