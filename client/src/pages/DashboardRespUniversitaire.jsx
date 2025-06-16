@@ -44,9 +44,10 @@ function DashboardRespUniversitaire() {
         axios.get(`${API_URL}/api/stage/notifications`, { headers }),
         axios.get(`${API_URL}/api/attestation/attestations/universite`, { headers })
       ]);
-      setEncadrants(encadrantRes.data || []);
-      setNotifications(notifRes.data || []);
-      setAttestations(attestRes.data || []);
+
+      setEncadrants(Array.isArray(encadrantRes.data) ? encadrantRes.data : []);
+      setNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
+      setAttestations(Array.isArray(attestRes.data) ? attestRes.data : []);
     } catch (err) {
       console.error(err);
       setMessage('Erreur lors du chargement des données.');
@@ -102,7 +103,7 @@ function DashboardRespUniversitaire() {
                         <p className="text-muted">Aucune attestation pour l’instant.</p>
                       ) : (
                         <ListGroup>
-                          {attestations.map(att => (
+                          {Array.isArray(attestations) && attestations.map(att => (
                             <ListGroup.Item key={att.stageId} className="mb-2 border rounded shadow-sm p-3">
                               <p><strong>Étudiant :</strong> {att.etudiantPrenom} {att.etudiantNom}</p>
                               <p><strong>Stage :</strong> {att.titre} ({att.identifiantStage})</p>
@@ -150,7 +151,7 @@ function DashboardRespUniversitaire() {
                     <Card.Body>
                       {encadrants.length > 0 ? (
                         <ListGroup>
-                          {encadrants.map(e => (
+                          {Array.isArray(encadrants) && encadrants.map(e => (
                             <ListGroup.Item key={e.id}>
                               <strong>{e.nom} {e.prenom}</strong> — {e.email}<br />
                               ID : {e.identifiant_unique} | Stagiaires : {e.nombreStagiaires}
@@ -164,7 +165,7 @@ function DashboardRespUniversitaire() {
                   </Card>
                 </Col>
 
-                {/* Notifications (Collapse) */}
+                {/* Notifications */}
                 {showNotif && (
                   <Col lg={3}>
                     <Collapse in={showNotif}>
@@ -178,7 +179,7 @@ function DashboardRespUniversitaire() {
                               <p className="text-muted">Aucune notification</p>
                             ) : (
                               <ListGroup>
-                                {notifications.map((notif, idx) => (
+                                {Array.isArray(notifications) && notifications.map((notif, idx) => (
                                   <ListGroup.Item key={idx}>
                                     <strong>{notif.subject}</strong><br />
                                     {notif.message}<br />

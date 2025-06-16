@@ -69,19 +69,20 @@ function DashboardRespEntreprise() {
         axios.get(`${API_URL}/stage/resp-ent/encadrants`, { headers })
       ]);
 
-      const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
+      const info = infoRes.data || {};
+      const nomComplet = `${info.responsablePrenom || ''} ${info.responsableNom || ''}`.trim();
 
-      setStagiaires(stagiairesRes.data || []);
-      setNotifications(infoRes.data.notifications || []);
-      setHistorique(histRes.data || []);
-      setRapportsValidés(rapValRes.data || []);
-      setEncadrantsPro(encadrantsRes.data || []);
+      setStagiaires(Array.isArray(stagiairesRes.data) ? stagiairesRes.data : []);
+      setNotifications(Array.isArray(info.notifications) ? info.notifications : []);
+      setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
+      setRapportsValidés(Array.isArray(rapValRes.data) ? rapValRes.data : []);
+      setEncadrantsPro(Array.isArray(encadrantsRes.data) ? encadrantsRes.data : []);
 
       setFormData(prev => ({
         ...prev,
         responsableNom: nomComplet,
-        lieu: infoRes.data.entrepriseNom || '',
-        logoPath: infoRes.data.logoPath || ''
+        lieu: info.entrepriseNom || '',
+        logoPath: info.logoPath || ''
       }));
     } catch (err) {
       console.error(err);
