@@ -53,7 +53,7 @@ function DashboardEncadrantPro() {
       setRapports(rapRes.data?.enAttente || []);
       setHistorique(histRes.data || []);
       setRapportsHistoriques(rapHistRes.data || []);
-      setStagiaires(stagiairesRes.data || []);
+      setStagiaires(Array.isArray(stagiairesRes.data) ? stagiairesRes.data : []);
     } catch (err) {
       console.error(err);
       setMessage("Erreur lors du chargement des données.");
@@ -195,43 +195,8 @@ function DashboardEncadrantPro() {
         </Card.Body>
       </Card>
 
-      {/* Historique */}
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Historique des Actions</Card.Header>
-        <Card.Body>
-          {historique.length === 0 ? (
-            <p className="text-muted">Aucune action enregistrée.</p>
-          ) : (
-            <ListGroup>
-              {historique.map(entry => (
-                <ListGroup.Item key={entry.id}>
-                  [{new Date(entry.dateAction).toLocaleString()}] — {entry.description}
-                </ListGroup.Item>
-              ))}
-            </ListGroup>
-          )}
-        </Card.Body>
-      </Card>
-
-      {/* Rapports validés */}
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Rapports Validés</Card.Header>
-        <Card.Body>
-          {rapportsHistoriques.length === 0 ? (
-            <p className="text-muted">Aucun rapport validé.</p>
-          ) : (
-            <ul>
-              {rapportsHistoriques.map((r, i) => (
-                <li key={i}>
-                  <strong>{r.identifiantRapport}</strong> — {r.titre}
-                  {" | "}
-                  <a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir PDF</a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card.Body>
-      </Card>
+  
+    
 
       {/* Stagiaires encadrés */}
       <Card className="mb-4 shadow-sm">
@@ -241,7 +206,7 @@ function DashboardEncadrantPro() {
             <p className="text-muted">Aucun stagiaire affecté.</p>
           ) : (
             <ListGroup>
-              {stagiaires.map((s, i) => (
+{Array.isArray(stagiaires) && stagiaires.map((s, i) => (
                 <ListGroup.Item key={i}>
                   <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
                   <span><strong>Stage :</strong> {s.titreStage}</span><br />
