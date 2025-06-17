@@ -64,7 +64,11 @@ exports.soumettreRapport = async (email, fichier, cibles = []) => {
   if (!Array.isArray(cibles) || cibles.length === 0) throw new Error("Aucun encadrant cible précisé.");
 
   const [[etudiant]] = await db.execute("SELECT id, prenom, nom FROM Etudiant WHERE email = ?", [email]);
-  const [[stage]] = await db.execute("SELECT * FROM Stage WHERE etudiantId = ?", [etudiant.id]);
+const [[stage]] = await db.execute(
+  "SELECT * FROM Stage WHERE etudiantId = ? AND estHistorique = FALSE ORDER BY dateDebut DESC LIMIT 1",
+  [etudiant.id]
+);
+if (!stage) throw new Error("Aucun stage actif trouvé pour cet étudiant.");
 
   const rapportPath = fichier.filename;
   //
