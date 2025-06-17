@@ -61,20 +61,24 @@ function DashboardEncadrantPro() {
       setLoading(false);
     }
   };
+const handleDecision = async (id, action) => {
+  try {
+    await axios.post(`${API_URL}/stage/valider`, { sujetId: id, action }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
 
-  const handleDecision = async (id, action) => {
-    try {
-      await axios.post(`${API_URL}/stage/valider`, { sujetId: id, action }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
-    } catch {
-      setMessage("Erreur lors de l'action sur la proposition.");
-    } finally {
-      setCommentaires({});
-      await loadData();
-    }
-  };
+    // Retirer immédiatement la proposition traitée du tableau
+    setPropositions(prev => prev.filter(p => p.id !== id));
+  } catch {
+    setMessage("Erreur lors de l'action sur la proposition.");
+  } finally {
+    setCommentaires({});
+     await loadData();
+  }
+};
+
+  
 
   const validerRapport = async (id) => {
     try {
@@ -214,7 +218,8 @@ function DashboardEncadrantPro() {
                   {s.identifiantRapport ? (
                     <span>
                       <strong>Rapport :</strong>{" "}
-                      <a href={`${BASE}/uploads/${s.identifiantRapport}.pdf`} target="_blank" rel="noreferrer">Voir PDF</a>
+                      <a href={`${BASE}/uploads/${s.fichierRapport}`} target="_blank" rel="noreferrer">Voir PDF</a>
+
                     </span>
                   ) : (
                     <span className="text-muted">Rapport non disponible</span>

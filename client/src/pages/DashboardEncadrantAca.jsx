@@ -73,13 +73,17 @@ function DashboardEncadrantAca() {
       headers: { Authorization: `Bearer ${token}` }
     });
     setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
+
+    // Retirer immédiatement la proposition traitée du tableau
+    setPropositions(prev => prev.filter(p => p.id !== id));
   } catch {
     setMessage("Erreur lors de l'action sur la proposition.");
   } finally {
     setCommentaires({});
-    await loadData(); // recharge les données sans double appel
+     await loadData();
   }
 };
+
 
 
   const validerRapport = async (id) => {
@@ -201,7 +205,8 @@ function DashboardEncadrantAca() {
             <span><strong>Stage :</strong> {s.titreStage}</span><br />
             <span><strong>Période :</strong> {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}</span><br />
             {s.identifiantRapport ? (
-              <span><strong>Rapport :</strong> <a href={`${BASE}/uploads/${s.identifiantRapport}.pdf`} target="_blank" rel="noreferrer">Voir PDF</a></span>
+              <span><strong>Rapport :</strong> <a href={`${BASE}/uploads/${s.fichierRapport}`} target="_blank" rel="noreferrer">Voir PDF</a>
+</span>
             ) : (
               <span className="text-muted">Rapport non disponible</span>
             )}

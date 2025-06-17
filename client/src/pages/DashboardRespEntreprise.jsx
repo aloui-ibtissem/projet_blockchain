@@ -22,8 +22,8 @@ function DashboardRespEntreprise() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState(null);
-  const [historique, setHistorique] = useState([]);
-  const [rapportsValidés, setRapportsValidés] = useState([]);
+  const [encadrantsPro, setEncadrantsPro] = useState([]);
+
 
   const [formData, setFormData] = useState({
     appreciation: '',
@@ -58,19 +58,20 @@ function DashboardRespEntreprise() {
       const headers = { Authorization: `Bearer ${token}` };
     const aGenererRes = await axios.get(`${API_URL}/api/attestation/a-generer`, { headers });
 
-      const [dashRes, infoRes, histRes, rapValRes] = await Promise.all([
+      const [dashRes, infoRes,encadrantsRes] = await Promise.all([
         axios.get(`${API_URL}/entreprises/dashboard`, { headers }),
         axios.get(`${API_URL}/entreprises/info`, { headers }),
         axios.get(`${API_URL}/historique/mes`, { headers }),
-        axios.get(`${API_URL}/rapport/entreprise/valides`, { headers })
+        axios.get(`${API_URL}/rapport/entreprise/valides`, { headers }),
+         axios.get(`${API_URL}/api/stage/resp-ent/encadrants`, { headers })
       ]);
 
       const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
 
     setStagiaires(Array.isArray(aGenererRes.data) ? aGenererRes.data : []);
       setNotifications(Array.isArray(dashRes.data.notifications) ? dashRes.data.notifications : []);
-      setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
-      setRapportsValidés(Array.isArray(rapValRes.data) ? rapValRes.data : []);
+      setEncadrantsPro(Array.isArray(encadrantsRes.data) ? encadrantsRes.data : []);
+
 
       setFormData(prev => ({
         ...prev,
@@ -191,41 +192,58 @@ function DashboardRespEntreprise() {
                 </Card.Body>
               </Card>
 
-              <Card className="dashboard-card">
-                <Card.Header>Rapports Validés (Entreprise)</Card.Header>
-                <Card.Body>
-                  {Array.isArray(rapportsValidés) && rapportsValidés.length > 0 ? (
-                    <ul>
-                      {rapportsValidés.map((r, i) => (
-                        <li key={i}>
-                          <strong>{r.identifiantRapport}</strong> — {r.titre}
-                          {" | "}
-                          <a href={`${API_URL}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir PDF</a>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-muted">Aucun rapport validé pour l'entreprise.</p>
-                  )}
-                </Card.Body>
-              </Card>
+          
+
+            
 
               <Card className="dashboard-card">
-                <Card.Header>Historique des actions</Card.Header>
-                <Card.Body>
-                  {Array.isArray(historique) && historique.length > 0 ? (
-                    <ListGroup>
-                      {historique.map(entry => (
-                        <ListGroup.Item key={entry.id}>
-                          [{new Date(entry.dateAction).toLocaleString()}] — {entry.description}
-                        </ListGroup.Item>
-                      ))}
-                    </ListGroup>
-                  ) : (
-                    <p className="text-muted">Aucune action enregistrée.</p>
-                  )}
-                </Card.Body>
-              </Card>
+  <Card.Header>Stagiaires de l'entreprise </Card.Header>
+  <Card.Body>
+    {Array.isArray(stagiaires) && stagiaires.length > 0 ? (
+      <ListGroup>
+        {stagiaires.map((s, i) => (
+          <ListGroup.Item key={i}>
+            <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
+            <span><strong>Stage :</strong> {s.titre}</span><br />
+            <span><strong>Période :</strong> {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}</span><br />
+            {s.fichierRapport ? (
+              <>
+                <strong>Rapport :</strong> <a href={`${API_URL}/uploads/${s.fichierRapport}`} target="_blank" rel="noreferrer">Voir PDF</a><br />
+              </>
+            ) : <span className="text-muted">Rapport non disponible</span>}
+            {s.ipfsUrl ? (
+              <>
+                <strong>Attestation :</strong> <a href={s.ipfsUrl} target="_blank" rel="noreferrer">Voir sur IPFS</a>
+              </>
+            ) : <div className="text-muted">Attestation non générée</div>}
+          </ListGroup.Item>
+        ))}
+      </ListGroup>
+    ) : (
+      <p className="text-muted">Aucun stagiaire enregistré.</p>
+    )}
+  </Card.Body>
+</Card>
+
+<Card className="dashboard-card">
+  <Card.Header>Encadrants Professionnels de l’entreprise</Card.Header>
+  <Card.Body>
+    {encadrantsPro.length > 0 ? (
+      <ListGroup>
+        {encadrantsPro.map(e => (
+          <ListGroup.Item key={e.id}>
+            <strong>{e.nom} {e.prenom}</strong> — {e.email}<br />
+            ID : {e.identifiant_unique} | Stagiaires : {e.nombreStagiaires}
+          </ListGroup.Item>
+        ))}
+      </ListGroup>
+    ) : (
+      <p className="text-muted">Aucun encadrant professionnel trouvé.</p>
+    )}
+  </Card.Body>
+</Card>
+
+
 
             </div>
           )}
