@@ -59,7 +59,7 @@ function DashboardRespEntreprise() {
     const headers = { Authorization: `Bearer ${token}` };
 
     const [stagiairesRes, infoRes, histRes, rapValRes, encadrantsRes] = await Promise.all([
-axios.get(`${API_URL}/attestation/a-generer`, { headers }),
+      axios.post(`${API_URL}/attestation/generer`, { headers }),
       axios.get(`${API_URL}/entreprises/info`, { headers }),
       axios.get(`${API_URL}/historique/mes`, { headers }),
       axios.get(`${API_URL}/rapport/entreprise/valides`, { headers }),

@@ -25,7 +25,6 @@ const requireResponsableUniversitaire = async (req, res, next) => {
 
 // Générer une attestation (par ResponsableEntreprise)
 router.post("/generer/:stageId", requireResponsableEntreprise, attestationController.genererAttestation);
-router.get('/a-generer', requireResponsableEntreprise, attestationController.getAttestationsAGenerer);
 
 
 // Vérification publique (via QR code ou lien)
