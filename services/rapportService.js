@@ -143,6 +143,8 @@ const rapportHash = await hashFile(fullPath);
   return { identifiantRapport };
 };
 
+
+
 exports.validerRapport = async (email, role, rapportId) => {
   const champ = role === "EncadrantAcademique" ? "statutAcademique" : "statutProfessionnel";
   const blockchainRole = role === "EncadrantAcademique" ? "ACA" : "PRO";
@@ -159,15 +161,15 @@ exports.validerRapport = async (email, role, rapportId) => {
 
   await db.execute(`UPDATE RapportStage SET ${champ} = TRUE WHERE id = ?`, [rapportId]);
   await validateAsEncadrant(rapport.identifiantRapport, blockchainRole);
-  await historiqueService.logAction({
-  rapportId: rapportId,
-  utilisateurId: encadrant.id,
-  role,
-  action: `Validation du rapport`,
-  commentaire: `Rapport : ${rapport.identifiantRapport}`,
-  origine: "manuelle"
-});
 
+  await historiqueService.logAction({
+    rapportId,
+    utilisateurId: encadrant.id,
+    role,
+    action: `Validation du rapport`,
+    commentaire: `Rapport : ${rapport.identifiantRapport}`,
+    origine: "manuelle"
+  });
 
   await notificationService.notifyUser({
     toId: rapport.etudiantId,
@@ -176,25 +178,21 @@ exports.validerRapport = async (email, role, rapportId) => {
     templateName: champ === "statutAcademique" ? "rapport_validated_academique" : "rapport_validated_professionnel",
     templateData: {
       etudiantPrenom: etudiant.prenom,
-       etudiantNom: etudiant.nom,
+      etudiantNom: etudiant.nom,
       encadrantPrenom: encadrant.prenom,
       encadrantNom: encadrant.nom,
-      titreStage:stage.titre,
+      titreStage: stage.titre,
       rapportUrl: `${baseUrl}/uploads/${rapport.fichier}`,
-       dashboardUrl: buildUrl("/login")
+      dashboardUrl: buildUrl("/login")
     },
     message: `Votre rapport a été validé par ${encadrant.prenom} ${encadrant.nom}.`
   });
 
-  const [[refreshed]] = await db.execute("SELECT statutAcademique, statutProfessionnel, attestationGeneree FROM RapportStage WHERE id = ?", [rapportId]);
+  const [[refreshed]] = await db.execute("SELECT * FROM RapportStage WHERE id = ?", [rapportId]);
 
- if (isDoubleValidationOk(refreshed) && !refreshed.attestationGeneree) {
-  await confirmDoubleValidation(rapport.identifiantRapport);
-await db.execute(`
-    UPDATE RapportStage 
-    SET attestationGeneree = TRUE 
-    WHERE id = ?
-  `, [rapportId]);
+  if (isDoubleValidationOk(refreshed) && !refreshed.attestationGeneree) {
+    await confirmDoubleValidation(refreshed.identifiantRapport);
+    await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?", [rapportId]);
 
     const [[responsable]] = await db.execute(
       `SELECT id, prenom, nom FROM ResponsableEntreprise WHERE entrepriseId = ? LIMIT 1`,
@@ -213,26 +211,21 @@ await db.execute(`
           titreStage: stage.titre,
           identifiantRapport: rapport.identifiantRapport,
           attestationFormUrl: `${baseUrl}/entreprise/attestation/${rapport.identifiantRapport}`,
-           dashboardUrl: buildUrl("/login")
+          dashboardUrl: buildUrl("/login")
         },
         message: `L'attestation de ${etudiant.prenom} ${etudiant.nom} est prête à être générée.`
       });
     }
   }
 };
+//
 
-
-
-exports.validerParTier = async (rapportId, tierId) => {
+    exports.validerParTier = async (rapportId, tierId) => {
   const [[rapport]] = await db.execute(`SELECT * FROM RapportStage WHERE id = ?`, [rapportId]);
-  if (!rapport) throw new Error("Rapport introuvable.");
-
   const [[tier]] = await db.execute(`SELECT * FROM TierDebloqueur WHERE id = ?`, [tierId]);
-  if (!tier) throw new Error("Tier introuvable.");
 
   const statutField = tier.structureType === 'universite' ? 'statutAcademique' : 'statutProfessionnel';
   const tierField = tier.structureType === 'universite' ? 'tierIntervenantAcademiqueId' : 'tierIntervenantProfessionnelId';
-  const roleAction = tier.structureType === 'universite' ? 'Validation académique par tier' : 'Validation professionnelle par tier';
 
   if (rapport[statutField]) throw new Error("Rapport déjà validé pour ce statut.");
 
@@ -248,103 +241,60 @@ exports.validerParTier = async (rapportId, tierId) => {
     rapportId,
     utilisateurId: tierId,
     role: "TierDebloqueur",
-    action: roleAction,
+    action: tier.structureType === 'universite' ? 'Validation académique par tier' : 'Validation professionnelle par tier',
     commentaire: "Validation manuelle par tier suite à retard",
     origine: "manuelle"
   });
-const [[etudiant]] = await db.execute(`SELECT prenom, nom FROM Etudiant WHERE id = ?`, [rapport.etudiantId]);
 
-  // Notification immédiate à l'étudiant après validation par un tier
-await notificationService.notifyUser({
-  toId: rapport.etudiantId,
-  toRole: "Etudiant",
-  subject: "Validation par un tier débloqueur",
-  templateName: "validation_par_tier",
-  templateData: {
-    etudiantPrenom: etudiant.prenom,
-    etudiantNom: etudiant.nom,
-    titreStage: stage.titre,
-    encadrantManquant: tier.structureType === 'universite' ? "académique" : "professionnel",
-    dashboardUrl: buildUrl("/login")
-  },
-  message: `Votre rapport a été validé par un tier ${tier.structureType}, suite à l'absence de validation de votre encadrant ${tier.structureType}.`
-});
+  const [[stage]] = await db.execute(`SELECT * FROM Stage WHERE id = ?`, [rapport.stageId]);
+  const [[etudiant]] = await db.execute(`SELECT prenom, nom FROM Etudiant WHERE id = ?`, [rapport.etudiantId]);
 
+  await notificationService.notifyUser({
+    toId: rapport.etudiantId,
+    toRole: "Etudiant",
+    subject: "Validation par un tier débloqueur",
+    templateName: "validation_par_tier",
+    templateData: {
+      etudiantPrenom: etudiant.prenom,
+      etudiantNom: etudiant.nom,
+      titreStage: stage.titre,
+      encadrantManquant: tier.structureType === 'universite' ? "académique" : "professionnel",
+      dashboardUrl: buildUrl("/login")
+    },
+    message: `Votre rapport a été validé par un tier ${tier.structureType}, suite à l'absence de validation de votre encadrant ${tier.structureType}.`
+  });
 
-  // Vérification actualisée après validation tier
   const [[updatedRapport]] = await db.execute(`SELECT * FROM RapportStage WHERE id = ?`, [rapportId]);
 
   if (isDoubleValidationOk(updatedRapport) && !updatedRapport.attestationGeneree) {
-    // Marquer comme générée immédiatement pour éviter duplicata
-    await db.execute(`
-      UPDATE RapportStage 
-      SET attestationGeneree = TRUE 
-      WHERE id = ?`, [rapportId]
-    );
-
-    // Confirmer double validation sur blockchain
     await confirmDoubleValidation(updatedRapport.identifiantRapport);
+    await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?", [rapportId]);
 
-    // Générer attestation automatiquement
-    const [[stage]] = await db.execute(`SELECT * FROM Stage WHERE id = ?`, [updatedRapport.stageId]);
     const [[responsableEnt]] = await db.execute(`
       SELECT id FROM ResponsableEntreprise 
       WHERE entrepriseId = ? LIMIT 1`, [stage.entrepriseId]
     );
 
-    if (!responsableEnt) {
-      throw new Error("Responsable Entreprise introuvable pour génération attestation");
+    if (responsableEnt) {
+      await notificationService.notifyUser({
+        toId: responsableEnt.id,
+        toRole: "ResponsableEntreprise",
+        subject: "Attestation à générer (validation tier)",
+        templateName: "attestation_ready",
+        templateData: {
+          etudiantPrenom: etudiant.prenom,
+          etudiantNom: etudiant.nom,
+          titreStage: stage.titre,
+          identifiantRapport: updatedRapport.identifiantRapport,
+          attestationFormUrl: `${baseUrl}/entreprise/attestation/${updatedRapport.identifiantRapport}`,
+          dashboardUrl: buildUrl("/login")
+        },
+        message: `Le rapport a été validé par un tier. Veuillez compléter et générer l'attestation.`
+      });
     }
-
-    // Génération réelle de l'attestation
-    await notificationService.notifyUser({
-  toId: responsableEnt.id,
-  toRole: "ResponsableEntreprise",
-  subject: "Attestation à générer (validation tier)",
-  templateName: "attestation_ready",
-  templateData: {
-    etudiantPrenom: etudiant.prenom,
-    etudiantNom: etudiant.nom,
-    titreStage: stage.titre,
-    identifiantRapport: updatedRapport.identifiantRapport,
-    attestationFormUrl: `${baseUrl}/entreprise/attestation/${updatedRapport.identifiantRapport}`,
-    dashboardUrl: buildUrl("/login")
-  },
-  message: `Le rapport a été validé par un tier. Veuillez compléter et générer l'attestation.`
-});
-
-
-    await historiqueService.logAction({
-      rapportId,
-      utilisateurId: responsableEnt.id,
-      role: "ResponsableEntreprise",
-      action: "Attestation générée automatiquement",
-      commentaire: "Suite à validation encadrant + tier débloqueur",
-      origine: "automatique"
-    });
-
-    const [[etudiant]] = await db.execute(`SELECT id, prenom, nom FROM Etudiant WHERE id = ?`, [updatedRapport.etudiantId]);
-    const [[stageRow]] = await db.execute("SELECT titre FROM Stage WHERE id = ?", [stageId]);
-
-    await notificationService.notifyUser({
-      toId: etudiant.id,
-      toRole: "Etudiant",
-      subject: "Votre attestation est disponible",
-      templateName: "attestation_published_etudiant",
-      templateData: {
-        etudiantPrenom: etudiant.prenom,
-        etudiantNom: etudiant.nom,
-        titreStage: stageRow?.titre || "",
-        year: new Date().getFullYear(),
-        dashboardUrl: buildUrl("/login")
-      },
-      message: "Votre attestation de stage a été générée suite à la validation par un tier."
-    });
   }
 };
 
-
-    
 
 
 exports.commenterRapport = async (email, rapportId, commentaire) => {
