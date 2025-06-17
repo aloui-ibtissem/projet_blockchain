@@ -56,6 +56,7 @@ function DashboardRespEntreprise() {
     try {
       setLoading(true);
       const headers = { Authorization: `Bearer ${token}` };
+    const aGenererRes = await axios.get(`${API_URL}/entreprises/attestation/a-generer`, { headers });
 
       const [dashRes, infoRes, histRes, rapValRes] = await Promise.all([
         axios.get(`${API_URL}/entreprises/dashboard`, { headers }),
@@ -66,7 +67,7 @@ function DashboardRespEntreprise() {
 
       const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
 
-      setStagiaires(Array.isArray(dashRes.data.stagiaires) ? dashRes.data.stagiaires : []);
+    setStagiaires(Array.isArray(aGenererRes.data) ? aGenererRes.data : []);
       setNotifications(Array.isArray(dashRes.data.notifications) ? dashRes.data.notifications : []);
       setHistorique(Array.isArray(histRes.data) ? histRes.data : []);
       setRapportsValidés(Array.isArray(rapValRes.data) ? rapValRes.data : []);

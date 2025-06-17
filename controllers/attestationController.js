@@ -131,39 +131,33 @@ exports.downloadAttestation = async (req, res) => {
 //
 exports.getAttestationsAGenerer = async (req, res) => {
   try {
-    const responsableId = req.user.id;
+    const { id: responsableId } = req.user;
 
-    // Trouver l'entreprise associée à ce responsable
-    const [[responsable]] = await db.execute(`
-      SELECT entrepriseId FROM ResponsableEntreprise WHERE id = ?
-    `, [responsableId]);
+    const [[{ entrepriseId }]] = await db.execute(
+      `SELECT entrepriseId FROM ResponsableEntreprise WHERE id = ?`,
+      [responsableId]
+    );
 
-    if (!responsable) {
-      return res.status(404).json({ error: "Responsable non trouvé" });
-    }
-
-    const entrepriseId = responsable.entrepriseId;
-
-    // Sélectionner les stages avec attestationGeneree = TRUE mais pas encore générée (pas dans table Attestation)
     const [rows] = await db.execute(`
-      SELECT s.id AS stageId, s.titre, e.prenom, e.nom, e.email,
-             ea.prenom AS acaPrenom, ea.nom AS acaNom,
-             ep.prenom AS proPrenom, ep.nom AS proNom,
-             r.identifiantRapport
-      FROM Stage s
-      JOIN RapportStage r ON r.stageId = s.id
-      JOIN Etudiant e ON s.etudiantId = e.id
-      JOIN EncadrantAcademique ea ON s.encadrantAcademiqueId = ea.id
-      JOIN EncadrantProfessionnel ep ON s.encadrantProfessionnelId = ep.id
-      LEFT JOIN Attestation a ON a.stageId = s.id
-      WHERE s.entrepriseId = ?
-        AND r.attestationGeneree = TRUE
-        AND a.id IS NULL
+      SELECT 
+        S.id AS stageId,
+        S.identifiant_unique AS identifiantStage,
+        S.titre,
+        E.prenom, E.nom, E.email,
+        R.identifiantRapport
+      FROM Stage S
+      JOIN Etudiant E ON S.etudiantId = E.id
+      JOIN RapportStage R ON R.stageId = S.id
+      LEFT JOIN Attestation A ON A.stageId = S.id
+      WHERE 
+        S.entrepriseId = ?
+        AND R.attestationGeneree = TRUE
+        AND A.id IS NULL
     `, [entrepriseId]);
 
     res.status(200).json(rows);
   } catch (err) {
     console.error("Erreur getAttestationsAGenerer:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Erreur serveur" });
   }
 };
