@@ -202,11 +202,7 @@ exports.validerRapport = async (email, role, rapportId) => {
     );
 
      //
-    await attestationService.genererAttestation({
-  stageId: refreshed.stageId,
-  appreciation: "Générée automatiquement après double validation",
-  responsableId: responsable.id 
-});
+
 
     if (responsable) {
       await notificationService.notifyUser({
@@ -285,12 +281,7 @@ exports.validerRapport = async (email, role, rapportId) => {
       SELECT id FROM ResponsableEntreprise 
       WHERE entrepriseId = ? LIMIT 1`, [stage.entrepriseId]
     );
-    // 
-    await attestationService.genererAttestation({
-  stageId: updatedRapport.stageId,
-  appreciation: "Générée automatiquement après validation tier",
-  responsableId: responsableEnt.id
-});
+  
 
     if (responsableEnt) {
       await notificationService.notifyUser({
