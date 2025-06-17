@@ -193,6 +193,13 @@ exports.validerRapport = async (email, role, rapportId) => {
   if (isDoubleValidationOk(refreshed) && !refreshed.attestationGeneree) {
     await confirmDoubleValidation(refreshed.identifiantRapport);
     await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?", [rapportId]);
+    //
+    await attestationService.genererAttestation({
+  stageId: refreshed.stageId,
+  appreciation: "Générée automatiquement après double validation",
+  responsableId: responsable.id 
+});
+
 
     const [[responsable]] = await db.execute(
       `SELECT id, prenom, nom FROM ResponsableEntreprise WHERE entrepriseId = ? LIMIT 1`,
@@ -269,6 +276,13 @@ exports.validerRapport = async (email, role, rapportId) => {
   if (isDoubleValidationOk(updatedRapport) && !updatedRapport.attestationGeneree) {
     await confirmDoubleValidation(updatedRapport.identifiantRapport);
     await db.execute("UPDATE RapportStage SET attestationGeneree = TRUE WHERE id = ?", [rapportId]);
+    // 
+    await attestationService.genererAttestation({
+  stageId: updatedRapport.stageId,
+  appreciation: "Générée automatiquement après validation tier",
+  responsableId: responsableEnt.id
+});
+
 
     const [[responsableEnt]] = await db.execute(`
       SELECT id FROM ResponsableEntreprise 
