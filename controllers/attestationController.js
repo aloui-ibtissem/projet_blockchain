@@ -161,3 +161,28 @@ exports.getAttestationsAGenerer = async (req, res) => {
     res.status(500).json({ error: "Erreur serveur" });
   }
 };
+
+//
+exports.getAttestationsEntreprise = async (req, res) => {
+  try {
+    const [[{ entrepriseId }]] = await db.execute(
+      "SELECT entrepriseId FROM ResponsableEntreprise WHERE email = ?",
+      [req.user.email]
+    );
+
+    const [rows] = await db.execute(`
+      SELECT A.identifiant, A.ipfsUrl, A.dateCreation,
+             E.nom, E.prenom, S.titre
+      FROM Attestation A
+      JOIN Etudiant E ON A.etudiantId = E.id
+      JOIN Stage S ON A.stageId = S.id
+      WHERE S.entrepriseId = ?
+      ORDER BY A.dateCreation DESC
+    `, [entrepriseId]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Erreur getAttestationsEntreprise :", err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
+};

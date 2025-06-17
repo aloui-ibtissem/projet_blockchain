@@ -71,19 +71,8 @@ function DashboardRespUniversitaire() {
 
   return (
     <div className="dashboard-layout d-flex bg-light">
-      <Sidebar role={role} />
       <div className="dashboard-content flex-grow-1">
-        <Header title="Responsable Universitaire">
-          <Button
-            variant={showNotif ? "secondary" : "outline-secondary"}
-            onClick={() => setShowNotif(!showNotif)}
-            className="ms-auto"
-          >
-            <FaBell className="me-2" />
-            {showNotif ? 'Masquer' : 'Afficher'} Notifications
-          </Button>
-        </Header>
-
+    
         <main className="main-content p-4">
           <Container className="mt-2 dashboard-etudiant">
             <h2 className="text-center mb-4">Tableau de Bord Responsable Universitaire</h2>

@@ -112,6 +112,18 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
   const pdfFinalV2Hash = await hashFile(pdfFinalV2Path);
   const pdfFinalV2Ipfs = await uploadToIPFS(pdfFinalV2Path);
 
+  // 6bis. Créer HTML final cohérent avec pdfFinalV2 (hash et lien vers bon PDF)
+const finalHtml2 = generateVerificationHTML({
+  attestationId,
+  fileHash: pdfFinalV2Hash,               // Hash réel du PDF final
+  ipfsUrl: pdfFinalV2Ipfs.publicUrl,      // Lien IPFS réel du PDF final
+  issuer: responsableId,
+  timestamp: Date.now(),
+  event: "AttestationPublished"
+});
+const finalHtml2Upload = await uploadHTMLToIPFS(finalHtml2);
+
+
   // 6. Enregistrement BDD
   await db.execute(`
     INSERT INTO Attestation
@@ -159,8 +171,7 @@ exports.genererAttestation = async ({ stageId, appreciation, modifs = {}, respon
       encadrantProPrenom: stage.proPrenom,
       encadrantProNom: stage.proNom,
       identifiantAttestation: attestationId,
-       hash: pdfFinalV2Hash,
-      attestationUrl: finalHtmlUpload.publicUrl,
+      attestationUrl: finalHtml2Upload.publicUrl,
       year: new Date().getFullYear()
     },
     message: "Votre attestation de stage est prête."

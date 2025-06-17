@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { Alert, Card, Button, ListGroup, Form, Modal } from 'react-bootstrap';
@@ -23,6 +22,11 @@ function DashboardRespEntreprise() {
   const [showModal, setShowModal] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState(null);
   const [encadrantsPro, setEncadrantsPro] = useState([]);
+  const [stagiairesEntreprise, setStagiairesEntreprise] = useState([]);
+  const [attestationsGenerees, setAttestationsGenerees] = useState([]);
+  
+
+
 
 
   const [formData, setFormData] = useState({
@@ -52,40 +56,51 @@ function DashboardRespEntreprise() {
     fetchData();
   }, [navigate, token, role]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const headers = { Authorization: `Bearer ${token}` };
-    const aGenererRes = await axios.get(`${API_URL}/api/attestation/a-generer`, { headers });
+ const fetchData = async () => {
+  try {
+    setLoading(true);
+    const headers = { Authorization: `Bearer ${token}` };
 
-      const [dashRes, infoRes,encadrantsRes] = await Promise.all([
-        axios.get(`${API_URL}/entreprises/dashboard`, { headers }),
-        axios.get(`${API_URL}/entreprises/info`, { headers }),
-        axios.get(`${API_URL}/historique/mes`, { headers }),
-        axios.get(`${API_URL}/rapport/entreprise/valides`, { headers }),
-         axios.get(`${API_URL}/api/stage/resp-ent/encadrants`, { headers })
-      ]);
+    const [
+      aGenererRes,
+      dashRes,
+      infoRes,
+      encadrantsRes,
+      stagiairesEntRes
+    ] = await Promise.all([
+      axios.get(`${API_URL}/api/attestation/a-generer`, { headers }),
+      axios.get(`${API_URL}/api/entreprises/dashboard`, { headers }),
+      axios.get(`${API_URL}/api/entreprises/info`, { headers }),
+      axios.get(`${API_URL}/api/historique/mes`, { headers }),
+      axios.get(`${API_URL}/api/rapport/entreprise/valides`, { headers }),
+      axios.get(`${API_URL}/api/stage/resp-ent/encadrants`, { headers }),
+      axios.get(`${API_URL}/api/stage/resp-ent/stagiaires`, { headers })
+    ]);
+      const attestationGenRes = await axios.get(`${API_URL}/api/attestation/attestations/entreprise`, { headers });
 
-      const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
+
+    const nomComplet = `${infoRes.data.responsablePrenom || ''} ${infoRes.data.responsableNom || ''}`.trim();
 
     setStagiaires(Array.isArray(aGenererRes.data) ? aGenererRes.data : []);
-      setNotifications(Array.isArray(dashRes.data.notifications) ? dashRes.data.notifications : []);
-      setEncadrantsPro(Array.isArray(encadrantsRes.data) ? encadrantsRes.data : []);
+    setStagiairesEntreprise(Array.isArray(stagiairesEntRes.data) ? stagiairesEntRes.data : []);
+    setNotifications(Array.isArray(dashRes.data.notifications) ? dashRes.data.notifications : []);
+    setEncadrantsPro(Array.isArray(encadrantsRes.data) ? encadrantsRes.data : []);
+      setAttestationsGenerees(Array.isArray(attestationGenRes.data) ? attestationGenRes.data : []);
 
 
-      setFormData(prev => ({
-        ...prev,
-        responsableNom: nomComplet,
-        lieu: infoRes.data.entrepriseNom || '',
-        logoPath: infoRes.data.logoPath || ''
-      }));
-    } catch (err) {
-      console.error(err);
-      setMessage('Erreur lors du chargement.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setFormData(prev => ({
+      ...prev,
+      responsableNom: nomComplet,
+      lieu: infoRes.data.entrepriseNom || '',
+      logoPath: infoRes.data.logoPath || ''
+    }));
+  } catch (err) {
+    console.error(err);
+    setMessage('Erreur lors du chargement.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const openForm = async (stageId) => {
     setSelectedStageId(stageId);
@@ -145,9 +160,8 @@ function DashboardRespEntreprise() {
     }
   };
 
-  return (
+   return (
     <div className="dashboard-layout">
-      <Sidebar role={role} />
       <div className="dashboard-content">
         <Header title="Responsable Entreprise" />
         <main className="main-content">
@@ -157,11 +171,12 @@ function DashboardRespEntreprise() {
           ) : (
             <div className="dashboard-grid">
 
+              {/* Stagiaires à traiter */}
               <Card className="dashboard-card">
                 <Card.Header>Stagiaires à générer leurs attestations</Card.Header>
                 <Card.Body>
                   <ListGroup variant="flush">
-                    {Array.isArray(stagiaires) && stagiaires.length > 0 ? stagiaires.map(stag => (
+                    {stagiaires.length > 0 ? stagiaires.map(stag => (
                       <ListGroup.Item key={stag.stageId}>
                         <strong>{stag.prenom} {stag.nom}</strong> — {stag.email}
                         <Button
@@ -178,72 +193,77 @@ function DashboardRespEntreprise() {
                 </Card.Body>
               </Card>
 
+              {/* Notifications */}
               <Card className="dashboard-card">
                 <Card.Header>Notifications</Card.Header>
                 <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {Array.isArray(notifications) && notifications.length > 0 ? notifications.map(n => (
+                  {notifications.length > 0 ? notifications.map(n => (
                     <div key={n.id}>
                       {n.message}
-                      <span className="notification-date">
-                        {new Date(n.date_envoi).toLocaleString()}
-                      </span>
+                      <span className="notification-date">{new Date(n.date_envoi).toLocaleString()}</span>
                     </div>
                   )) : <p className="text-muted">Aucune notification</p>}
                 </Card.Body>
               </Card>
 
-          
-
-            
-
+              {/* Stagiaires entreprise */}
               <Card className="dashboard-card">
-  <Card.Header>Stagiaires de l'entreprise </Card.Header>
-  <Card.Body>
-    {Array.isArray(stagiaires) && stagiaires.length > 0 ? (
-      <ListGroup>
-        {stagiaires.map((s, i) => (
-          <ListGroup.Item key={i}>
-            <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
-            <span><strong>Stage :</strong> {s.titre}</span><br />
-            <span><strong>Période :</strong> {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}</span><br />
-            {s.fichierRapport ? (
-              <>
-                <strong>Rapport :</strong> <a href={`${API_URL}/uploads/${s.fichierRapport}`} target="_blank" rel="noreferrer">Voir PDF</a><br />
-              </>
-            ) : <span className="text-muted">Rapport non disponible</span>}
-            {s.ipfsUrl ? (
-              <>
-                <strong>Attestation :</strong> <a href={s.ipfsUrl} target="_blank" rel="noreferrer">Voir sur IPFS</a>
-              </>
-            ) : <div className="text-muted">Attestation non générée</div>}
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
-    ) : (
-      <p className="text-muted">Aucun stagiaire enregistré.</p>
-    )}
-  </Card.Body>
-</Card>
+                <Card.Header>Stagiaires de l'entreprise</Card.Header>
+                <Card.Body>
+                  {stagiairesEntreprise.length > 0 ? (
+                    <ListGroup>
+                      {stagiairesEntreprise.map((s, i) => (
+                        <ListGroup.Item key={s.stageId || i}>
+                          <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
+                          <span><strong>Stage :</strong> {s.titre}</span><br />
+                          <span><strong>Période :</strong> {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}</span><br />
+                          {s.fichierRapport ? (
+                            <><strong>Rapport :</strong> <a href={`${API_URL}/uploads/${s.fichierRapport}`} target="_blank" rel="noreferrer">Voir PDF</a><br /></>
+                          ) : <span className="text-muted">Rapport non disponible</span>}
+                          {s.ipfsUrl ? (
+                            <><strong>Attestation :</strong> <a href={s.ipfsUrl} target="_blank" rel="noreferrer">Voir sur IPFS</a></>
+                          ) : <div className="text-muted">Attestation non générée</div>}
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  ) : <p className="text-muted">Aucun stagiaire enregistré.</p>}
+                </Card.Body>
+              </Card>
 
-<Card className="dashboard-card">
-  <Card.Header>Encadrants Professionnels de l’entreprise</Card.Header>
-  <Card.Body>
-    {encadrantsPro.length > 0 ? (
-      <ListGroup>
-        {encadrantsPro.map(e => (
-          <ListGroup.Item key={e.id}>
-            <strong>{e.nom} {e.prenom}</strong> — {e.email}<br />
-            ID : {e.identifiant_unique} | Stagiaires : {e.nombreStagiaires}
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
-    ) : (
-      <p className="text-muted">Aucun encadrant professionnel trouvé.</p>
-    )}
-  </Card.Body>
-</Card>
+              {/* Attestations générées */}
+              <Card className="dashboard-card">
+                <Card.Header>Attestations générées</Card.Header>
+                <Card.Body>
+                  {attestationsGenerees.length > 0 ? (
+                    <ListGroup>
+                      {attestationsGenerees.map((att, i) => (
+                        <ListGroup.Item key={att.identifiant || i}>
+                          <strong>{att.prenom} {att.nom}</strong> — {att.titre || 'Stage'}<br />
+                          <a href={att.ipfsUrl} target="_blank" rel="noreferrer">Lien IPFS</a><br />
+                          <small>Générée le : {new Date(att.dateCreation).toLocaleDateString()}</small>
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  ) : <p className="text-muted">Aucune attestation générée.</p>}
+                </Card.Body>
+              </Card>
 
-
+              {/* Encadrants professionnels */}
+              <Card className="dashboard-card">
+                <Card.Header>Encadrants Professionnels de l’entreprise</Card.Header>
+                <Card.Body>
+                  {encadrantsPro.length > 0 ? (
+                    <ListGroup>
+                      {encadrantsPro.map(e => (
+                        <ListGroup.Item key={e.id}>
+                          <strong>{e.nom} {e.prenom}</strong> — {e.email}<br />
+                          ID : {e.identifiant_unique} | Stagiaires : {e.nombreStagiaires}
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  ) : <p className="text-muted">Aucun encadrant professionnel trouvé.</p>}
+                </Card.Body>
+              </Card>
 
             </div>
           )}

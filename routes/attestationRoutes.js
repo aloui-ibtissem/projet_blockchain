@@ -43,5 +43,7 @@ router.post("/valider-stage/:stageId", requireResponsableUniversitaire, attestat
 
 // Téléchargement de l'attestation (optionnel)
 router.get("/download", checkToken, attestationController.downloadAttestation);
+//
+router.get("/attestations/entreprise", requireResponsableEntreprise, attestationController.getAttestationsEntreprise);
 
 module.exports = router;
