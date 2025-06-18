@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {
-  Container, Row, Col, Card, Button, Form, Alert, Collapse, Spinner, Badge
-} from 'react-bootstrap';
+import { Alert, Button, Card, Collapse, Form, Spinner, ListGroup } from 'react-bootstrap';
 import './DashboardEtudiant.css';
 
 const BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
@@ -34,6 +32,7 @@ function DashboardEtudiant() {
   const [loading, setLoading] = useState(true);
   const [stagesHistoriques, setStagesHistoriques] = useState([]);
   const [rapportsHistoriques, setRapportsHistoriques] = useState([]);
+  const [activeSection, setActiveSection] = useState('stage-actuel');
 
   useEffect(() => {
     if (!token || role !== 'Etudiant') return navigate('/login');
@@ -71,9 +70,11 @@ function DashboardEtudiant() {
         headers: { Authorization: `Bearer ${token}`, withCredentials: true }
       });
       setMessage('Stage proposé avec succès.');
-      setForm({ sujet: '', objectifs: '', dateDebut: '', dateFin: '', encadrantAcademique: '', encadrantProfessionnel: '' });
+      setForm({
+        sujet: '', objectifs: '', dateDebut: '', dateFin: '',
+        encadrantAcademique: '', encadrantProfessionnel: ''
+      });
       await Promise.all([fetchStage(), fetchStagesHistoriques(), fetchNotifications()]);
-      setTimeout(() => setMessage(''), 5000);
     } catch {
       setMessage("Erreur lors de la proposition du stage.");
     }
@@ -100,7 +101,6 @@ function DashboardEtudiant() {
       setRapport(null);
       setCibles({ EncadrantAcademique: false, EncadrantProfessionnel: false });
       await Promise.all([fetchStage(), fetchMesRapports(), fetchStagesHistoriques(), fetchNotifications()]);
-      setTimeout(() => setMessage(''), 5000);
     } catch {
       setMessage("Erreur lors de la soumission du rapport.");
     }
@@ -191,153 +191,159 @@ function DashboardEtudiant() {
     }
   };
 
-  if (loading) {
-    return (
-      <Container className="text-center mt-5">
-        <Spinner animation="border" />
-      </Container>
-    );
-  }
-
   return (
-    <Container className="mt-4 dashboard-etudiant">
-      <h2 className="text-center mb-4">Tableau de Bord Étudiant</h2>
-      {message && <Alert variant="info">{message}</Alert>}
-
-      <Card className="mb-4 shadow-sm">
-        <Card.Header className="d-flex justify-content-between align-items-center">
-          Notifications <Badge bg="secondary">{notifications.length}</Badge>
-          <Button size="sm" onClick={() => setShowNotif(!showNotif)} variant="outline-primary">
-            {showNotif ? "Masquer" : "Afficher"}
-          </Button>
-        </Card.Header>
-        <Collapse in={showNotif}>
-          <Card.Body style={{ maxHeight: 180, overflowY: 'auto' }}>
-            {notifications.length > 0 ? (
-              <ul className="notification-list">
-                {notifications.map(n => (
-                  <li key={n.id}>
-                    <strong>{n.message}</strong>
-                    <small className="notification-date"> ({new Date(n.date_envoi).toLocaleDateString()})</small>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted">Aucune notification</p>
-            )}
-          </Card.Body>
-        </Collapse>
-      </Card>
-
-      <Card className="shadow-sm mb-3">
-        <Card.Header>Stage Actuel</Card.Header>
-        <Card.Body>
-          {currentStage ? (
-            <>
-              <p><strong>ID :</strong> {currentStage.identifiant_unique}</p>
-              <p><strong>Titre :</strong> {currentStage.titre}</p>
-              <p><strong>Entreprise :</strong> {currentStage.entreprise}</p>
-              <p><strong>Période :</strong> {new Date(currentStage.dateDebut).toLocaleDateString()} → {new Date(currentStage.dateFin).toLocaleDateString()}</p>
-              <p><strong>Encadrant Académique :</strong> {currentStage.acaPrenom} {currentStage.acaNom}</p>
-              <p><strong>Encadrant Professionnel :</strong> {currentStage.proPrenom} {currentStage.proNom}</p>
-            </>
-          ) : (
-            <p className="text-muted">Aucun stage en cours.</p>
+    <div className="dashboard-wrapper">
+      <div className="header-container">Étudiant</div>
+      <div className="dashboard-layout">
+        <aside className="dashboard-sidebar">
+          <ul>
+            <li><button className={activeSection === 'stage-actuel' ? 'active' : ''} onClick={() => setActiveSection('stage-actuel')}>Stage Actuel</button></li>
+            <li><button className={activeSection === 'historique' ? 'active' : ''} onClick={() => setActiveSection('historique')}>Stages Historiques</button></li>
+            <li><button className={activeSection === 'proposition' ? 'active' : ''} onClick={() => setActiveSection('proposition')}>Proposer Stage</button></li>
+            <li><button className={activeSection === 'rapport' ? 'active' : ''} onClick={() => setActiveSection('rapport')}>Soumettre Rapport</button></li>
+            <li><button className={activeSection === 'rapports-hist' ? 'active' : ''} onClick={() => setActiveSection('rapports-hist')}>Rapports Soumis</button></li>
+            <li><button className={activeSection === 'attestation' ? 'active' : ''} onClick={() => setActiveSection('attestation')}>Attestation</button></li>
+            <li><button className={activeSection === 'notifications' ? 'active' : ''} onClick={() => setActiveSection('notifications')}>Notifications</button></li>
+          </ul>
+        </aside>
+        <main className="dashboard-main">
+          {loading ? <Spinner animation="border" /> : (
+            <div className="dashboard-section">
+              {message && <Alert variant="info">{message}</Alert>}
+              {activeSection === 'stage-actuel' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Stage Actuel</Card.Header>
+                  <Card.Body>
+                    {currentStage ? (
+                      <>
+                        <p><strong>ID :</strong> {currentStage.identifiant_unique}</p>
+                        <p><strong>Titre :</strong> {currentStage.titre}</p>
+                        <p><strong>Entreprise :</strong> {currentStage.entreprise}</p>
+                        <p><strong>Période :</strong> {new Date(currentStage.dateDebut).toLocaleDateString()} → {new Date(currentStage.dateFin).toLocaleDateString()}</p>
+                        <p><strong>Encadrant Académique :</strong> {currentStage.acaPrenom} {currentStage.acaNom}</p>
+                        <p><strong>Encadrant Professionnel :</strong> {currentStage.proPrenom} {currentStage.proNom}</p>
+                      </>
+                    ) : <p className="text-muted">Aucun stage en cours.</p>}
+                  </Card.Body>
+                </Card>
+              )}
+              {activeSection === 'historique' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Stages Historiques</Card.Header>
+                  <Card.Body>
+                    {stagesHistoriques.length > 0 ? (
+                      <ListGroup>
+                        {stagesHistoriques.map((s, i) => (
+                          <ListGroup.Item key={i}>
+                            <strong>{s.identifiant_unique}</strong> — {s.titre} — {s.entreprise}<br />
+                            <small>Période : {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}</small><br />
+                            {s.identifiantRapport && (
+                              <a href={`${BASE}/uploads/${s.fichier}`} target="_blank" rel="noreferrer">Voir le rapport</a>
+                            )}
+                            {s.ipfsUrl && (
+                              <>
+                                {" | "}
+                                <a href={s.ipfsUrl} target="_blank" rel="noreferrer">Voir l’attestation</a>
+                              </>
+                            )}
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : <p className="text-muted">Aucun stage historique.</p>}
+                  </Card.Body>
+                </Card>
+              )}
+              {activeSection === 'proposition' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Proposer un Stage</Card.Header>
+                  <Card.Body>
+                    <Form>
+                      <Form.Control className="mb-2" placeholder="Sujet" name="sujet" value={form.sujet} onChange={handleChange} />
+                      <Form.Control className="mb-2" placeholder="Objectifs" name="objectifs" value={form.objectifs} onChange={handleChange} />
+                      <div className="d-flex gap-2 mb-2">
+                        <Form.Control type="date" name="dateDebut" value={form.dateDebut} onChange={handleChange} />
+                        <Form.Control type="date" name="dateFin" value={form.dateFin} onChange={handleChange} />
+                      </div>
+                      <Form.Control className="mb-2" placeholder="Email Encadrant Académique" name="encadrantAcademique" value={form.encadrantAcademique} onChange={handleChange} />
+                      <Form.Control className="mb-2" placeholder="Email Encadrant Professionnel" name="encadrantProfessionnel" value={form.encadrantProfessionnel} onChange={handleChange} />
+                      <Button onClick={proposeStage}>Soumettre</Button>
+                    </Form>
+                  </Card.Body>
+                </Card>
+              )}
+              {activeSection === 'rapport' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Soumettre un Rapport</Card.Header>
+                  <Card.Body>
+                    <Form>
+                      {Object.keys(cibles).map(name => (
+                        <Form.Check key={name} type="checkbox" label={`Envoyer à ${name}`} name={name} checked={cibles[name]} onChange={handleCheckboxChange} />
+                      ))}
+                      <Form.Control className="mt-2 mb-2" type="file" accept=".pdf,.doc,.docx" onChange={e => setRapport(e.target.files[0])} />
+                      <Button onClick={submitRapport}>Envoyer</Button>
+                    </Form>
+                  </Card.Body>
+                </Card>
+              )}
+              {activeSection === 'rapports-hist' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Rapports Soumis</Card.Header>
+                  <Card.Body>
+                    {rapportsHistoriques.length > 0 ? (
+                      <ListGroup>
+                        {rapportsHistoriques.map((r, i) => (
+                          <ListGroup.Item key={i}>
+                            <strong>{r.identifiantRapport}</strong> — {r.titre} —{" "}
+                            <a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir PDF</a>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : <p className="text-muted">Aucun rapport soumis.</p>}
+                  </Card.Body>
+                </Card>
+              )}
+              {activeSection === 'attestation' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Attestation</Card.Header>
+                  <Card.Body>
+                    <Button onClick={fetchAttestation}>Vérifier</Button>
+                    {attestationUrl && (
+                      <div className="mt-2">
+                        <a href={attestationUrl} target="_blank" rel="noreferrer">Voir l’attestation</a>
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
+              )}
+              {activeSection === 'notifications' && (
+                <Card className="dashboard-card">
+                  <Card.Header>
+                    Notifications
+                    <Button variant="outline-light" size="sm" className="float-end" onClick={() => setShowNotif(!showNotif)}>
+                      {showNotif ? "Masquer" : "Afficher"}
+                    </Button>
+                  </Card.Header>
+                  <Collapse in={showNotif}>
+                    <Card.Body>
+                      {notifications.length > 0 ? (
+                        notifications.map((n, i) => (
+                          <div key={i}>
+                            <strong>{n.message}</strong>
+                            <small className="notification-date"> ({new Date(n.date_envoi).toLocaleDateString()})</small>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-muted">Aucune notification</p>
+                      )}
+                    </Card.Body>
+                  </Collapse>
+                </Card>
+              )}
+            </div>
           )}
-        </Card.Body>
-      </Card>
-
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Stages Historiques</Card.Header>
-        <Card.Body>
-          {stagesHistoriques.length > 0 ? (
-            <ul>
-              {stagesHistoriques.map((s, i) => (
-                <li key={i}>
-                  <strong>{s.identifiant_unique}</strong> — {s.titre} — {s.entreprise}<br />
-                  <small>Période : {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}</small><br />
-                  {s.identifiantRapport && (
-                    <a href={`${BASE}/uploads/${s.fichier}`} target="_blank" rel="noreferrer">Voir le rapport</a>
-                  )}
-                  {s.ipfsUrl && (
-                    <>
-                      {" | "}
-                      <a href={s.ipfsUrl} target="_blank" rel="noreferrer">Voir l’attestation</a>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted">Aucun stage historique encore.</p>
-          )}
-        </Card.Body>
-      </Card>
-
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Proposer un Stage</Card.Header>
-        <Card.Body>
-          <Form>
-            <Row className="mb-3"><Col><Form.Control placeholder="Sujet" name="sujet" value={form.sujet} onChange={handleChange} /></Col></Row>
-            <Row className="mb-3"><Col><Form.Control placeholder="Objectifs" name="objectifs" value={form.objectifs} onChange={handleChange} /></Col></Row>
-            <Row className="mb-3">
-              <Col><Form.Control type="date" name="dateDebut" value={form.dateDebut} onChange={handleChange} /></Col>
-              <Col><Form.Control type="date" name="dateFin" value={form.dateFin} onChange={handleChange} /></Col>
-            </Row>
-            <Row className="mb-3">
-              <Col><Form.Control placeholder="Email Encadrant Académique" name="encadrantAcademique" value={form.encadrantAcademique} onChange={handleChange} /></Col>
-              <Col><Form.Control placeholder="Email Encadrant Professionnel" name="encadrantProfessionnel" value={form.encadrantProfessionnel} onChange={handleChange} /></Col>
-            </Row>
-            <Button variant="primary" onClick={proposeStage}>Soumettre</Button>
-          </Form>
-        </Card.Body>
-      </Card>
-
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Soumettre un Rapport</Card.Header>
-        <Card.Body>
-          <Form.Group className="mb-3">
-            {Object.keys(cibles).map(name => (
-              <Form.Check key={name} type="checkbox" label={`Envoyer à ${name}`} name={name} checked={cibles[name]} onChange={handleCheckboxChange} />
-            ))}
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Control type="file" accept=".pdf,.doc,.docx" onChange={e => setRapport(e.target.files[0])} />
-          </Form.Group>
-          <Button variant="primary" onClick={submitRapport}>Envoyer</Button>
-        </Card.Body>
-      </Card>
-
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Rapports soumis</Card.Header>
-        <Card.Body>
-          {rapportsHistoriques.length > 0 ? (
-            <ul>
-              {rapportsHistoriques.map((r, i) => (
-                <li key={i}>
-                  <strong>{r.identifiantRapport}</strong> — {r.titre} —
-                  <a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer" style={{ marginLeft: '10px' }}>Voir PDF</a>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted">Aucun rapport validé encore.</p>
-          )}
-        </Card.Body>
-      </Card>
-
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Attestation</Card.Header>
-        <Card.Body>
-          <Button variant="success" className="me-2" onClick={fetchAttestation}>Vérifier</Button>
-          {attestationUrl && (
-            <p className="mt-3">
-              <a href={attestationUrl} target="_blank" rel="noreferrer">Voir l’attestation en ligne</a>
-            </p>
-          )}
-        </Card.Body>
-      </Card>
-    </Container>
+        </main>
+      </div>
+    </div>
   );
 }
 

@@ -1,122 +1,182 @@
-/* DashboardEtudiant.css */
-
-/* Global Styles */
-body {
+/* === GLOBAL === */
+html, body {
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f4f6f9;
+  padding: 0;
+  height: 100%;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+/* === LAYOUT ROOT === */
+.dashboard-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .dashboard-layout {
   display: flex;
-  min-height: 100vh;
-}
-
-.dashboard-content {
   flex: 1;
-  padding: 1rem;
+  align-items: stretch;
+  min-height: 0;
 }
 
-.main-content {
-  padding: 1rem;
-}
-
-/* Sidebar Menu */
-.sidebar-menu {
-  width: 200px;
-  background-color: #f0f4f8;
-  padding: 1rem 0;
-  border-right: 1px solid #e0e7ed;
-}
-
-.menu-card {
-  border: none;
-  background: transparent;
-}
-
-.menu-item {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.5rem;
-  border: none;
-  border-radius: 6px;
-  background-color: #ffffff;
-  color: #333;
-  text-align: left;
-  transition: background-color 0.2s ease;
-}
-
-.menu-item i {
-  margin-right: 0.5rem;
-}
-
-.menu-item:hover {
-  background-color: #e9ecef;
-}
-
-.logout-btn {
-  background-color: #007bff;
-  color: #fff;
-}
-
-.logout-btn:hover {
-  background-color: #0056b3;
-}
-
-/* Header */
-.header {
-  background-color: #1a2a44;
-  color: #fff;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.header-title {
-  font-size: 1.5rem;
+/* === HEADER === */
+.header-container {
+  background-color: #0f172a;
+  color: #38bdf8;
+  padding: 20px 28px;
+  font-size: 26px;
   font-weight: 600;
+  border-bottom: 1px solid #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Dashboard Grid */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 1fr 3fr;
-  gap: 1.5rem;
-  padding: 1rem;
+/* === SIDEBAR === */
+.dashboard-sidebar {
+  width: 240px;
+  background-color: #111827;
+  padding: 32px 0;
+  border-right: 1px solid #1f2937;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: 100vh;
 }
 
-.content-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+.dashboard-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-/* Dashboard Cards */
-.dashboard-card {
-  border: 1px solid #e0e7ed;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.2s ease;
+.dashboard-sidebar li {
+  width: 100%;
 }
 
-.dashboard-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.dashboard-card .card-header {
-  background-color: #f8f9fa;
+.dashboard-sidebar button {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  font-size: 15px;
   font-weight: 500;
-  border-bottom: 1px solid #e0e7ed;
+  color: #cbd5e1;
+  width: 100%;
+  border-left: 4px solid transparent;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease, border-left-color 0.25s ease;
 }
 
-.dashboard-card .card-body {
-  padding: 1.5rem;
+.dashboard-sidebar button:hover {
+  background-color: #1f2937;
+  color: #f1f5f9;
 }
 
+.dashboard-sidebar button.active {
+  background-color: #0ea5e9;
+  color: #ffffff;
+  font-weight: 600;
+  border-left: 4px solid #22d3ee;
+}
+
+/* === MAIN CONTENT === */
+.dashboard-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #0f172a;
+  overflow-y: auto;
+  padding: 32px;
+}
+
+/* === SECTION === */
+.dashboard-section {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 60px;
+}
+
+/* === CARDS === */
+.dashboard-card {
+  background-color: #1e1e2f;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: none;
+  overflow: hidden;
+}
+
+.card-header {
+  background-color: #1e293b;
+  color: #38bdf8;
+  font-size: 18px;
+  font-weight: 600;
+  padding: 14px 20px;
+  border-bottom: 1px solid #334155;
+}
+
+.card-body {
+  padding: 24px;
+  color: #f1f5f9;
+}
+
+/* === FORM & INPUT === */
+.form-control {
+  background-color: #1e293b;
+  color: #f1f5f9;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.form-control:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 0.2rem rgba(56, 189, 248, 0.4);
+  background-color: #1e293b;
+  outline: none;
+}
+
+/* === BUTTONS === */
+button {
+  background-color: #0ea5e9;
+  border: none;
+  color: white;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+button:hover {
+  background-color: #0284c7;
+  transform: scale(1.03);
+}
+
+button:disabled {
+  background-color: #64748b;
+  cursor: not-allowed;
+}
+
+/* === LINKS === */
+a {
+  color: #38bdf8;
+  font-weight: 500;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* === NOTIFICATIONS === */
 .notification-list {
   list-style: none;
   padding: 0;
@@ -124,109 +184,86 @@ body {
 
 .notification-list li {
   margin-bottom: 0.5rem;
-  color: #555;
 }
 
 .notification-date {
-  color: #888;
+  font-size: 0.8em;
+  color: #94a3b8;
+  margin-top: 6px;
+  display: block;
 }
 
-/* Form Styles */
-.form-row {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
+/* === MODAL === */
+.modal-header {
+  background-color: #1e293b;
+  color: #38bdf8;
+  border-bottom: 1px solid #334155;
 }
 
-.form-row .form-control {
-  flex: 1;
+.modal-body {
+  background-color: #0f172a;
+  color: #f1f5f9;
 }
 
-.form-control {
-  padding: 0.5rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 14px;
+.modal-footer {
+  background-color: #1e293b;
+  border-top: 1px solid #334155;
 }
 
-.form-control:focus {
-  border-color: #007bff;
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+/* === FOOTER === */
+footer {
+  background-color: #0d1320;
+  color: #aab4c3;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.85rem;
+  border-top: 1px solid #1f2937;
 }
 
-.btn-primary {
-  background-color: #007bff;
-  border: none;
-  padding: 0.5rem 1rem;
-  font-weight: 500;
+/* === SCROLLBAR === */
+.dashboard-main::-webkit-scrollbar {
+  width: 8px;
 }
 
-.btn-primary:hover {
-  background-color: #0056b3;
-}
-
-.btn-outline-primary {
-  color: #007bff;
-  border-color: #007bff;
-}
-
-.btn-outline-primary:hover {
-  background-color: #007bff;
-  color: #fff;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar-menu {
-    width: 100%;
-    padding: 0.5rem;
-  }
-
-  .menu-item {
-    justify-content: center;
-  }
-
-  .form-row {
-    flex-direction: column;
-  }
-
-  .content-cards {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 576px) {
-  .header-title {
-    font-size: 1.25rem;
-  }
-
-  .dashboard-card .card-body {
-    padding: 1rem;
-  }
-}
-.card {
-  border: 1px solid #dee2e6;
+.dashboard-main::-webkit-scrollbar-thumb {
+  background-color: #334155;
   border-radius: 8px;
 }
 
-.card-header {
-  background-color: #f7f7f7;
-  font-weight: bold;
-  font-size: 1.1rem;
+.dashboard-main::-webkit-scrollbar-track {
+  background-color: #0f172a;
 }
 
-form input, form textarea, form select {
-  border-radius: 6px !important;
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .dashboard-layout {
+    flex-direction: column;
+  }
+
+  .dashboard-sidebar {
+    width: 100%;
+    height: auto;
+    padding: 1rem 0;
+  }
+
+  .dashboard-main {
+    padding: 20px;
+  }
+
+  .dashboard-sidebar button {
+    justify-content: center;
+  }
+}
+/* === CORRECTION BOUTON TOGGLE NOTIFICATIONS === */
+button.btn-outline-light {
+  color: #38bdf8;
+  border-color: #38bdf8;
+  font-weight: 500;
 }
 
-button {
-  transition: all 0.2s ease-in-out;
+button.btn-outline-light:hover {
+  background-color: #38bdf8;
+  color: #0f172a;
+  border-color: #38bdf8;
 }
 
-button:hover {
-  transform: scale(1.02);
-}

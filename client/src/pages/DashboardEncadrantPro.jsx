@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {
-  Container, Row, Col, Card, Button, Form, Alert, Spinner, Table, ListGroup, Collapse, Badge
-} from 'react-bootstrap';
+import { Alert, Card, Button, ListGroup, Form, Collapse, Spinner } from 'react-bootstrap';
+import SkeletonLoader from '../components/SkeletonLoader';
 import './DashboardEncadrantAca.css';
 
 const BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
@@ -15,70 +14,68 @@ function DashboardEncadrantPro() {
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
 
-  const [propositions, setPropositions] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [rapports, setRapports] = useState([]);
-  const [commentaires, setCommentaires] = useState({});
-  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [historique, setHistorique] = useState([]);
-  const [rapportsHistoriques, setRapportsHistoriques] = useState([]);
+  const [message, setMessage] = useState('');
+  const [activeSection, setActiveSection] = useState('propositions');
+  const [notifications, setNotifications] = useState([]);
+  const [propositions, setPropositions] = useState([]);
+  const [rapports, setRapports] = useState([]);
   const [stagiaires, setStagiaires] = useState([]);
-  const [showNotif, setShowNotif] = useState(false);
+  const [commentaires, setCommentaires] = useState({});
 
   useEffect(() => {
-    if (!token || role !== 'EncadrantProfessionnel') return navigate('/login');
-    const decoded = jwtDecode(token);
-    if (decoded.exp < Date.now() / 1000) {
-      localStorage.clear();
-      return navigate('/login');
+    if (!token || role !== 'EncadrantProfessionnel') {
+      navigate('/login');
+      return;
     }
-    loadData();
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.exp < Date.now() / 1000) {
+        localStorage.clear();
+        navigate('/login');
+        return;
+      }
+    } catch {
+      localStorage.clear();
+      navigate('/login');
+      return;
+    }
+    fetchData();
   }, []);
 
-  const loadData = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [propRes, notifRes, rapRes, histRes, rapHistRes, stagiairesRes] = await Promise.all([
-        axios.get(`${API_URL}/stage/propositions`, { headers }),
+      const [notifRes, propRes, rapRes, stagRes] = await Promise.all([
         axios.get(`${API_URL}/notifications/mes`, { headers }),
+        axios.get(`${API_URL}/stage/propositions`, { headers }),
         axios.get(`${API_URL}/rapport/encadrant`, { headers }),
-        axios.get(`${API_URL}/historique/mes`, { headers }),
-        axios.get(`${API_URL}/rapport/encadrant/historique`, { headers }),
-        axios.get(`${API_URL}/stage/encadrant/stagiaires`, { headers }),
+        axios.get(`${API_URL}/stage/encadrant/stagiaires`, { headers })
       ]);
-      setPropositions(propRes.data || []);
       setNotifications(notifRes.data || []);
+      setPropositions(propRes.data || []);
       setRapports(rapRes.data?.enAttente || []);
-      setHistorique(histRes.data || []);
-      setRapportsHistoriques(rapHistRes.data || []);
-      setStagiaires(Array.isArray(stagiairesRes.data) ? stagiairesRes.data : []);
+      setStagiaires(stagRes.data || []);
     } catch (err) {
       console.error(err);
-      setMessage("Erreur lors du chargement des données.");
+      setMessage("Erreur de chargement des données.");
     } finally {
       setLoading(false);
     }
   };
-const handleDecision = async (id, action) => {
-  try {
-    await axios.post(`${API_URL}/stage/valider`, { sujetId: id, action }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
 
-    // Retirer immédiatement la proposition traitée du tableau
-    setPropositions(prev => prev.filter(p => p.id !== id));
-  } catch {
-    setMessage("Erreur lors de l'action sur la proposition.");
-  } finally {
-    setCommentaires({});
-     await loadData();
-  }
-};
-
-  
+  const handleDecision = async (id, action) => {
+    try {
+      await axios.post(`${API_URL}/stage/valider`, { sujetId: id, action }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessage(`Sujet ${action === 'accepter' ? 'accepté' : 'refusé'}.`);
+      await fetchData();
+    } catch {
+      setMessage("Erreur lors de la validation de la proposition.");
+    }
+  };
 
   const validerRapport = async (id) => {
     try {
@@ -86,10 +83,9 @@ const handleDecision = async (id, action) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage("Rapport validé.");
+      await fetchData();
     } catch {
-      setMessage("Erreur lors de la validation.");
-    } finally {
-      await loadData();
+      setMessage("Erreur lors de la validation du rapport.");
     }
   };
 
@@ -97,14 +93,15 @@ const handleDecision = async (id, action) => {
     const texte = commentaires[id];
     if (!texte?.trim()) return;
     try {
-      await axios.post(`${API_URL}/rapport/comment`, { rapportId: id, commentaire: texte }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.post(`${API_URL}/rapport/comment`, {
+        rapportId: id,
+        commentaire: texte
+      }, { headers: { Authorization: `Bearer ${token}` } });
       setCommentaires(prev => ({ ...prev, [id]: '' }));
       setMessage("Commentaire ajouté.");
-      await loadData();
+      await fetchData();
     } catch {
-      setMessage("Erreur lors de l'ajout du commentaire.");
+      setMessage("Erreur lors de l'envoi du commentaire.");
     }
   };
 
@@ -112,125 +109,109 @@ const handleDecision = async (id, action) => {
     setCommentaires(prev => ({ ...prev, [id]: value }));
   };
 
-  if (loading) {
-    return (
-      <Container className="text-center mt-5">
-        <Spinner animation="border" />
-      </Container>
-    );
-  }
-
   return (
-    <Container className="mt-4 dashboard-etudiant">
-      <h2 className="text-center mb-4">Tableau de Bord Encadrant Professionnel</h2>
-      {message && <Alert variant="info">{message}</Alert>}
+    <div className="dashboard-wrapper">
+      <div className="header-container">Encadrant Professionnel</div>
+      <div className="dashboard-layout">
+        <aside className="dashboard-sidebar">
+          <ul>
+            <li><button className={activeSection === 'propositions' ? 'active' : ''} onClick={() => setActiveSection('propositions')}>Propositions</button></li>
+            <li><button className={activeSection === 'rapports' ? 'active' : ''} onClick={() => setActiveSection('rapports')}>Rapports</button></li>
+            <li><button className={activeSection === 'stagiaires' ? 'active' : ''} onClick={() => setActiveSection('stagiaires')}>Stagiaires</button></li>
+            <li><button className={activeSection === 'notifications' ? 'active' : ''} onClick={() => setActiveSection('notifications')}>Notifications</button></li>
+          </ul>
+        </aside>
+        <main className="dashboard-main">
+          {loading ? <SkeletonLoader /> : (
+            <div className="dashboard-section">
+              {message && <Alert variant="info">{message}</Alert>}
 
-      {/* Notifications */}
-      <Card className="mb-4 shadow-sm">
-        <Card.Header className="d-flex justify-content-between align-items-center">
-          Notifications <Badge bg="secondary">{notifications.length}</Badge>
-          <Button size="sm" variant="outline-primary" onClick={() => setShowNotif(!showNotif)}>
-            {showNotif ? "Masquer" : "Afficher"}
-          </Button>
-        </Card.Header>
-        <Collapse in={showNotif}>
-          <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
-            {notifications.length > 0 ? (
-              <ul className="notification-list">
-                {notifications.map(n => (
-                  <li key={n.id}>
-                    <strong>{n.message}</strong>
-                    <small className="text-muted"> ({new Date(n.date_envoi).toLocaleDateString()})</small>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="text-muted">Aucune notification.</p>}
-          </Card.Body>
-        </Collapse>
-      </Card>
+              {activeSection === 'propositions' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Propositions</Card.Header>
+                  <Card.Body>
+                    {propositions.length > 0 ? (
+                      <ListGroup>
+                        {propositions.map(p => (
+                          <ListGroup.Item key={p.id}>
+                            <strong>{p.titre}</strong><br />
+                            Du {new Date(p.dateDebut).toLocaleDateString()} au {new Date(p.dateFin).toLocaleDateString()}<br />
+                            <Button size="sm" variant="success" onClick={() => handleDecision(p.id, 'accepter')} className="me-2">Accepter</Button>
+                            <Button size="sm" variant="danger" onClick={() => handleDecision(p.id, 'rejeter')}>Refuser</Button>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : <p className="text-muted">Aucune proposition.</p>}
+                  </Card.Body>
+                </Card>
+              )}
 
-      {/* Propositions */}
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Propositions de Stage</Card.Header>
-        <Card.Body>
-          {propositions.length === 0 ? <p>Aucune proposition.</p> : (
-            <Table bordered responsive hover>
-              <thead>
-                <tr><th>Titre</th><th>Dates</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                {propositions.map(p => (
-                  <tr key={p.id}>
-                    <td>{p.titre}</td>
-                    <td>{new Date(p.dateDebut).toLocaleDateString()} - {new Date(p.dateFin).toLocaleDateString()}</td>
-                    <td>
-                      <Button size="sm" variant="success" className="me-2" onClick={() => handleDecision(p.id, 'accepter')}>Accepter</Button>
-                      <Button size="sm" variant="danger" onClick={() => handleDecision(p.id, 'rejeter')}>Refuser</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+              {activeSection === 'rapports' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Rapports à valider</Card.Header>
+                  <Card.Body>
+                    {rapports.length > 0 ? rapports.map(r => (
+                      <Card key={r.id} className="mb-3">
+                        <Card.Body>
+                          <strong>{r.prenomEtudiant} {r.nomEtudiant}</strong><br />
+                          <a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir le rapport</a>
+                          <Form.Control
+                            as="textarea"
+                            rows={2}
+                            value={commentaires[r.id] || ''}
+                            onChange={e => handleCommentChange(r.id, e.target.value)}
+                            className="mt-2"
+                          />
+                          <div className="mt-2 d-flex gap-2">
+                            <Button size="sm" onClick={() => commenterRapport(r.id)}>Commenter</Button>
+                            <Button size="sm" variant="success" onClick={() => validerRapport(r.id)}>Valider</Button>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    )) : <p className="text-muted">Aucun rapport à valider.</p>}
+                  </Card.Body>
+                </Card>
+              )}
+
+              {activeSection === 'stagiaires' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Mes Stagiaires</Card.Header>
+                  <Card.Body>
+                    {stagiaires.length > 0 ? (
+                      <ListGroup>
+                        {stagiaires.map((s, i) => (
+                          <ListGroup.Item key={i}>
+                            <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
+                            <strong>Stage :</strong> {s.titreStage}<br />
+                            <strong>Période :</strong> {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}<br />
+                            {s.identifiantRapport ? (
+                              <span><strong>Rapport :</strong> <a href={`${BASE}/uploads/${s.fichierRapport}`} target="_blank" rel="noreferrer">Voir PDF</a></span>
+                            ) : <span className="text-muted">Rapport non disponible</span>}
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : <p className="text-muted">Aucun stagiaire affecté.</p>}
+                  </Card.Body>
+                </Card>
+              )}
+
+              {activeSection === 'notifications' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Notifications</Card.Header>
+                  <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                    {notifications.length > 0 ? notifications.map(n => (
+                      <div key={n.id}>
+                        {n.message} <span className="notification-date">{new Date(n.date_envoi).toLocaleString()}</span>
+                      </div>
+                    )) : <p className="text-muted">Aucune notification.</p>}
+                  </Card.Body>
+                </Card>
+              )}
+            </div>
           )}
-        </Card.Body>
-      </Card>
-
-      {/* Rapports à valider */}
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Rapports à Valider</Card.Header>
-        <Card.Body>
-          {rapports.length === 0 ? (
-            <p>Aucun rapport en attente.</p>
-          ) : (
-            rapports.map(r => (
-              <Card key={r.id} className="mb-3 shadow-sm">
-                <Card.Body>
-                  <strong>{r.prenomEtudiant} {r.nomEtudiant}</strong>
-                  <p><a href={`${BASE}/uploads/${r.fichier}`} target="_blank" rel="noreferrer">Voir le rapport</a></p>
-                  <Form.Control as="textarea" rows={2} value={commentaires[r.id] || ''} onChange={e => handleCommentChange(r.id, e.target.value)} />
-                  <div className="mt-2 d-flex gap-2">
-                    <Button size="sm" onClick={() => commenterRapport(r.id)}>Commenter</Button>
-                    <Button size="sm" variant="success" onClick={() => validerRapport(r.id)}>Valider</Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            ))
-          )}
-        </Card.Body>
-      </Card>
-
-  
-    
-
-      {/* Stagiaires encadrés */}
-      <Card className="mb-4 shadow-sm">
-        <Card.Header>Mes Stagiaires</Card.Header>
-        <Card.Body>
-          {stagiaires.length === 0 ? (
-            <p className="text-muted">Aucun stagiaire affecté.</p>
-          ) : (
-            <ListGroup>
-{Array.isArray(stagiaires) && stagiaires.map((s, i) => (
-                <ListGroup.Item key={i}>
-                  <strong>{s.prenom} {s.nom}</strong> — {s.email}<br />
-                  <span><strong>Stage :</strong> {s.titreStage}</span><br />
-                  <span><strong>Période :</strong> {new Date(s.dateDebut).toLocaleDateString()} → {new Date(s.dateFin).toLocaleDateString()}</span><br />
-                  {s.identifiantRapport ? (
-                    <span>
-                      <strong>Rapport :</strong>{" "}
-                      <a href={`${BASE}/uploads/${s.fichierRapport}`} target="_blank" rel="noreferrer">Voir PDF</a>
-
-                    </span>
-                  ) : (
-                    <span className="text-muted">Rapport non disponible</span>
-                  )}
-                </ListGroup.Item>
-              ))}
-            </ListGroup>
-          )}
-        </Card.Body>
-      </Card>
-    </Container>
+        </main>
+      </div>
+    </div>
   );
 }
 

@@ -2,14 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
-import SkeletonLoader from '../components/SkeletonLoader';
-import {
-  Container, Card, ListGroup, Button, Collapse, Row, Col, Alert, Badge, Spinner
-} from 'react-bootstrap';
-import { FaBell } from 'react-icons/fa';
-import './DashboardRespUniversite.css';
+import { Card, ListGroup, Button, Collapse, Alert, Spinner, Badge } from 'react-bootstrap';
+import './DashboardRespEntreprise.css'; // même style que celui de l'entreprise
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
 
@@ -21,9 +15,9 @@ function DashboardRespUniversitaire() {
   const [encadrants, setEncadrants] = useState([]);
   const [attestations, setAttestations] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [showNotif, setShowNotif] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState('attestations');
 
   useEffect(() => {
     if (!token || role !== 'ResponsableUniversitaire') return navigate('/login');
@@ -44,10 +38,9 @@ function DashboardRespUniversitaire() {
         axios.get(`${API_URL}/api/stage/notifications`, { headers }),
         axios.get(`${API_URL}/api/attestation/attestations/universite`, { headers })
       ]);
-
-      setEncadrants(Array.isArray(encadrantRes.data) ? encadrantRes.data : []);
-      setNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
-      setAttestations(Array.isArray(attestRes.data) ? attestRes.data : []);
+      setEncadrants(encadrantRes.data || []);
+      setNotifications(notifRes.data || []);
+      setAttestations(attestRes.data || []);
     } catch (err) {
       console.error(err);
       setMessage('Erreur lors du chargement des données.');
@@ -70,122 +63,110 @@ function DashboardRespUniversitaire() {
   };
 
   return (
-    <div className="dashboard-layout d-flex bg-light">
-      <div className="dashboard-content flex-grow-1">
-    
-        <main className="main-content p-4">
-          <Container className="mt-2 dashboard-etudiant">
-            <h2 className="text-center mb-4">Tableau de Bord Responsable Universitaire</h2>
-            {message && <Alert variant="danger">{message}</Alert>}
-            {loading ? (
-              <div className="text-center"><Spinner animation="border" /></div>
-            ) : (
-              <Row className="g-4">
-                <Col lg={showNotif ? 9 : 12}>
-                  {/* Attestations Générées */}
-                  <Card className="mb-4 shadow-sm">
-                    <Card.Header className="d-flex justify-content-between align-items-center">
-                      Attestations Générées <Badge bg="primary">{attestations.length}</Badge>
-                    </Card.Header>
-                    <Card.Body>
-                      {attestations.length === 0 ? (
-                        <p className="text-muted">Aucune attestation pour l’instant.</p>
-                      ) : (
-                        <ListGroup>
-                          {Array.isArray(attestations) && attestations.map(att => (
-                            <ListGroup.Item key={att.stageId} className="mb-2 border rounded shadow-sm p-3">
-                              <p><strong>Étudiant :</strong> {att.etudiantPrenom} {att.etudiantNom}</p>
-                              <p><strong>Stage :</strong> {att.titre} ({att.identifiantStage})</p>
-                              <p><strong>Identifiant :</strong> {att.identifiant}</p>
-                              <p><strong>Date :</strong> {new Date(att.dateCreation).toLocaleDateString()}</p>
-                              <p>
-                                <strong>État :</strong>{' '}
-                                {att.etat === 'validé' ? (
-                                  <Badge bg="success">Stage validé</Badge>
-                                ) : (
-                                  <Badge bg="warning text-dark">En attente</Badge>
-                                )}
-                              </p>
-                              <div className="d-flex justify-content-between mt-2">
-                                <a
-                                  href={att.ipfsUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="btn btn-outline-primary btn-sm"
-                                >
-                                  Voir le PDF
-                                </a>
-                                {att.etat !== 'validé' && (
-                                  <Button
-                                    size="sm"
-                                    variant="success"
-                                    onClick={() => validerStage(att.stageId)}
-                                  >
-                                    Valider
-                                  </Button>
-                                )}
-                              </div>
-                            </ListGroup.Item>
-                          ))}
-                        </ListGroup>
-                      )}
-                    </Card.Body>
-                  </Card>
+    <div className="dashboard-wrapper">
+      <div className="header-container">Responsable Universitaire</div>
+      <div className="dashboard-layout">
+        <aside className="dashboard-sidebar">
+          <ul>
+            <li>
+              <button className={activeSection === 'attestations' ? 'active' : ''} onClick={() => setActiveSection('attestations')}>
+                Attestations générées
+              </button>
+            </li>
+            <li>
+              <button className={activeSection === 'encadrants' ? 'active' : ''} onClick={() => setActiveSection('encadrants')}>
+                Encadrants académiques
+              </button>
+            </li>
+            <li>
+              <button className={activeSection === 'notifications' ? 'active' : ''} onClick={() => setActiveSection('notifications')}>
+                Notifications
+              </button>
+            </li>
+          </ul>
+        </aside>
 
-                  {/* Encadrants Académiques */}
-                  <Card className="mb-4 shadow-sm">
-                    <Card.Header className="bg-secondary text-white fw-bold">
-                      Encadrants Académiques
-                    </Card.Header>
-                    <Card.Body>
-                      {encadrants.length > 0 ? (
-                        <ListGroup>
-                          {Array.isArray(encadrants) && encadrants.map(e => (
-                            <ListGroup.Item key={e.id}>
-                              <strong>{e.nom} {e.prenom}</strong> — {e.email}<br />
-                              ID : {e.identifiant_unique} | Stagiaires : {e.nombreStagiaires}
-                            </ListGroup.Item>
-                          ))}
-                        </ListGroup>
-                      ) : (
-                        <p className="text-muted">Aucun encadrant académique trouvé.</p>
-                      )}
-                    </Card.Body>
-                  </Card>
-                </Col>
+        <main className="dashboard-main">
+          {loading ? (
+            <div className="text-center"><Spinner animation="border" variant="light" /></div>
+          ) : (
+            <div className="dashboard-section">
+              {message && <Alert variant="danger">{message}</Alert>}
 
-                {/* Notifications */}
-                {showNotif && (
-                  <Col lg={3}>
-                    <Collapse in={showNotif}>
-                      <div>
-                        <Card className="shadow-sm">
-                          <Card.Header className="bg-dark text-white fw-bold">
-                            Notifications
-                          </Card.Header>
-                          <Card.Body style={{ maxHeight: '420px', overflowY: 'auto' }}>
-                            {notifications.length === 0 ? (
-                              <p className="text-muted">Aucune notification</p>
+              {activeSection === 'attestations' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Attestations générées</Card.Header>
+                  <Card.Body>
+                    {attestations.length > 0 ? (
+                      <ListGroup>
+                        {attestations.map(att => (
+                          <ListGroup.Item key={att.stageId}>
+                            <strong>Étudiant :</strong> {att.etudiantPrenom} {att.etudiantNom}<br />
+                            <strong>Stage :</strong> {att.titre} ({att.identifiantStage})<br />
+                            <strong>Identifiant :</strong> {att.identifiant}<br />
+                            <strong>Date :</strong> {new Date(att.dateCreation).toLocaleDateString()}<br />
+                            <strong>État :</strong>{' '}
+                            {att.etat === 'validé' ? (
+                              <Badge bg="success">Stage validé</Badge>
                             ) : (
-                              <ListGroup>
-                                {Array.isArray(notifications) && notifications.map((notif, idx) => (
-                                  <ListGroup.Item key={idx}>
-                                    <strong>{notif.subject}</strong><br />
-                                    {notif.message}<br />
-                                    <small>{new Date(notif.date).toLocaleString()}</small>
-                                  </ListGroup.Item>
-                                ))}
-                              </ListGroup>
+                              <Badge bg="warning text-dark">En attente</Badge>
                             )}
-                          </Card.Body>
-                        </Card>
-                      </div>
-                    </Collapse>
-                  </Col>
-                )}
-              </Row>
-            )}
-          </Container>
+                            <div className="d-flex justify-content-between mt-2">
+                              <a href={att.ipfsUrl} target="_blank" rel="noreferrer" className="btn btn-outline-primary btn-sm">
+                                Voir PDF
+                              </a>
+                              {att.etat !== 'validé' && (
+                                <Button size="sm" variant="success" onClick={() => validerStage(att.stageId)}>
+                                  Valider
+                                </Button>
+                              )}
+                            </div>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : <p className="text-muted">Aucune attestation disponible.</p>}
+                  </Card.Body>
+                </Card>
+              )}
+
+              {activeSection === 'encadrants' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Encadrants Académiques</Card.Header>
+                  <Card.Body>
+                    {encadrants.length > 0 ? (
+                      <ListGroup>
+                        {encadrants.map(e => (
+                          <ListGroup.Item key={e.id}>
+                            <strong>{e.nom} {e.prenom}</strong> — {e.email}<br />
+                            ID : {e.identifiant_unique} | Stagiaires : {e.nombreStagiaires}
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : <p className="text-muted">Aucun encadrant trouvé.</p>}
+                  </Card.Body>
+                </Card>
+              )}
+
+              {activeSection === 'notifications' && (
+                <Card className="dashboard-card">
+                  <Card.Header>Notifications</Card.Header>
+                  <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {notifications.length > 0 ? (
+                      <ListGroup>
+                        {notifications.map((notif, idx) => (
+                          <ListGroup.Item key={idx}>
+                            <strong>{notif.subject}</strong><br />
+                            {notif.message}<br />
+                            <small>{new Date(notif.date).toLocaleString()}</small>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : <p className="text-muted">Aucune notification disponible.</p>}
+                  </Card.Body>
+                </Card>
+              )}
+            </div>
+          )}
         </main>
       </div>
     </div>
